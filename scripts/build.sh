@@ -4,7 +4,8 @@ set -e
 PRJROOT=$(dirname "${BASH_SOURCE[0]}")/..
 cd $PRJROOT
 
-MODNAME="github.com/machbase/dbms-mach-go"
+MODNAME=`cat $PRJROOT/go.mod | grep "^module " | awk '{print $2}'`
+#MODNAME="github.com/machbase/dbms-mach-go"
 
 if [ "$1" == "" ]; then
     echo "error: missing argument (target name)"
