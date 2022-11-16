@@ -1,0 +1,6 @@
+FROM golang:1.19 AS builder
+
+RUN apt update
+RUN apt install -y libjemalloc-dev
+RUN apt install -y libssl-dev
+RUN apt install -y zip

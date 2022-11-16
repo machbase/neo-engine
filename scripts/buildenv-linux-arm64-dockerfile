@@ -1,5 +1,0 @@
-FROM arm64v8/ubuntu:22.04
-
-RUN apt-get install -y golang-bin zip make which
-
-RUN git config --global --add safe.directory '*'

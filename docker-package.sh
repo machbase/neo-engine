@@ -15,17 +15,21 @@
 # 3. set .netrc and GOPRIVATE to access private repo of github.com/machbase
 #
 
-OS="linux"
-ARCH="arm64"
-PKGNAME="machgo"
+PKGNAME=$1
+OS=$2
+ARCH=$3
 
-IMAGE="$PKGNAME_buildenv_$OS_$ARCH:latest"
+# PKGNAME="machgo"
+# OS="linux"
+# ARCH="arm64"
+
+IMAGE="${PKGNAME}_buildenv_${OS}_${ARCH}:latest"
 
 docker image inspect $IMAGE --format "Check $IMAGE exists." 2> /dev/null
 exists=$?
 if [ $exists -ne 0 ]; then
     echo "Creating docker image for build environment ..."
-    docker build -f scripts/buildenv-$OS-$ARCH-dockerfile -t $IMAGE  --platform $OS/$ARCH .
+    docker build -f scripts/buildenv-dockerfile -t $IMAGE  --platform $OS/$ARCH .
 fi
 
 if [ ! -f ~/.netrc ]; then

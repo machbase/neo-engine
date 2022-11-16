@@ -26,7 +26,8 @@ package-all:
 	done
 
 docker-package:
-	@./docker-package.sh
+	@./docker-package.sh machgo linux arm64
+	@./docker-package.sh machgo linux amd64
 
 package-%:
 	@./scripts/package.sh $*  linux    amd64
