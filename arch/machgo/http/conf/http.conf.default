@@ -1,0 +1,7 @@
+{ "document_root":"http/html/",
+  "max_request_size": "100000",
+  "request_timeout_ms": "10000",
+  "authentication_domain" : "none",
+  "reverse_proxy" : [["/machbase/tables", "http://localhost:5657/machbase"],
+                     ["/self_machbase_proxy", "http://localhost:5657/machbase"]]
+}

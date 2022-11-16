@@ -9,6 +9,7 @@ import (
 
 func main() {
 	fmt.Println("-------------------------------")
+	fmt.Println(mach.VersionString())
 
 	mach.Initialize("/home/eirny/Developer/sample-machdb/tmp/home")
 
@@ -27,7 +28,7 @@ func main() {
 
 	fmt.Println("IsRunning", mach.IsRunning())
 
-	rows, err := mach.Query("select * from log")
+	rows, err := mach.Query("select id, name, pre from log")
 	if err != nil {
 		fmt.Printf("Error: %s\n", err.Error())
 		os.Exit(1)
