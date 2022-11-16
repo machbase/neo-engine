@@ -17,43 +17,43 @@ import (
 	"unsafe"
 )
 
-func Initialize(homeDir string) {
+func initialize0(homeDir string) {
 	C.MachInitialize(C.CString(homeDir))
 }
 
-func DestroyDatabase() {
+func destroyDatabase0() {
 	C.MachDestroyDB()
 }
 
-func CreateDatabase() {
+func createDatabase0() {
 	C.MachCreateDB()
 }
 
-func Startup(timeout time.Duration) {
+func startup0(timeout time.Duration) {
 	i := C.nbp_uint32_t(uint32(timeout.Seconds()))
 	C.MachStartupDB(i)
 }
 
-func Shutdown() bool {
+func shutdown0() bool {
 	rt := C.MachShutdownDB()
 	return rt == 0
 }
 
-func IsRunning() bool {
+func isRunning0() bool {
 	rt := C.MachCheckEqualServerStatus(C.nbp_bool_t(1))
 	return rt == 1
 }
 
-func Execute(sqlText string) {
+func execute0(sqlText string) {
 	C.MachDirectSQLExecute(C.CString(sqlText))
 }
 
-func ExecuteNewSession(sqlText string) {
+func executeNewSession0(sqlText string) {
 	C.MachDirectSQLOnNewSession(C.CString(sqlText))
 }
 
-func Query(sqlText string, args ...any) (*Rows, error) {
-	rt := Rows{
+func query0(sqlText string, args ...any) (Rows, error) {
+	rt := rows{
 		sqlText: sqlText,
 	}
 	rc := C.MachAllocStmt(&rt.stmt)
@@ -72,19 +72,19 @@ func Query(sqlText string, args ...any) (*Rows, error) {
 	return &rt, nil
 }
 
-type Rows struct {
+type rows struct {
 	sqlText string
 	stmt    unsafe.Pointer
 	eor     C.nbp_bool_t // end of resultset
 }
 
-func (rows *Rows) Close() {
+func (rows *rows) Close() {
 	C.MachExecuteClean(rows.stmt)
 	C.MachPrepareClean(rows.stmt)
 	C.MachFreeStmt(rows.stmt)
 }
 
-func (rows *Rows) Next() bool {
+func (rows *rows) Next() bool {
 	if rows.eor != 0 {
 		return false
 	}
@@ -92,7 +92,7 @@ func (rows *Rows) Next() bool {
 	return rows.eor == 0
 }
 
-func (rows *Rows) Scan(cols ...any) error {
+func (rows *rows) Scan(cols ...any) error {
 	var buff [100]byte
 	for i, c := range cols {
 		var ptr unsafe.Pointer

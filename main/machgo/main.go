@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"mach"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -11,7 +12,12 @@ func main() {
 	fmt.Println("-------------------------------")
 	fmt.Println(mach.VersionString())
 
-	mach.Initialize("/home/eirny/Developer/sample-machdb/tmp/home")
+	exePath, err := os.Executable()
+	if err != nil {
+		fmt.Printf("Error: %s\n", err.Error())
+	}
+	homePath := filepath.Dir(exePath)
+	mach.Initialize(homePath)
 
 	mach.DestroyDatabase()
 	mach.CreateDatabase()
