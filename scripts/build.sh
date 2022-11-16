@@ -4,7 +4,7 @@ set -e
 PRJROOT=$(dirname "${BASH_SOURCE[0]}")/..
 cd $PRJROOT
 
-MODNAME="mach"
+MODNAME="github.com/machbase/dbms-mach-go"
 
 if [ "$1" == "" ]; then
     echo "error: missing argument (target name)"
