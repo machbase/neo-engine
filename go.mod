@@ -1,4 +1,4 @@
-module mach
+module github.com/machbase/dbms-mach-go
 
 go 1.18
 

@@ -25,13 +25,15 @@ package-all:
 		make package-$$tg; \
 	done
 
-docker-package:
+releases:
 	@./docker-package.sh machgo linux arm64
 	@./docker-package.sh machgo linux amd64
 
 package-%:
 	@./scripts/package.sh $*  linux    amd64
 #	@./scripts/package.sh $*  linux    arm64
+#	@./scripts/package.sh $*  darwin   arm64
+#	@./scripts/package.sh $*  darwin   amd64
 
 %:
 	@./scripts/build.sh $@

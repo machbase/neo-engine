@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"mach"
 	"os"
 	"path/filepath"
 	"time"
+
+	mach "github.com/machbase/dbms-mach-go"
 )
 
 func main() {
