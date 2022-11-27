@@ -8,17 +8,16 @@ all:
 	done
 
 cleanpackage:
-	@rm -rf packages/
+	@rm -rf packages/*
 
 test:
-	@go test $(ARGS) \
-		mods/shqd
+	@go test $(ARGS) .
 
 test-all:
 	@make -f Makefile ARGS="-cover -v -count 1" test
 
 package:
-	@./docker-package.sh caud
+	@./docker-package.sh machgo
 
 package-all:
 	@for tg in $(targets) ; do \
@@ -26,8 +25,8 @@ package-all:
 	done
 
 releases:
-	@./docker-package.sh machgo linux arm64
 	@./docker-package.sh machgo linux amd64
+	@./docker-package.sh machgo linux arm64/v7
 
 package-%:
 	@./scripts/package.sh $*  linux    amd64
