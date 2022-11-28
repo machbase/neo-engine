@@ -275,3 +275,17 @@ func machColumnDataBinary(stmt unsafe.Pointer, idx int) ([]byte, error) {
 	}
 	return buf, nil
 }
+
+func machAppendOpen(stmt unsafe.Pointer, tableName string) error {
+	if rt := C.MachAppendOpen(stmt, C.CString(tableName)); rt != 0 {
+		return fmt.Errorf("MachAppendOpen %s returns %d", tableName, rt)
+	}
+	return nil
+}
+
+func machAppendClose(stmt unsafe.Pointer) error {
+	if rt := C.MachAppendClose(stmt); rt != 0 {
+		return fmt.Errorf("MachAppendClose returns %d", rt)
+	}
+	return nil
+}

@@ -275,3 +275,44 @@ func machColumnDataBinary(stmt unsafe.Pointer, idx int) ([]byte, error) {
 	}
 	return buf, nil
 }
+
+func machAppendOpen(stmt unsafe.Pointer, tableName string) error {
+	if rt := C.MachAppendOpen(stmt, C.CString(tableName)); rt != 0 {
+		return fmt.Errorf("MachAppendOpen %s returns %d", tableName, rt)
+	}
+	return nil
+}
+
+func machAppendClose(stmt unsafe.Pointer) error {
+	if rt := C.MachAppendClose(stmt); rt != 0 {
+		return fmt.Errorf("MachAppendClose returns %d", rt)
+	}
+	return nil
+}
+
+type machAppendDataValue struct {
+}
+
+type machAppendDataNullValue struct {
+	IsValid bool
+	Value   machAppendDataValue
+}
+
+func machAppendData(stmt unsafe.Pointer, valueArr []*machAppendDataNullValue) error {
+	values := make([]C.MachEngineAppendParam, len(valueArr))
+	for i, v := range valueArr {
+		isNull := 0 // NOT NULL
+		if !v.IsValid {
+			isNull = 1 // NULL
+		}
+		values[i] = C.MachEngineAppendParam{
+			mIsNull: C.int(isNull),
+			mData:   C.MachEngineAppendParamData{},
+		}
+	}
+
+	if rt := C.MachAppendData(stmt, &values[0]); rt != 0 {
+		return fmt.Errorf("MachAppendData returns %d", rt)
+	}
+	return nil
+}
