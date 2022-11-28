@@ -1,9 +1,9 @@
 
 - version:  
-  libmachengine (2022/11/24)
+  libmachengine (c8d54f70)
   
 - APIs:  
-  http://intra.machbase.com:8888/pages/viewpage.action?pageId=321227578
+  http://intra.machbase.com:8888/pages/viewpage.action?pageId=321884164
 
 - required dependencies
 
