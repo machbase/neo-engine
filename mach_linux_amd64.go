@@ -121,28 +121,28 @@ func machFetch(stmt unsafe.Pointer) (bool, error) {
 
 func machBindInt32(stmt unsafe.Pointer, idx int, val int32) error {
 	if rt := C.MachBindInt32(stmt, C.int(idx), C.int(val)); rt != 0 {
-		return fmt.Errorf("MachBindInt32 returns %d", rt)
+		return fmt.Errorf("MachBindInt32 idx %d returns %d", idx, rt)
 	}
 	return nil
 }
 
 func machBindInt64(stmt unsafe.Pointer, idx int, val int64) error {
 	if rt := C.MachBindInt64(stmt, C.int(idx), C.longlong(val)); rt != 0 {
-		return fmt.Errorf("MachBindInt64 returns %d", rt)
+		return fmt.Errorf("MachBindInt64 idx %d returns %d", idx, rt)
 	}
 	return nil
 }
 
 func machBindFloat64(stmt unsafe.Pointer, idx int, val float64) error {
 	if rt := C.MachBindDouble(stmt, C.int(idx), C.double(val)); rt != 0 {
-		return fmt.Errorf("MachBindDouble returns %d", rt)
+		return fmt.Errorf("MachBindDouble idx %d returns %d", idx, rt)
 	}
 	return nil
 }
 
 func machBindString(stmt unsafe.Pointer, idx int, val string) error {
 	if rt := C.MachBindString(stmt, C.int(idx), C.CString(val), C.int(len(val))); rt != 0 {
-		return fmt.Errorf("MachBindString returns %d", rt)
+		return fmt.Errorf("MachBindString idx %d returns %d", idx, rt)
 	}
 	return nil
 }
@@ -150,7 +150,7 @@ func machBindString(stmt unsafe.Pointer, idx int, val string) error {
 func machBindBinary(stmt unsafe.Pointer, idx int, data []byte) error {
 	ptr := unsafe.Pointer(&data)
 	if rt := C.MachBindBinary(stmt, C.int(idx), ptr, C.int(len(data))); rt != 0 {
-		return fmt.Errorf("MachBindBinary returns %d", rt)
+		return fmt.Errorf("MachBindBinary idx %d returns %d", idx, rt)
 	}
 	return nil
 }
@@ -166,7 +166,7 @@ func machColumnCount(stmt unsafe.Pointer) (int, error) {
 func machColumnType(stmt unsafe.Pointer, idx int) (int, error) {
 	var typ C.int = 0
 	if rt := C.MachColumnType(stmt, C.int(idx), &typ); rt != 0 {
-		return 0, fmt.Errorf("MachColumnType returns %d", rt)
+		return 0, fmt.Errorf("MachColumnType idx %d returns %d", idx, rt)
 	}
 	return int(typ), nil
 }
@@ -174,14 +174,14 @@ func machColumnType(stmt unsafe.Pointer, idx int) (int, error) {
 func machColumnLength(stmt unsafe.Pointer, idx int) (int, error) {
 	var length C.int = 0
 	if rt := C.MachColumnLength(stmt, C.int(idx), &length); rt != 0 {
-		return 0, fmt.Errorf("MachColumnLength returns %d", rt)
+		return 0, fmt.Errorf("MachColumnLength idx %d returns %d", idx, rt)
 	}
 	return int(length), nil
 }
 
 func machColumnData(stmt unsafe.Pointer, idx int, buf unsafe.Pointer, bufLen int) error {
 	if rt := C.MachColumnData(stmt, C.int(idx), buf, C.int(bufLen)); rt != 0 {
-		return fmt.Errorf("MachColumnData returns %d", rt)
+		return fmt.Errorf("MachColumnData idx %d returns %d", idx, rt)
 	}
 	return nil
 }
@@ -189,7 +189,7 @@ func machColumnData(stmt unsafe.Pointer, idx int, buf unsafe.Pointer, bufLen int
 func machColumnDataInt16(stmt unsafe.Pointer, idx int) (int16, error) {
 	var val C.short
 	if rt := C.MachColumnDataInt16(stmt, C.int(idx), &val); rt != 0 {
-		return 0, fmt.Errorf("MachColumnDataInt16 returns %d", rt)
+		return 0, fmt.Errorf("MachColumnDataInt16 idx %d returns %d", idx, rt)
 	}
 	return int16(val), nil
 }
@@ -197,7 +197,7 @@ func machColumnDataInt16(stmt unsafe.Pointer, idx int) (int16, error) {
 func machColumnDataInt32(stmt unsafe.Pointer, idx int) (int32, error) {
 	var val C.int
 	if rt := C.MachColumnDataInt32(stmt, C.int(idx), &val); rt != 0 {
-		return 0, fmt.Errorf("MachColumnDataInt32 returns %d", rt)
+		return 0, fmt.Errorf("MachColumnDataInt32 idx %d returns %d", idx, rt)
 	}
 	return int32(val), nil
 }
@@ -205,7 +205,7 @@ func machColumnDataInt32(stmt unsafe.Pointer, idx int) (int32, error) {
 func machColumnDataInt64(stmt unsafe.Pointer, idx int) (int64, error) {
 	var val C.longlong
 	if rt := C.MachColumnDataInt64(stmt, C.int(idx), &val); rt != 0 {
-		return 0, fmt.Errorf("MachColumnDataInt64 returns %d", rt)
+		return 0, fmt.Errorf("MachColumnDataInt64 idx %d returns %d", idx, rt)
 	}
 	return int64(val), nil
 }
@@ -213,7 +213,7 @@ func machColumnDataInt64(stmt unsafe.Pointer, idx int) (int64, error) {
 func machColumnDataDateTime(stmt unsafe.Pointer, idx int) (time.Time, error) {
 	var val C.longlong
 	if rt := C.MachColumnDataDateTime(stmt, C.int(idx), &val); rt != 0 {
-		return time.Time{}, fmt.Errorf("MachColumnDataDateTime returns %d", rt)
+		return time.Time{}, fmt.Errorf("MachColumnDataDateTime idx %d returns %d", idx, rt)
 	}
 	return time.Unix(0, int64(val)), nil
 }
@@ -221,7 +221,7 @@ func machColumnDataDateTime(stmt unsafe.Pointer, idx int) (time.Time, error) {
 func machColumnDataFloat32(stmt unsafe.Pointer, idx int) (float32, error) {
 	var val C.float
 	if rt := C.MachColumnDataFloat(stmt, C.int(idx), &val); rt != 0 {
-		return 0, fmt.Errorf("MachColumnDataFloat returns %d", rt)
+		return 0, fmt.Errorf("MachColumnDataFloat idx %d returns %d", idx, rt)
 	}
 	return float32(val), nil
 }
@@ -229,7 +229,7 @@ func machColumnDataFloat32(stmt unsafe.Pointer, idx int) (float32, error) {
 func machColumnDataFloat64(stmt unsafe.Pointer, idx int) (float64, error) {
 	var val C.double
 	if rt := C.MachColumnDataDouble(stmt, C.int(idx), &val); rt != 0 {
-		return 0, fmt.Errorf("MachColumnDataDouble returns %d", rt)
+		return 0, fmt.Errorf("MachColumnDataDouble idx %d returns %d", idx, rt)
 	}
 	return float64(val), nil
 }
@@ -237,7 +237,7 @@ func machColumnDataFloat64(stmt unsafe.Pointer, idx int) (float64, error) {
 func machColumnDataIPV4(stmt unsafe.Pointer, idx int) (net.IP, error) {
 	var val [net.IPv4len]byte
 	if rt := C.MachColumnDataIPV4(stmt, C.int(idx), unsafe.Pointer(&val)); rt != 0 {
-		return net.IPv4zero, fmt.Errorf("MachColumnDataIPV4 returns %d", rt)
+		return net.IPv4zero, fmt.Errorf("MachColumnDataIPV4 idx %d returns %d", idx, rt)
 	}
 	return net.IPv4(val[0], val[1], val[2], val[3]), nil
 }
@@ -245,7 +245,7 @@ func machColumnDataIPV4(stmt unsafe.Pointer, idx int) (net.IP, error) {
 func machColumnDataIPV6(stmt unsafe.Pointer, idx int) (net.IP, error) {
 	var val [net.IPv6len]byte
 	if rt := C.MachColumnDataIPV6(stmt, C.int(idx), unsafe.Pointer(&val)); rt != 0 {
-		return net.IPv6zero, fmt.Errorf("MachColumnDataIPV6 returns %d", rt)
+		return net.IPv6zero, fmt.Errorf("MachColumnDataIPV6 idx %d returns %d", idx, rt)
 	}
 	return net.IP(val[:]), nil
 }
@@ -258,7 +258,7 @@ func machColumnDataString(stmt unsafe.Pointer, idx int) (string, error) {
 	buf := make([]byte, length)
 	val := (*C.char)(unsafe.Pointer(&buf[0]))
 	if rt := C.MachColumnDataString(stmt, C.int(idx), val, C.int(length)); rt != 0 {
-		return "", fmt.Errorf("MachColumnDataString returns %d", rt)
+		return "", fmt.Errorf("MachColumnDataString idx %d returns %d", idx, rt)
 	}
 	return string(buf), nil
 }
@@ -271,7 +271,7 @@ func machColumnDataBinary(stmt unsafe.Pointer, idx int) ([]byte, error) {
 	buf := make([]byte, length)
 	val := (*C.char)(unsafe.Pointer(&buf[0]))
 	if rt := C.MachColumnDataString(stmt, C.int(idx), val, C.int(length)); rt != 0 {
-		return nil, fmt.Errorf("MachColumnDataString returns %d", rt)
+		return nil, fmt.Errorf("MachColumnDataString idx %d returns %d", idx, rt)
 	}
 	return buf, nil
 }
