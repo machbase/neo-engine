@@ -58,7 +58,9 @@ export CGO_ENABLED=1
 
 if [ "$NOMODULES" != "1" ]; then
 	export GO111MODULE=on
-	go mod vendor
+    if [ ! -d ./vendor ]; then
+	    go mod vendor
+    fi
 fi
 
 # Build and store objects into original directory.

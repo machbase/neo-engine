@@ -5,131 +5,273 @@ package mach
 
 /*
 #cgo CFLAGS: -I./native -I.
-#cgo LDFLAGS: -L./native -lmachengine.LINUX.X86.64BIT.release -lpthread -ljemalloc -ldl -lm -lcrypto -Wl,-rpath=./lib
-#include "libmachengine.h"
+#cgo LDFLAGS: -L./native -lmachengine.fog.LINUX.X86.64BIT -lpthread -ljemalloc -ldl -lm -lcrypto -Wl,-rpath=./lib
+#include "machEngine.h"
+#include <stdlib.h>
 */
 import "C"
 
 import (
-	"errors"
 	"fmt"
+	"net"
 	"time"
 	"unsafe"
+
+	"github.com/pkg/errors"
 )
 
-func initialize0(homeDir string) {
-	C.MachInitialize(C.CString(homeDir))
-}
-
-func destroyDatabase0() {
-	C.MachDestroyDB()
-}
-
-func createDatabase0() {
-	C.MachCreateDB()
-}
-
-func startup0(timeout time.Duration) {
-	i := C.nbp_uint32_t(uint32(timeout.Seconds()))
-	C.MachStartupDB(i)
-}
-
-func shutdown0() bool {
-	rt := C.MachShutdownDB()
-	return rt == 0
-}
-
-func isRunning0() bool {
-	rt := C.MachCheckEqualServerStatus(C.nbp_bool_t(1))
-	return rt == 1
-}
-
-func execute0(sqlText string) {
-	C.MachDirectSQLExecute(C.CString(sqlText))
-}
-
-func executeNewSession0(sqlText string) {
-	C.MachDirectSQLOnNewSession(C.CString(sqlText))
-}
-
-func query0(sqlText string, args ...any) (Rows, error) {
-	rt := rows{
-		sqlText: sqlText,
+func initialize0(homeDir string) error {
+	if rt := C.MachInitialize(C.CString(homeDir)); rt == 0 {
+		return nil
+	} else {
+		return fmt.Errorf("MachInitialize returns %d", rt)
 	}
-	rc := C.MachAllocStmt(&rt.stmt)
-	if rc != 0 {
-		return nil, errors.New("MachAllocStmt")
-	}
-	rc = C.MachPrepare(rt.stmt, C.CString(sqlText))
-	if rc != 0 {
-		return nil, errors.New("MachPrepare")
-	}
-	rc = C.MachExecute(rt.stmt)
-	if rc != 0 {
-		return nil, errors.New("MachExecute")
-	}
-
-	return &rt, nil
 }
 
-type rows struct {
-	sqlText string
-	stmt    unsafe.Pointer
-	eor     C.nbp_bool_t // end of resultset
-}
-
-func (rows *rows) Close() {
-	C.MachExecuteClean(rows.stmt)
-	C.MachPrepareClean(rows.stmt)
-	C.MachFreeStmt(rows.stmt)
-}
-
-func (rows *rows) Next() bool {
-	if rows.eor != 0 {
-		return false
+func createDatabase0() error {
+	if rt := C.MachCreateDB(); rt == 0 {
+		return nil
+	} else {
+		return fmt.Errorf("MachCreateDB returns %d", rt)
 	}
-	C.MachFetch(rows.stmt, &rows.eor)
-	return rows.eor == 0
 }
 
-func (rows *rows) Scan(cols ...any) error {
-	var buff [100]byte
-	for i, c := range cols {
-		var ptr unsafe.Pointer
-		switch col := c.(type) {
-		case *uint:
-			ptr = (unsafe.Pointer)(col)
-		case *int:
-			ptr = (unsafe.Pointer)(col)
-		case *uint32:
-			ptr = (unsafe.Pointer)(col)
-		case *int32:
-			ptr = (unsafe.Pointer)(col)
-		case *uint64:
-			ptr = (unsafe.Pointer)(col)
-		case *int64:
-			ptr = (unsafe.Pointer)(col)
-		case *string:
-			// ptr = (unsafe.Pointer)(col)
-			ptr = (unsafe.Pointer)(&buff)
-		case *float32:
-			ptr = (unsafe.Pointer)(col)
-		case *float64:
-			ptr = (unsafe.Pointer)(col)
-		default:
-			return fmt.Errorf("MachGetColumnData unsupported type %T", c)
-		}
-		rc := C.MachGetColumnData(rows.stmt, C.uint(i), ptr)
-		if rc != 0 {
-			return errors.New("MachGetColumnData")
-		}
-		// fmt.Printf("[%d] %T %p\n", i, c, c)
+func destroyDatabase0() error {
+	if rt := C.MachDestroyDB(); rt == 0 {
+		return nil
+	} else {
+		return fmt.Errorf("MachDestroyDB returns %d", rt)
+	}
+}
 
-		switch col := c.(type) {
-		case *string:
-			*col = string(buff[:])
-		default:
-		}
+func startup0(handle *unsafe.Pointer, timeout time.Duration) error {
+	timeoutSec := C.int(timeout.Seconds())
+	if rt := C.MachStartupDB(timeoutSec, handle); rt != 0 {
+		return fmt.Errorf("MachStartupDB returns %d", rt)
 	}
 	return nil
+}
+
+func shutdown0(handle unsafe.Pointer) error {
+	if rt := C.MachShutdownDB(handle); rt == 0 {
+		return nil
+	} else {
+		return fmt.Errorf("MachShutdownDB returns %d", rt)
+	}
+}
+
+func db_error0(handle unsafe.Pointer) error {
+	code := C.MachErrorCode(handle)
+	msg := C.MachErrorMsg(handle)
+	if code != 0 {
+		return fmt.Errorf("MachError %d %s", code, C.GoString(msg))
+	}
+	return nil
+}
+
+func machAllocStmt(handle unsafe.Pointer, stmt *unsafe.Pointer) error {
+	if rt := C.MachAllocStmt(handle, stmt); rt != 0 {
+		return fmt.Errorf("MachAllocStmt returns %d", rt)
+	}
+	return nil
+}
+
+func machFreeStmt(stmt unsafe.Pointer) error {
+	if rt := C.MachFreeStmt(stmt); rt != 0 {
+		return fmt.Errorf("MachFreeStmt returns %d", rt)
+	}
+	return nil
+}
+
+func machPrepare(stmt unsafe.Pointer, sqlText string) error {
+	if rt := C.MachPrepare(stmt, C.CString(sqlText)); rt != 0 {
+		return fmt.Errorf("MachPrepare returns %d", rt)
+	}
+	return nil
+}
+
+func machExecute(stmt unsafe.Pointer) error {
+	if rt := C.MachExecute(stmt); rt != 0 {
+		return fmt.Errorf("MachExecute returns %d", rt)
+	}
+	return nil
+}
+
+func machExecuteClean(stmt unsafe.Pointer) error {
+	if rt := C.MachExecuteClean(stmt); rt != 0 {
+		return fmt.Errorf("MachExecuteClean returns %d", rt)
+	}
+	return nil
+}
+
+func machDirectExecute(stmt unsafe.Pointer, sqlText string) error {
+	if rt := C.MachDirectExecute(stmt, C.CString(sqlText)); rt != 0 {
+		return fmt.Errorf("MachDirectExecute returns %d", rt)
+	}
+	return nil
+}
+
+func machFetch(stmt unsafe.Pointer) (bool, error) {
+	var fetchEnd C.int
+	if rt := C.MachFetch(stmt, &fetchEnd); rt != 0 {
+		return false, fmt.Errorf("MachFetch returns %d", rt)
+	}
+	return fetchEnd == 0, nil
+}
+
+func machBindInt32(stmt unsafe.Pointer, idx int, val int32) error {
+	if rt := C.MachBindInt32(stmt, C.int(idx), C.int(val)); rt != 0 {
+		return fmt.Errorf("MachBindInt32 returns %d", rt)
+	}
+	return nil
+}
+
+func machBindInt64(stmt unsafe.Pointer, idx int, val int64) error {
+	if rt := C.MachBindInt64(stmt, C.int(idx), C.longlong(val)); rt != 0 {
+		return fmt.Errorf("MachBindInt64 returns %d", rt)
+	}
+	return nil
+}
+
+func machBindFloat64(stmt unsafe.Pointer, idx int, val float64) error {
+	if rt := C.MachBindDouble(stmt, C.int(idx), C.double(val)); rt != 0 {
+		return fmt.Errorf("MachBindDouble returns %d", rt)
+	}
+	return nil
+}
+
+func machBindString(stmt unsafe.Pointer, idx int, val string) error {
+	if rt := C.MachBindString(stmt, C.int(idx), C.CString(val), C.int(len(val))); rt != 0 {
+		return fmt.Errorf("MachBindString returns %d", rt)
+	}
+	return nil
+}
+
+func machBindBinary(stmt unsafe.Pointer, idx int, data []byte) error {
+	ptr := unsafe.Pointer(&data)
+	if rt := C.MachBindBinary(stmt, C.int(idx), ptr, C.int(len(data))); rt != 0 {
+		return fmt.Errorf("MachBindBinary returns %d", rt)
+	}
+	return nil
+}
+
+func machColumnCount(stmt unsafe.Pointer) (int, error) {
+	var count C.int = 0
+	if rt := C.MachColumnCount(stmt, &count); rt != 0 {
+		return 0, fmt.Errorf("MachColumnCount returns %d", rt)
+	}
+	return int(count), nil
+}
+
+func machColumnType(stmt unsafe.Pointer, idx int) (int, error) {
+	var typ C.int = 0
+	if rt := C.MachColumnType(stmt, C.int(idx), &typ); rt != 0 {
+		return 0, fmt.Errorf("MachColumnType returns %d", rt)
+	}
+	return int(typ), nil
+}
+
+func machColumnLength(stmt unsafe.Pointer, idx int) (int, error) {
+	var length C.int = 0
+	if rt := C.MachColumnLength(stmt, C.int(idx), &length); rt != 0 {
+		return 0, fmt.Errorf("MachColumnLength returns %d", rt)
+	}
+	return int(length), nil
+}
+
+func machColumnData(stmt unsafe.Pointer, idx int, buf unsafe.Pointer, bufLen int) error {
+	if rt := C.MachColumnData(stmt, C.int(idx), buf, C.int(bufLen)); rt != 0 {
+		return fmt.Errorf("MachColumnData returns %d", rt)
+	}
+	return nil
+}
+
+func machColumnDataInt16(stmt unsafe.Pointer, idx int) (int16, error) {
+	var val C.short
+	if rt := C.MachColumnDataInt16(stmt, C.int(idx), &val); rt != 0 {
+		return 0, fmt.Errorf("MachColumnDataInt16 returns %d", rt)
+	}
+	return int16(val), nil
+}
+
+func machColumnDataInt32(stmt unsafe.Pointer, idx int) (int32, error) {
+	var val C.int
+	if rt := C.MachColumnDataInt32(stmt, C.int(idx), &val); rt != 0 {
+		return 0, fmt.Errorf("MachColumnDataInt32 returns %d", rt)
+	}
+	return int32(val), nil
+}
+
+func machColumnDataInt64(stmt unsafe.Pointer, idx int) (int64, error) {
+	var val C.longlong
+	if rt := C.MachColumnDataInt64(stmt, C.int(idx), &val); rt != 0 {
+		return 0, fmt.Errorf("MachColumnDataInt64 returns %d", rt)
+	}
+	return int64(val), nil
+}
+
+func machColumnDataDateTime(stmt unsafe.Pointer, idx int) (time.Time, error) {
+	var val C.longlong
+	if rt := C.MachColumnDataDateTime(stmt, C.int(idx), &val); rt != 0 {
+		return time.Time{}, fmt.Errorf("MachColumnDataDateTime returns %d", rt)
+	}
+	return time.Unix(0, int64(val)), nil
+}
+
+func machColumnDataFloat32(stmt unsafe.Pointer, idx int) (float32, error) {
+	var val C.float
+	if rt := C.MachColumnDataFloat(stmt, C.int(idx), &val); rt != 0 {
+		return 0, fmt.Errorf("MachColumnDataFloat returns %d", rt)
+	}
+	return float32(val), nil
+}
+
+func machColumnDataFloat64(stmt unsafe.Pointer, idx int) (float64, error) {
+	var val C.double
+	if rt := C.MachColumnDataDouble(stmt, C.int(idx), &val); rt != 0 {
+		return 0, fmt.Errorf("MachColumnDataDouble returns %d", rt)
+	}
+	return float64(val), nil
+}
+
+func machColumnDataIPV4(stmt unsafe.Pointer, idx int) (net.IP, error) {
+	var val [net.IPv4len]byte
+	if rt := C.MachColumnDataIPV4(stmt, C.int(idx), unsafe.Pointer(&val)); rt != 0 {
+		return net.IPv4zero, fmt.Errorf("MachColumnDataIPV4 returns %d", rt)
+	}
+	return net.IPv4(val[0], val[1], val[2], val[3]), nil
+}
+
+func machColumnDataIPV6(stmt unsafe.Pointer, idx int) (net.IP, error) {
+	var val [net.IPv6len]byte
+	if rt := C.MachColumnDataIPV6(stmt, C.int(idx), unsafe.Pointer(&val)); rt != 0 {
+		return net.IPv6zero, fmt.Errorf("MachColumnDataIPV6 returns %d", rt)
+	}
+	return net.IP(val[:]), nil
+}
+
+func machColumnDataString(stmt unsafe.Pointer, idx int) (string, error) {
+	length, err := machColumnLength(stmt, idx)
+	if err != nil {
+		return "", errors.Wrap(err, "machColumnDataString")
+	}
+	buf := make([]byte, length)
+	val := (*C.char)(unsafe.Pointer(&buf[0]))
+	if rt := C.MachColumnDataString(stmt, C.int(idx), val, C.int(length)); rt != 0 {
+		return "", fmt.Errorf("MachColumnDataString returns %d", rt)
+	}
+	return string(buf), nil
+}
+
+func machColumnDataBinary(stmt unsafe.Pointer, idx int) ([]byte, error) {
+	length, err := machColumnLength(stmt, idx)
+	if err != nil {
+		return nil, errors.Wrap(err, "machColumnDataString")
+	}
+	buf := make([]byte, length)
+	val := (*C.char)(unsafe.Pointer(&buf[0]))
+	if rt := C.MachColumnDataString(stmt, C.int(idx), val, C.int(length)); rt != 0 {
+		return nil, fmt.Errorf("MachColumnDataString returns %d", rt)
+	}
+	return buf, nil
 }
