@@ -103,7 +103,7 @@ func main() {
 	}
 	rows.Close()
 
-	rows, err = db.Query("select id, name, pre from log where id = ?", 21)
+	rows, err = db.Query("select id, name, pre from log where id = ? and name = ?", 21, "one")
 	for rows.Next() {
 		var id int
 		var name string

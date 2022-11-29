@@ -4,9 +4,48 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+	"unsafe"
+
+	"github.com/pkg/errors"
 )
 
-func convertInt16(v int16, c any) error {
+func bind(stmt unsafe.Pointer, idx int, c any) error {
+	switch cv := c.(type) {
+	case int:
+		if err := machBindInt32(stmt, idx, int32(cv)); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
+	case int32:
+		if err := machBindInt32(stmt, idx, cv); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
+	case int64:
+		if err := machBindInt64(stmt, idx, cv); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
+	case float32:
+		if err := machBindFloat64(stmt, idx, float64(cv)); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
+	case float64:
+		if err := machBindFloat64(stmt, idx, cv); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
+	case string:
+		if err := machBindString(stmt, idx, cv); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
+	case []byte:
+		if err := machBindBinary(stmt, idx, cv); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
+	default:
+		return fmt.Errorf("bind supported idx %d type %T", idx, c)
+	}
+	return nil
+}
+
+func scanInt16(v int16, c any) error {
 	switch cv := c.(type) {
 	case *int:
 		*cv = int(v)
@@ -24,7 +63,7 @@ func convertInt16(v int16, c any) error {
 	return nil
 }
 
-func convertInt32(v int32, c any) error {
+func scanInt32(v int32, c any) error {
 	switch cv := c.(type) {
 	case *int:
 		*cv = int(v)
@@ -42,7 +81,7 @@ func convertInt32(v int32, c any) error {
 	return nil
 }
 
-func convertInt64(v int64, c any) error {
+func scanInt64(v int64, c any) error {
 	switch cv := c.(type) {
 	case *int:
 		*cv = int(v)
@@ -60,7 +99,7 @@ func convertInt64(v int64, c any) error {
 	return nil
 }
 
-func convertDateTime(v time.Time, c any) error {
+func scanDateTime(v time.Time, c any) error {
 	switch cv := c.(type) {
 	case *int64:
 		*cv = v.UnixNano()
@@ -74,7 +113,7 @@ func convertDateTime(v time.Time, c any) error {
 	return nil
 }
 
-func convertFloat32(v float32, c any) error {
+func scanFloat32(v float32, c any) error {
 	switch cv := c.(type) {
 	case *float32:
 		*cv = v
@@ -88,7 +127,7 @@ func convertFloat32(v float32, c any) error {
 	return nil
 }
 
-func convertFloat64(v float64, c any) error {
+func scanFloat64(v float64, c any) error {
 	switch cv := c.(type) {
 	case *float32:
 		*cv = float32(v)
@@ -102,7 +141,7 @@ func convertFloat64(v float64, c any) error {
 	return nil
 }
 
-func convertString(v string, c any) error {
+func scanString(v string, c any) error {
 	switch cv := c.(type) {
 	case *string:
 		*cv = v
@@ -112,10 +151,12 @@ func convertString(v string, c any) error {
 	return nil
 }
 
-func convertBytes(v []byte, c any) error {
+func scanBytes(v []byte, c any) error {
 	switch cv := c.(type) {
 	case *[]byte:
 		copy(*cv, v)
+	case *string:
+		*cv = string(v)
 	default:
 		return fmt.Errorf("Scan convert from STRING to %T not supported", c)
 	}

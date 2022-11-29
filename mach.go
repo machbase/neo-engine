@@ -176,7 +176,7 @@ func (rows *Rows) Scan(cols ...any) error {
 			if v, err := machColumnDataInt16(rows.stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
 			} else {
-				if err = convertInt16(v, c); err != nil {
+				if err = scanInt16(v, c); err != nil {
 					return err
 				}
 			}
@@ -184,7 +184,7 @@ func (rows *Rows) Scan(cols ...any) error {
 			if v, err := machColumnDataInt32(rows.stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
 			} else {
-				if err = convertInt32(v, c); err != nil {
+				if err = scanInt32(v, c); err != nil {
 					return err
 				}
 			}
@@ -192,7 +192,7 @@ func (rows *Rows) Scan(cols ...any) error {
 			if v, err := machColumnDataInt64(rows.stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
 			} else {
-				if err = convertInt64(v, c); err != nil {
+				if err = scanInt64(v, c); err != nil {
 					return err
 				}
 			}
@@ -200,7 +200,7 @@ func (rows *Rows) Scan(cols ...any) error {
 			if v, err := machColumnDataDateTime(rows.stmt, i); err != nil {
 				return errors.Wrap(err, "Scan datetime")
 			} else {
-				if err = convertDateTime(v, c); err != nil {
+				if err = scanDateTime(v, c); err != nil {
 					return err
 				}
 			}
@@ -208,7 +208,7 @@ func (rows *Rows) Scan(cols ...any) error {
 			if v, err := machColumnDataFloat32(rows.stmt, i); err != nil {
 				return errors.Wrap(err, "Scan float32")
 			} else {
-				if err = convertFloat32(v, c); err != nil {
+				if err = scanFloat32(v, c); err != nil {
 					return err
 				}
 			}
@@ -216,7 +216,7 @@ func (rows *Rows) Scan(cols ...any) error {
 			if v, err := machColumnDataFloat64(rows.stmt, i); err != nil {
 				return errors.Wrap(err, "Scan float32")
 			} else {
-				if err = convertFloat64(v, c); err != nil {
+				if err = scanFloat64(v, c); err != nil {
 					return err
 				}
 			}
@@ -228,7 +228,7 @@ func (rows *Rows) Scan(cols ...any) error {
 			if v, err := machColumnDataString(rows.stmt, i); err != nil {
 				return errors.Wrap(err, "Scan string")
 			} else {
-				if err = convertString(v, c); err != nil {
+				if err = scanString(v, c); err != nil {
 					return err
 				}
 			}
@@ -236,49 +236,13 @@ func (rows *Rows) Scan(cols ...any) error {
 			if v, err := machColumnDataBinary(rows.stmt, i); err != nil {
 				return errors.Wrap(err, "Scan binary")
 			} else {
-				if err = convertBytes(v, c); err != nil {
+				if err = scanBytes(v, c); err != nil {
 					return err
 				}
 			}
 		default:
 			return fmt.Errorf("MachGetColumnData unsupported type %T", c)
 		}
-	}
-	return nil
-}
-
-func bind(stmt unsafe.Pointer, idx int, c any) error {
-	switch cv := c.(type) {
-	case int:
-		if err := machBindInt32(stmt, idx, int32(cv)); err != nil {
-			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
-		}
-	case int32:
-		if err := machBindInt32(stmt, idx, cv); err != nil {
-			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
-		}
-	case int64:
-		if err := machBindInt64(stmt, idx, cv); err != nil {
-			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
-		}
-	case float32:
-		if err := machBindFloat64(stmt, idx, float64(cv)); err != nil {
-			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
-		}
-	case float64:
-		if err := machBindFloat64(stmt, idx, cv); err != nil {
-			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
-		}
-	case string:
-		if err := machBindString(stmt, idx, cv); err != nil {
-			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
-		}
-	case []byte:
-		if err := machBindBinary(stmt, idx, cv); err != nil {
-			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
-		}
-	default:
-		return fmt.Errorf("bind supported idx %d type %T", idx, c)
 	}
 	return nil
 }
