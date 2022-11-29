@@ -12,7 +12,9 @@ import (
 func main() {
 	defer func() {
 		obj := recover()
-		fmt.Printf("%#v", obj)
+		if obj != nil {
+			fmt.Printf("panic %#v", obj)
+		}
 	}()
 
 	fmt.Println("-------------------------------")
@@ -67,9 +69,11 @@ func main() {
 	}
 	defer appender.Close()
 
-	err = appender.Append(3, "three", float64(3.0003))
-	if err != nil {
-		panic(err)
+	for i := 0; i < 10; i++ {
+		err = appender.Append(3+i, "three", float64(3.0003)+float64(i))
+		if err != nil {
+			panic(err)
+		}
 	}
 	err = appender.Close()
 	if err != nil {

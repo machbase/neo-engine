@@ -2,6 +2,7 @@ package mach
 
 import (
 	"fmt"
+	"math/bits"
 	"net"
 	"time"
 	"unsafe"
@@ -141,6 +142,9 @@ func (this *Appender) Append(cols ...any) error {
 			IsValid: c != nil,
 			Value:   machAppendDataValue{},
 		}
+		if !vals[i].IsValid {
+			continue
+		}
 		switch cv := c.(type) {
 		case int16:
 			*(*int16)(unsafe.Pointer(&vals[i].Value[0])) = cv
@@ -169,10 +173,11 @@ func (this *Appender) Append(cols ...any) error {
 				vals[i].Value[1+i] = cv[i]
 			}
 		case string:
-			*(*uint)(unsafe.Pointer(&vals[i].Value[0])) = uint(len([]byte(cv)))
-			*(**C.char)(unsafe.Pointer(&vals[i].Value[4])) = C.CString(cv)
-
-			fmt.Printf("===========> %d  %#v\n", i, vals[i])
+			*(*uint)(unsafe.Pointer(&vals[i].Value[0])) = uint(len(cv))
+			*(**C.char)(unsafe.Pointer(&vals[i].Value[bits.UintSize/8])) = C.CString(cv)
+		case []byte:
+			*(*uint)(unsafe.Pointer(&vals[i].Value[0])) = uint(len(cv))
+			*(**C.char)(unsafe.Pointer(&vals[i].Value[bits.UintSize/8])) = (*C.char)(unsafe.Pointer(&cv[0]))
 		}
 	}
 	if err := machAppendData(this.stmt, vals); err != nil {
