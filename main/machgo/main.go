@@ -61,18 +61,22 @@ func main() {
 	}
 	fmt.Println("---- insert done")
 
-	/*
-		appender, err := db.Appender("log")
-		if err != nil {
-			panic(err)
-		}
-		defer appender.Close()
+	appender, err := db.Appender("log")
+	if err != nil {
+		panic(err)
+	}
+	defer appender.Close()
 
-		appender.Append(3, "three", float64(3.0003))
-		appender.Close()
+	err = appender.Append(3, "three", float64(3.0003))
+	if err != nil {
+		panic(err)
+	}
+	err = appender.Close()
+	if err != nil {
+		panic(err)
+	}
 
-		fmt.Println("---- append done")
-	*/
+	fmt.Println("---- append done")
 
 	rows, err := db.Query("select id, name, pre from log")
 	if err != nil {

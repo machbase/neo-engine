@@ -1,7 +1,6 @@
 package mach
 
 import (
-	"encoding/hex"
 	"fmt"
 	"net"
 	"time"
@@ -9,6 +8,11 @@ import (
 
 	"github.com/pkg/errors"
 )
+
+/*
+#include <stdlib.h>
+*/
+import "C"
 
 func Initialize(homeDir string) error {
 	return initialize0(homeDir)
@@ -132,7 +136,6 @@ func (this *Appender) Close() error {
 
 func (this *Appender) Append(cols ...any) error {
 	vals := make([]*machAppendDataNullValue, len(cols))
-	buffs := make([][]byte, len(cols))
 	for i, c := range cols {
 		vals[i] = &machAppendDataNullValue{
 			IsValid: c != nil,
@@ -166,13 +169,14 @@ func (this *Appender) Append(cols ...any) error {
 				vals[i].Value[1+i] = cv[i]
 			}
 		case string:
-			buffs[i] = []byte(cv)
-			*(*uint)(unsafe.Pointer(&vals[i].Value[0])) = uint(len(buffs[i]))
-			*(**byte)(unsafe.Pointer(&vals[i].Value[4])) = (*byte)(unsafe.Pointer(&buffs[i][0]))
-			fmt.Printf("===========> %d  %d %s\n", i, uint(len(buffs[i])), hex.Dump(buffs[i]))
+			*(*uint)(unsafe.Pointer(&vals[i].Value[0])) = uint(len([]byte(cv)))
+			*(**C.char)(unsafe.Pointer(&vals[i].Value[4])) = C.CString(cv)
+
+			fmt.Printf("===========> %d  %#v\n", i, vals[i])
 		}
 	}
 	if err := machAppendData(this.stmt, vals); err != nil {
+		fmt.Printf("%v", err)
 		return err
 	}
 	return nil
