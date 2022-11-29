@@ -5,7 +5,7 @@ package mach
 
 /*
 #cgo CFLAGS: -I./native -I.
-#cgo LDFLAGS: -L./native -lmachengine.fog.LINUX.X86.64BIT.release -lpthread -ljemalloc -ldl -lm -lcrypto -Wl,-rpath=./lib
+#cgo LDFLAGS: -L./native -lmachengine.fog.LINUX.X86.64BIT.release -lm
 #include "machEngine.h"
 #include <stdlib.h>
 */
