@@ -5,7 +5,7 @@ package mach
 
 /*
 #cgo CFLAGS: -I./native -I.
-#cgo LDFLAGS: -L./native -lmachengine.edge.LINUX.ARM.64BIT -lpthread -ldl -lm -Wl,-rpath=./lib
+#cgo LDFLAGS: -L./native -lmachengine.edge.LINUX.ARM.64BIT.release -lpthread -ldl -lm -Wl,-rpath=./lib
 #include "machEngine.h"
 #include <stdlib.h>
 */
@@ -255,6 +255,9 @@ func machColumnDataString(stmt unsafe.Pointer, idx int) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "machColumnDataString")
 	}
+	if length == 0 {
+		return "", nil
+	}
 	buf := make([]byte, length)
 	val := (*C.char)(unsafe.Pointer(&buf[0]))
 	if rt := C.MachColumnDataString(stmt, C.int(idx), val, C.int(length)); rt != 0 {
@@ -267,6 +270,9 @@ func machColumnDataBinary(stmt unsafe.Pointer, idx int) ([]byte, error) {
 	length, err := machColumnLength(stmt, idx)
 	if err != nil {
 		return nil, errors.Wrap(err, "machColumnDataString")
+	}
+	if length == 0 {
+		return []byte{}, nil
 	}
 	buf := make([]byte, length)
 	val := (*C.char)(unsafe.Pointer(&buf[0]))
@@ -283,9 +289,11 @@ func machAppendOpen(stmt unsafe.Pointer, tableName string) error {
 	return nil
 }
 
-func machAppendClose(stmt unsafe.Pointer) error {
-	if rt := C.MachAppendClose(stmt); rt != 0 {
-		return fmt.Errorf("MachAppendClose returns %d", rt)
+func machAppendClose(stmt unsafe.Pointer) (int64, int64, error) {
+	var successCount C.ulonglong
+	var failureCount C.ulonglong
+	if rt := C.MachAppendClose(stmt, &successCount, &failureCount); rt != 0 {
+		return 0, 0, fmt.Errorf("MachAppendClose returns %d", rt)
 	}
-	return nil
+	return int64(successCount), int64(failureCount), nil
 }

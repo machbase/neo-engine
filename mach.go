@@ -1,8 +1,9 @@
 package mach
 
 import (
+	"encoding/hex"
 	"fmt"
-	"strconv"
+	"net"
 	"time"
 	"unsafe"
 
@@ -85,6 +86,96 @@ func (this *Database) Query(sqlText string, params ...any) (*Rows, error) {
 		return nil, err
 	}
 	return rows, nil
+}
+
+func (this *Database) Appender(tableName string) (*Appender, error) {
+	appender := &Appender{}
+	if err := machAllocStmt(this.handle, &appender.stmt); err != nil {
+		return nil, err
+	}
+	if err := machAppendOpen(appender.stmt, tableName); err != nil {
+		return nil, err
+	}
+	// MachColumnCount returns -1
+	//
+	// colCount, err := machColumnCount(appender.stmt)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	//fmt.Printf("======> colCount: %d\n", colCount)
+	return appender, nil
+}
+
+type Appender struct {
+	stmt         unsafe.Pointer
+	SuccessCount uint64
+	FailureCount uint64
+}
+
+func (this *Appender) Close() error {
+	if this.stmt == nil {
+		return nil
+	}
+	s, f, err := machAppendClose(this.stmt)
+	if err != nil {
+		return err
+	}
+	this.SuccessCount = s
+	this.FailureCount = f
+
+	if err := machFreeStmt(this.stmt); err != nil {
+		return err
+	}
+	this.stmt = nil
+	return nil
+}
+
+func (this *Appender) Append(cols ...any) error {
+	vals := make([]*machAppendDataNullValue, len(cols))
+	buffs := make([][]byte, len(cols))
+	for i, c := range cols {
+		vals[i] = &machAppendDataNullValue{
+			IsValid: c != nil,
+			Value:   machAppendDataValue{},
+		}
+		switch cv := c.(type) {
+		case int16:
+			*(*int16)(unsafe.Pointer(&vals[i].Value[0])) = cv
+		case uint16:
+			*(*uint16)(unsafe.Pointer(&vals[i].Value[0])) = cv
+		case int:
+			*(*int)(unsafe.Pointer(&vals[i].Value[0])) = cv
+		case int32:
+			*(*int32)(unsafe.Pointer(&vals[i].Value[0])) = cv
+		case uint32:
+			*(*uint32)(unsafe.Pointer(&vals[i].Value[0])) = cv
+		case int64:
+			*(*int64)(unsafe.Pointer(&vals[i].Value[0])) = cv
+		case uint64:
+			*(*uint64)(unsafe.Pointer(&vals[i].Value[0])) = cv
+		case float32:
+			*(*float32)(unsafe.Pointer(&vals[i].Value[0])) = cv
+		case float64:
+			*(*float64)(unsafe.Pointer(&vals[i].Value[0])) = cv
+		case net.IP:
+			vals[i].Value[0] = 4 // ip v4
+			if len(cv) == net.IPv6len {
+				vals[i].Value[0] = 6 // ip v6
+			}
+			for i := range cv {
+				vals[i].Value[1+i] = cv[i]
+			}
+		case string:
+			buffs[i] = []byte(cv)
+			*(*uint)(unsafe.Pointer(&vals[i].Value[0])) = uint(len(buffs[i]))
+			*(**byte)(unsafe.Pointer(&vals[i].Value[4])) = (*byte)(unsafe.Pointer(&buffs[i][0]))
+			fmt.Printf("===========> %d  %d %s\n", i, uint(len(buffs[i])), hex.Dump(buffs[i]))
+		}
+	}
+	if err := machAppendData(this.stmt, vals); err != nil {
+		return err
+	}
+	return nil
 }
 
 type Rows struct {
@@ -222,122 +313,6 @@ func bind(stmt unsafe.Pointer, idx int, c any) error {
 		}
 	default:
 		return fmt.Errorf("bind supported idx %d type %T", idx, c)
-	}
-	return nil
-}
-
-func convertInt16(v int16, c any) error {
-	switch cv := c.(type) {
-	case *int:
-		*cv = int(v)
-	case *int16:
-		*cv = int16(v)
-	case *int32:
-		*cv = int32(v)
-	case *int64:
-		*cv = int64(v)
-	case *string:
-		*cv = strconv.Itoa(int(v))
-	default:
-		return fmt.Errorf("Scan convert from INT16 to %T not supported", c)
-	}
-	return nil
-}
-
-func convertInt32(v int32, c any) error {
-	switch cv := c.(type) {
-	case *int:
-		*cv = int(v)
-	case *int16:
-		*cv = int16(v)
-	case *int32:
-		*cv = int32(v)
-	case *int64:
-		*cv = int64(v)
-	case *string:
-		*cv = strconv.Itoa(int(v))
-	default:
-		return fmt.Errorf("Scan convert from INT32 to %T not supported", c)
-	}
-	return nil
-}
-
-func convertInt64(v int64, c any) error {
-	switch cv := c.(type) {
-	case *int:
-		*cv = int(v)
-	case *int16:
-		*cv = int16(v)
-	case *int32:
-		*cv = int32(v)
-	case *int64:
-		*cv = int64(v)
-	case *string:
-		*cv = strconv.Itoa(int(v))
-	default:
-		return fmt.Errorf("Scan convert from INT64 to %T not supported", c)
-	}
-	return nil
-}
-
-func convertDateTime(v time.Time, c any) error {
-	switch cv := c.(type) {
-	case *int64:
-		*cv = v.UnixNano()
-	case *time.Time:
-		*cv = v
-	case *string:
-		*cv = v.String()
-	default:
-		return fmt.Errorf("Scan convert from INT64 to %T not supported", c)
-	}
-	return nil
-}
-
-func convertFloat32(v float32, c any) error {
-	switch cv := c.(type) {
-	case *float32:
-		*cv = v
-	case *float64:
-		*cv = float64(v)
-	case *string:
-		*cv = strconv.FormatFloat(float64(v), 'f', -1, 32)
-	default:
-		return fmt.Errorf("Scan convert from FLOAT32 to %T not supported", c)
-	}
-	return nil
-}
-
-func convertFloat64(v float64, c any) error {
-	switch cv := c.(type) {
-	case *float32:
-		*cv = float32(v)
-	case *float64:
-		*cv = v
-	case *string:
-		*cv = strconv.FormatFloat(v, 'f', -1, 32)
-	default:
-		return fmt.Errorf("Scan convert from FLOAT64 to %T not supported", c)
-	}
-	return nil
-}
-
-func convertString(v string, c any) error {
-	switch cv := c.(type) {
-	case *string:
-		*cv = v
-	default:
-		return fmt.Errorf("Scan convert from STRING to %T not supported", c)
-	}
-	return nil
-}
-
-func convertBytes(v []byte, c any) error {
-	switch cv := c.(type) {
-	case *[]byte:
-		copy(*cv, v)
-	default:
-		return fmt.Errorf("Scan convert from STRING to %T not supported", c)
 	}
 	return nil
 }

@@ -10,12 +10,17 @@ import (
 )
 
 func main() {
+	defer func() {
+		obj := recover()
+		fmt.Printf("%#v", obj)
+	}()
+
 	fmt.Println("-------------------------------")
 	fmt.Println(mach.VersionString())
 
 	exePath, err := os.Executable()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
+		panic(err)
 	}
 	homePath := filepath.Dir(exePath)
 	mach.Initialize(homePath)
@@ -25,35 +30,49 @@ func main() {
 
 	db := mach.NewDatabase()
 	if db == nil {
-		fmt.Printf("Error: %s\n", db.Error())
+		panic(err)
 	}
 	err = db.Startup(10 * time.Second)
 	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
+		panic(err)
 	}
 	defer db.Shutdown()
 
 	err = db.Exec("alter system set trace_log_level=1023")
 	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
+		panic(err)
 	}
 	err = db.Exec("create log table log(id int, name varchar(20), pre double)")
 	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
+		panic(err)
 	}
 
 	err = db.Exec("insert into log values(?, ?, ?)", 0, "zero", 1.01)
 	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
+		panic(err)
 	}
-	err = db.Exec("insert into log values(1, 'one', 2.0002)")
+	err = db.Exec("insert into log values(?, ?, ?)", 1, "one", 2.0002)
 	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
+		panic(err)
 	}
 	err = db.Exec("insert into log select id + 20, name, pre *4 from log")
 	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
+		panic(err)
 	}
+	fmt.Println("---- insert done")
+
+	/*
+		appender, err := db.Appender("log")
+		if err != nil {
+			panic(err)
+		}
+		defer appender.Close()
+
+		appender.Append(3, "three", float64(3.0003))
+		appender.Close()
+
+		fmt.Println("---- append done")
+	*/
 
 	rows, err := db.Query("select id, name, pre from log")
 	if err != nil {
