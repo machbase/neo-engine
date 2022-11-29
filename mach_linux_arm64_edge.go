@@ -11,4 +11,4 @@ package mach
 */
 import "C"
 
-const LibMachLinkInfo = "static_machengine_edge_linux_arm64"
+const LibMachLinkInfo = "static_machengine_linux_arm64_edge"
