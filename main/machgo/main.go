@@ -18,7 +18,7 @@ func main() {
 	}()
 
 	fmt.Println("-------------------------------")
-	fmt.Println(mach.VersionString())
+	fmt.Println(mach.LinkInfo(), mach.VersionString())
 
 	exePath, err := os.Executable()
 	if err != nil {

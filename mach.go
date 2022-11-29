@@ -2,18 +2,15 @@ package mach
 
 import (
 	"fmt"
-	"math/bits"
-	"net"
 	"time"
 	"unsafe"
 
 	"github.com/pkg/errors"
 )
 
-/*
-#include <stdlib.h>
-*/
-import "C"
+func LinkInfo() string {
+	return LibMachLinkInfo
+}
 
 func Initialize(homeDir string) error {
 	return initialize0(homeDir)
@@ -138,47 +135,7 @@ func (this *Appender) Close() error {
 func (this *Appender) Append(cols ...any) error {
 	vals := make([]*machAppendDataNullValue, len(cols))
 	for i, c := range cols {
-		vals[i] = &machAppendDataNullValue{
-			IsValid: c != nil,
-			Value:   machAppendDataValue{},
-		}
-		if !vals[i].IsValid {
-			continue
-		}
-		switch cv := c.(type) {
-		case int16:
-			*(*int16)(unsafe.Pointer(&vals[i].Value[0])) = cv
-		case uint16:
-			*(*uint16)(unsafe.Pointer(&vals[i].Value[0])) = cv
-		case int:
-			*(*int)(unsafe.Pointer(&vals[i].Value[0])) = cv
-		case int32:
-			*(*int32)(unsafe.Pointer(&vals[i].Value[0])) = cv
-		case uint32:
-			*(*uint32)(unsafe.Pointer(&vals[i].Value[0])) = cv
-		case int64:
-			*(*int64)(unsafe.Pointer(&vals[i].Value[0])) = cv
-		case uint64:
-			*(*uint64)(unsafe.Pointer(&vals[i].Value[0])) = cv
-		case float32:
-			*(*float32)(unsafe.Pointer(&vals[i].Value[0])) = cv
-		case float64:
-			*(*float64)(unsafe.Pointer(&vals[i].Value[0])) = cv
-		case net.IP:
-			vals[i].Value[0] = 4 // ip v4
-			if len(cv) == net.IPv6len {
-				vals[i].Value[0] = 6 // ip v6
-			}
-			for i := range cv {
-				vals[i].Value[1+i] = cv[i]
-			}
-		case string:
-			*(*uint)(unsafe.Pointer(&vals[i].Value[0])) = uint(len(cv))
-			*(**C.char)(unsafe.Pointer(&vals[i].Value[bits.UintSize/8])) = C.CString(cv)
-		case []byte:
-			*(*uint)(unsafe.Pointer(&vals[i].Value[0])) = uint(len(cv))
-			*(**C.char)(unsafe.Pointer(&vals[i].Value[bits.UintSize/8])) = (*C.char)(unsafe.Pointer(&cv[0]))
-		}
+		vals[i] = makeAppendDataNullValue(c)
 	}
 	if err := machAppendData(this.stmt, vals); err != nil {
 		fmt.Printf("%v", err)
