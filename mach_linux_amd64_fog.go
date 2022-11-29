@@ -3,12 +3,7 @@
 
 package mach
 
-/*
-#cgo CFLAGS: -I${SRCDIR}/native
-#cgo LDFLAGS: -L${SRCDIR}/native -lmachengine.fog.LINUX.X86.64BIT.release -lm
-#include "machEngine.h"
-#include <stdlib.h>
-*/
+// #cgo LDFLAGS: ${SRCDIR}/native/libmachengine.fog.LINUX.X86.64BIT.release.a -lm -ldl
 import "C"
 
 const LibMachLinkInfo = "static_machengine_linux_amd64_fog"

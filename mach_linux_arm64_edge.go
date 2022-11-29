@@ -3,12 +3,7 @@
 
 package mach
 
-/*
-#cgo CFLAGS: -I./native -I.
-#cgo LDFLAGS: -L./native -lmachengine.edge.LINUX.ARM.64BIT.release -lm
-#include "machEngine.h"
-#include <stdlib.h>
-*/
+// #cgo LDFLAGS: ${SRCDIR}/native/libmachengine.edge.LINUX.ARM.64BIT.release.a -lm -ldl
 import "C"
 
 const LibMachLinkInfo = "static_machengine_linux_arm64_edge"
