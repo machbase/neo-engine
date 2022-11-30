@@ -68,9 +68,11 @@ func db_error0(handle unsafe.Pointer) error {
 }
 
 func machAllocStmt(handle unsafe.Pointer, stmt *unsafe.Pointer) error {
-	if rt := C.MachAllocStmt(handle, stmt); rt != 0 {
+	var ptr unsafe.Pointer
+	if rt := C.MachAllocStmt(handle, &ptr); rt != 0 {
 		return fmt.Errorf("MachAllocStmt returns %d", rt)
 	}
+	*stmt = ptr
 	return nil
 }
 
@@ -146,7 +148,7 @@ func machBindString(stmt unsafe.Pointer, idx int, val string) error {
 }
 
 func machBindBinary(stmt unsafe.Pointer, idx int, data []byte) error {
-	ptr := unsafe.Pointer(&data)
+	ptr := unsafe.Pointer(&data[0])
 	if rt := C.MachBindBinary(stmt, C.int(idx), ptr, C.int(len(data))); rt != 0 {
 		return fmt.Errorf("MachBindBinary idx %d returns %d", idx, rt)
 	}
@@ -232,20 +234,22 @@ func machColumnDataFloat64(stmt unsafe.Pointer, idx int) (float64, error) {
 	return float64(val), nil
 }
 
-func machColumnDataIPV4(stmt unsafe.Pointer, idx int) (net.IP, error) {
-	var val [net.IPv4len]byte
+func machColumnDataIPv4(stmt unsafe.Pointer, idx int) (net.IP, error) {
+	var val [net.IPv4len + 1]byte
+	// 주의) val[0]는 IP version
 	if rt := C.MachColumnDataIPV4(stmt, C.int(idx), unsafe.Pointer(&val)); rt != 0 {
-		return net.IPv4zero, fmt.Errorf("MachColumnDataIPV4 idx %d returns %d", idx, rt)
+		return net.IPv4zero, fmt.Errorf("MachColumnDataIPv4 idx %d returns %d", idx, rt)
 	}
-	return net.IPv4(val[0], val[1], val[2], val[3]), nil
+	return net.IP(val[1:]), nil
 }
 
-func machColumnDataIPV6(stmt unsafe.Pointer, idx int) (net.IP, error) {
-	var val [net.IPv6len]byte
+func machColumnDataIPv6(stmt unsafe.Pointer, idx int) (net.IP, error) {
+	var val [net.IPv6len + 1]byte
+	// 주의) val[0]는 IP version
 	if rt := C.MachColumnDataIPV6(stmt, C.int(idx), unsafe.Pointer(&val)); rt != 0 {
-		return net.IPv6zero, fmt.Errorf("MachColumnDataIPV6 idx %d returns %d", idx, rt)
+		return net.IPv6zero, fmt.Errorf("MachColumnDataIPv6 idx %d returns %d", idx, rt)
 	}
-	return net.IP(val[:]), nil
+	return net.IP(val[1:]), nil
 }
 
 func machColumnDataString(stmt unsafe.Pointer, idx int) (string, error) {
@@ -350,12 +354,16 @@ func makeAppendDataNullValue(c any) *machAppendDataNullValue {
 	case float64:
 		*(*float64)(unsafe.Pointer(&nv.Value[0])) = cv
 	case net.IP:
-		nv.Value[0] = 4 // ip v4
-		if len(cv) == net.IPv6len {
-			nv.Value[0] = 6 // ip v6
-		}
-		for i := range cv {
-			nv.Value[1+i] = cv[i]
+		if ipv4 := cv.To4(); ipv4 != nil { // ip v4
+			*(*C.char)(unsafe.Pointer(&nv.Value[0])) = C.char(int8(4))
+			for i := 0; i < net.IPv4len; i++ {
+				nv.Value[1+i] = ipv4[i]
+			}
+		} else { // ip v6
+			*(*C.char)(unsafe.Pointer(&nv.Value[0])) = C.char(int8(6))
+			for i := 0; i < net.IPv6len; i++ {
+				nv.Value[1+i] = cv[i]
+			}
 		}
 	case string:
 		*(*uint)(unsafe.Pointer(&nv.Value[0])) = uint(len(cv))
@@ -363,6 +371,8 @@ func makeAppendDataNullValue(c any) *machAppendDataNullValue {
 	case []byte:
 		*(*uint)(unsafe.Pointer(&nv.Value[0])) = uint(len(cv))
 		*(**C.char)(unsafe.Pointer(&nv.Value[bits.UintSize/8])) = (*C.char)(unsafe.Pointer(&cv[0]))
+	case time.Time:
+		*(*int64)(unsafe.Pointer(&nv.Value[0])) = cv.UnixNano()
 	}
 
 	return nv

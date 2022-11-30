@@ -2,6 +2,7 @@ package mach
 
 import (
 	"fmt"
+	"net"
 	"strconv"
 	"time"
 	"unsafe"
@@ -10,6 +11,9 @@ import (
 )
 
 func bind(stmt unsafe.Pointer, idx int, c any) error {
+	if c == nil {
+		return fmt.Errorf("bind nil idx %d type %T", idx, c)
+	}
 	switch cv := c.(type) {
 	case int:
 		if err := machBindInt32(stmt, idx, int32(cv)); err != nil {
@@ -39,8 +43,16 @@ func bind(stmt unsafe.Pointer, idx int, c any) error {
 		if err := machBindBinary(stmt, idx, cv); err != nil {
 			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
 		}
+	case net.IP:
+		if err := machBindString(stmt, idx, cv.String()); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
+	case time.Time:
+		if err := machBindInt64(stmt, idx, cv.UnixNano()); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
 	default:
-		return fmt.Errorf("bind supported idx %d type %T", idx, c)
+		return fmt.Errorf("bind unsupported idx %d type %T", idx, c)
 	}
 	return nil
 }
@@ -153,12 +165,24 @@ func scanString(v string, c any) error {
 
 func scanBytes(v []byte, c any) error {
 	switch cv := c.(type) {
-	case *[]byte:
-		copy(*cv, v)
+	case *[]uint8:
+		*cv = v
 	case *string:
 		*cv = string(v)
 	default:
 		return fmt.Errorf("Scan convert from STRING to %T not supported", c)
+	}
+	return nil
+}
+
+func scanIP(v net.IP, c any) error {
+	switch cv := c.(type) {
+	case *net.IP:
+		*cv = v
+	case *string:
+		*cv = v.String()
+	default:
+		return fmt.Errorf("Scan convert from IPv4 to %T not supported", c)
 	}
 	return nil
 }

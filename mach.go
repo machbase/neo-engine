@@ -230,9 +230,21 @@ func (rows *Rows) Scan(cols ...any) error {
 				}
 			}
 		case 6: // MACH_DATA_TYPE_IPV4
-			return fmt.Errorf("not (yet) implemented ipv4")
+			if v, err := machColumnDataIPv4(rows.stmt, i); err != nil {
+				return errors.Wrap(err, "scal IPv4")
+			} else {
+				if err = scanIP(v, c); err != nil {
+					return err
+				}
+			}
 		case 7: // MACH_DATA_TYPE_IPV6
-			return fmt.Errorf("not (yet) implemented ipv6")
+			if v, err := machColumnDataIPv6(rows.stmt, i); err != nil {
+				return errors.Wrap(err, "scal IPv4")
+			} else {
+				if err = scanIP(v, c); err != nil {
+					return err
+				}
+			}
 		case 8: // MACH_DATA_TYPE_STRING
 			if v, err := machColumnDataString(rows.stmt, i); err != nil {
 				return errors.Wrap(err, "Scan string")
