@@ -57,10 +57,10 @@ func shutdown0(handle unsafe.Pointer) error {
 	}
 }
 
-func db_error0(handle unsafe.Pointer) error {
+func machError0(handle unsafe.Pointer) error {
 	code := C.MachErrorCode(handle)
 	msg := C.MachErrorMsg(handle)
-	if code != 0 {
+	if code != 0 && msg != nil {
 		return fmt.Errorf("MachError %d %s", code, C.GoString(msg))
 	}
 	return nil

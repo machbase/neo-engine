@@ -1,7 +1,6 @@
 package mach
 
 import (
-	"fmt"
 	"strings"
 	"time"
 	"unsafe"
@@ -40,7 +39,7 @@ func (this *Database) Shutdown() error {
 }
 
 func (this *Database) Error() error {
-	return db_error0(this.handle)
+	return machError0(this.handle)
 }
 
 func (this *Database) SqlTidy(sqlText string) string {
@@ -106,16 +105,23 @@ func (this *Database) Appender(tableName string) (*Appender, error) {
 		return nil, err
 	}
 
-	colCount, err := machColumnCount(appender.stmt)
+	var err error
+	appender.colCount, err = machColumnCount(appender.stmt)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("======> colCount: %d\n", colCount)
+	for i := 0; i < appender.colCount; i++ {
+		/*typ, siz*/ _, _, err := machColumnType(appender.stmt, i)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return appender, nil
 }
 
 type Appender struct {
 	stmt         unsafe.Pointer
+	colCount     int
 	SuccessCount uint64
 	FailureCount uint64
 }
@@ -144,7 +150,6 @@ func (this *Appender) Append(cols ...any) error {
 		vals[i] = bindValue(c)
 	}
 	if err := machAppendData(this.stmt, vals); err != nil {
-		fmt.Printf("%v", err)
 		return err
 	}
 	return nil
