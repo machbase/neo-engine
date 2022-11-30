@@ -5,8 +5,6 @@ import (
 	"strings"
 	"time"
 	"unsafe"
-
-	"github.com/pkg/errors"
 )
 
 func LinkInfo() string {
@@ -144,126 +142,11 @@ func (this *Appender) Close() error {
 func (this *Appender) Append(cols ...any) error {
 	vals := make([]*machAppendDataNullValue, len(cols))
 	for i, c := range cols {
-		vals[i] = makeAppendDataNullValue(c)
+		vals[i] = bindValue(c)
 	}
 	if err := machAppendData(this.stmt, vals); err != nil {
 		fmt.Printf("%v", err)
 		return err
-	}
-	return nil
-}
-
-type Rows struct {
-	stmt    unsafe.Pointer
-	sqlText string
-}
-
-func (this *Rows) Close() {
-	if this.stmt != nil {
-		machFreeStmt(this.stmt)
-		this.stmt = nil
-	}
-	this.sqlText = ""
-}
-
-func (this *Rows) Next() bool {
-	next, err := machFetch(this.stmt)
-	if err != nil {
-		return false
-	}
-	return next
-}
-
-func (rows *Rows) Scan(cols ...any) error {
-	for i, c := range cols {
-		typ, err := machColumnType(rows.stmt, i)
-		if err != nil {
-			return errors.Wrap(err, "Scan")
-		}
-		switch typ {
-		case 0: // MACH_DATA_TYPE_INT16
-			if v, err := machColumnDataInt16(rows.stmt, i); err != nil {
-				return errors.Wrap(err, "Scan int16")
-			} else {
-				if err = scanInt16(v, c); err != nil {
-					return err
-				}
-			}
-		case 1: // MACH_DATA_TYPE_INT32
-			if v, err := machColumnDataInt32(rows.stmt, i); err != nil {
-				return errors.Wrap(err, "Scan int16")
-			} else {
-				if err = scanInt32(v, c); err != nil {
-					return err
-				}
-			}
-		case 2: // MACH_DATA_TYPE_INT64
-			if v, err := machColumnDataInt64(rows.stmt, i); err != nil {
-				return errors.Wrap(err, "Scan int16")
-			} else {
-				if err = scanInt64(v, c); err != nil {
-					return err
-				}
-			}
-		case 3: // MACH_DATA_TYPE_DATETIME
-			if v, err := machColumnDataDateTime(rows.stmt, i); err != nil {
-				return errors.Wrap(err, "Scan datetime")
-			} else {
-				if err = scanDateTime(v, c); err != nil {
-					return err
-				}
-			}
-		case 4: // MACH_DATA_TYPE_FLOAT
-			if v, err := machColumnDataFloat32(rows.stmt, i); err != nil {
-				return errors.Wrap(err, "Scan float32")
-			} else {
-				if err = scanFloat32(v, c); err != nil {
-					return err
-				}
-			}
-		case 5: // MACH_DATA_TYPE_DOUBLE
-			if v, err := machColumnDataFloat64(rows.stmt, i); err != nil {
-				return errors.Wrap(err, "Scan float32")
-			} else {
-				if err = scanFloat64(v, c); err != nil {
-					return err
-				}
-			}
-		case 6: // MACH_DATA_TYPE_IPV4
-			if v, err := machColumnDataIPv4(rows.stmt, i); err != nil {
-				return errors.Wrap(err, "scal IPv4")
-			} else {
-				if err = scanIP(v, c); err != nil {
-					return err
-				}
-			}
-		case 7: // MACH_DATA_TYPE_IPV6
-			if v, err := machColumnDataIPv6(rows.stmt, i); err != nil {
-				return errors.Wrap(err, "scal IPv4")
-			} else {
-				if err = scanIP(v, c); err != nil {
-					return err
-				}
-			}
-		case 8: // MACH_DATA_TYPE_STRING
-			if v, err := machColumnDataString(rows.stmt, i); err != nil {
-				return errors.Wrap(err, "Scan string")
-			} else {
-				if err = scanString(v, c); err != nil {
-					return err
-				}
-			}
-		case 9: // MACH_DATA_TYPE_BINARY
-			if v, err := machColumnDataBinary(rows.stmt, i); err != nil {
-				return errors.Wrap(err, "Scan binary")
-			} else {
-				if err = scanBytes(v, c); err != nil {
-					return err
-				}
-			}
-		default:
-			return fmt.Errorf("MachGetColumnData unsupported type %T", c)
-		}
 	}
 	return nil
 }

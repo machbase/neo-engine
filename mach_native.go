@@ -2,7 +2,6 @@ package mach
 
 import (
 	"fmt"
-	"math/bits"
 	"net"
 	"time"
 	"unsafe"
@@ -324,56 +323,4 @@ func machAppendData(stmt unsafe.Pointer, valueArr []*machAppendDataNullValue) er
 		return fmt.Errorf("MachAppendData returns %d", rt)
 	}
 	return nil
-}
-
-func makeAppendDataNullValue(c any) *machAppendDataNullValue {
-	nv := &machAppendDataNullValue{
-		IsValid: c != nil,
-		Value:   machAppendDataValue{},
-	}
-	if !nv.IsValid {
-		return nv
-	}
-	switch cv := c.(type) {
-	case int16:
-		*(*int16)(unsafe.Pointer(&nv.Value[0])) = cv
-	case uint16:
-		*(*uint16)(unsafe.Pointer(&nv.Value[0])) = cv
-	case int:
-		*(*int)(unsafe.Pointer(&nv.Value[0])) = cv
-	case int32:
-		*(*int32)(unsafe.Pointer(&nv.Value[0])) = cv
-	case uint32:
-		*(*uint32)(unsafe.Pointer(&nv.Value[0])) = cv
-	case int64:
-		*(*int64)(unsafe.Pointer(&nv.Value[0])) = cv
-	case uint64:
-		*(*uint64)(unsafe.Pointer(&nv.Value[0])) = cv
-	case float32:
-		*(*float32)(unsafe.Pointer(&nv.Value[0])) = cv
-	case float64:
-		*(*float64)(unsafe.Pointer(&nv.Value[0])) = cv
-	case net.IP:
-		if ipv4 := cv.To4(); ipv4 != nil { // ip v4
-			*(*C.char)(unsafe.Pointer(&nv.Value[0])) = C.char(int8(4))
-			for i := 0; i < net.IPv4len; i++ {
-				nv.Value[1+i] = ipv4[i]
-			}
-		} else { // ip v6
-			*(*C.char)(unsafe.Pointer(&nv.Value[0])) = C.char(int8(6))
-			for i := 0; i < net.IPv6len; i++ {
-				nv.Value[1+i] = cv[i]
-			}
-		}
-	case string:
-		*(*uint)(unsafe.Pointer(&nv.Value[0])) = uint(len(cv))
-		*(**C.char)(unsafe.Pointer(&nv.Value[bits.UintSize/8])) = C.CString(cv)
-	case []byte:
-		*(*uint)(unsafe.Pointer(&nv.Value[0])) = uint(len(cv))
-		*(**C.char)(unsafe.Pointer(&nv.Value[bits.UintSize/8])) = (*C.char)(unsafe.Pointer(&cv[0]))
-	case time.Time:
-		*(*int64)(unsafe.Pointer(&nv.Value[0])) = cv.UnixNano()
-	}
-
-	return nv
 }
