@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	mach "github.com/machbase/dbms-mach-go"
@@ -45,10 +47,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = db.Exec(`create log table log(
-		short short, ushort ushort, integer integer, uinteger uinteger, long long, ulong ulong, float float, double double, 
-		ipv4 ipv4, ipv6 ipv6, varchar varchar(20), text text, json json, binary binary, blob blob, clob clob, 
-		datetime datetime, datetime_now datetime)`)
+	err = db.Exec(db.SqlTidy(
+		`create log table log(
+			short short, ushort ushort, integer integer, uinteger uinteger, long long, ulong ulong, float float, double double, 
+			ipv4 ipv4, ipv6 ipv6, varchar varchar(20), text text, json json, binary binary, blob blob, clob clob, 
+			datetime datetime, datetime_now datetime
+		)`))
 	if err != nil {
 		panic(err)
 	}
@@ -72,14 +76,6 @@ func main() {
 		panic(err)
 	}
 
-	// err = db.Exec("insert into log values(?, ?, ?)", 1, "one", 2.0002)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// err = db.Exec("insert into log select id + 20, name, pre *4 from log")
-	// if err != nil {
-	// 	panic(err)
-	// }
 	fmt.Println("---- insert done")
 
 	appender, err := db.Appender("log")
@@ -125,11 +121,6 @@ func main() {
 		var _datetime int64
 		var _datetime_now int64
 
-		// var id int
-		// var name string
-		// var pre float64
-
-		//err := rows.Scan(&id, &name, &pre)
 		err := rows.Scan(&_int16, &_uint16, &_int32, &_uint32, &_int64, &_uint64, &_float, &_double, &_varchar, &_text, &_json, &_datetime, &_datetime_now)
 		if err != nil {
 			fmt.Printf("error: %s]\n", err.Error())
@@ -138,7 +129,6 @@ func main() {
 		fmt.Printf("1st ----> %d %d %d %d %d %d %f %f %s %s %s %d %d\n",
 			_int16, _uint16, _int32, _uint32, _int64, _uint64, _float, _double,
 			_varchar, _text, _json, _datetime, _datetime_now)
-		//fmt.Printf("1st ----> %d %s %v\n", id, name, pre)
 	}
 	rows.Close()
 
@@ -183,6 +173,14 @@ func main() {
 	// 	fmt.Printf("2nd ----> %d %s %.5f\n", id, name, pre)
 	// }
 	// rows.Close()
+
+	fmt.Printf("\npress ^C to quit.\n")
+	// signal handler
+	quitChan := make(chan os.Signal)
+	signal.Notify(quitChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	// wait signal
+	<-quitChan
 
 	fmt.Println("-------------------------------")
 }

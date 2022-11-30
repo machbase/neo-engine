@@ -2,6 +2,7 @@ package mach
 
 import (
 	"fmt"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -42,6 +43,14 @@ func (this *Database) Shutdown() error {
 
 func (this *Database) Error() error {
 	return db_error0(this.handle)
+}
+
+func (this *Database) SqlTidy(sqlText string) string {
+	lines := strings.Split(sqlText, "\n")
+	for i, ln := range lines {
+		lines[i] = strings.TrimSpace(ln)
+	}
+	return strings.TrimSpace(strings.Join(lines, " "))
 }
 
 func (this *Database) Exec(sqlText string, params ...any) error {
