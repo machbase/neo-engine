@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package machrpc;
+
+option go_package = "github.com/machbase/dbms-mach-go/machrpc";
+
+service Machbase {
+    rpc Exec(ExecRequest) returns(ExecResponse) {}
+    rpc Append(stream AppendRequest) returns(AppendResponse) {}
+    rpc Query(QueryRequest) returns(QueryResponse) {}
+}
+
+message ExecRequest {
+
+}
+
+message ExecResponse {
+
+}
+
+message AppendRequest {
+
+}
+
+message AppendResponse {
+
+}
+
+message QueryRequest {
+
+}
+
+message QueryResponse {
+    
+}

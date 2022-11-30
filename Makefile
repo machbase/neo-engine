@@ -34,5 +34,15 @@ package-%:
 #	@./scripts/package.sh $*  darwin   arm64
 #	@./scripts/package.sh $*  darwin   amd64
 
+protos := $(basename $(shell cd proto && ls *.proto))
+
+regen-all:
+	@for tg in $(protos) ; do \
+		make regen-$$tg; \
+	done
+
+regen-%:
+	@./regen.sh $*
+
 %:
 	@./scripts/build.sh $@
