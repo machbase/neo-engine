@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"time"
-	"net"
 
 	mach "github.com/machbase/dbms-mach-go"
 )
@@ -31,7 +31,7 @@ func main() {
 	mach.DestroyDatabase()
 	mach.CreateDatabase()
 
-	db := mach.NewDatabase()
+	db := mach.New()
 	if db == nil {
 		panic(err)
 	}
@@ -45,22 +45,29 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = db.Exec("create log table log(short short, ushort ushort, integer integer, uinteger uinteger, long long, ulong ulong, float float, double double, ipv4 ipv4, ipv6 ipv6, varchar varchar(20), text text, json json, binary binary, blob blob, clob clob, datetime datetime, datetime_now datetime)")
+	err = db.Exec(`create log table log(
+		short short, ushort ushort, integer integer, uinteger uinteger, long long, ulong ulong, float float, double double, 
+		ipv4 ipv4, ipv6 ipv6, varchar varchar(20), text text, json json, binary binary, blob blob, clob clob, 
+		datetime datetime, datetime_now datetime)`)
 	if err != nil {
 		panic(err)
 	}
 
-	err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 0, 1, 2, 3, 4, 5, 6.6, 7.77, "127.0.0.1", "AB:CC:CC:CC:CC:CC:CC:FF", "varchar_1", "text_1", "{\"json\":1}", "binary_01", "blob_01", "clob_01", 1, -1)
+	err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		0, 1, 2, 3, 4, 5, 6.6, 7.77,
+		"127.0.0.1", "AB:CC:CC:CC:CC:CC:CC:FF", "varchar_1", "text_1", "{\"json\":1}", "binary_01", "blob_01", "clob_01", 1, -1)
 	if err != nil {
 		panic(err)
 	}
 
-	err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 0, 1, 2, 3, 4, 5, 6.6, 7.77, "127.0.0.2", "AB:CC:CC:CC:CC:CC:CC:DD", "varchar_2", "text_2", "{\"json\":1}", "binary_01", "blob_01", "clob_01", 1, -1)
+	err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		0, 1, 2, 3, 4, 5, 6.6, 7.77, "127.0.0.2", "AB:CC:CC:CC:CC:CC:CC:DD", "varchar_2", "text_2", "{\"json\":1}", "binary_01", "blob_01", "clob_01", 1, -1)
 	if err != nil {
 		panic(err)
 	}
 
-	err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 0, 1, 2, 3, 4, 5, 6.6, 7.77, "127.0.0.3", "AB:CC:CC:CC:CC:CC:CC:AA", "varchar_3", "text_3", "{\"json\":1}", "binary_01", "blob_01", "clob_01", 1, -1)
+	err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		0, 1, 2, 3, 4, 5, 6.6, 7.77, "127.0.0.3", "AB:CC:CC:CC:CC:CC:CC:AA", "varchar_3", "text_3", "{\"json\":1}", "binary_01", "blob_01", "clob_01", 1, -1)
 	if err != nil {
 		panic(err)
 	}
@@ -83,7 +90,9 @@ func main() {
 
 	for i := 0; i < 10; i++ {
 		//err = appender.Append(3+i, "three", float64(3.0003)+float64(i))
-		err = appender.Append(i, i * 10, i * 100, i * 1000, i * 10000, i * 100000, float64(i), float64(i), net.IPv4(192, 168, 0, byte(i)).To4(), net.ParseIP("FF:FF:FF:FF:FF:FF:FF:FF"), "varchar_append", "text_append", "{\"json\":999}", "binary_append", "blob_append", "clob_append", i * 10000000000, time.Now().UnixNano())
+		err = appender.Append(i, i*10, i*100, i*1000, i*10000, i*100000, float64(i), float64(i),
+			net.IPv4(192, 168, 0, byte(i)).To4(), net.ParseIP("FF:FF:FF:FF:FF:FF:FF:FF"), "varchar_append", "text_append", "{\"json\":999}", "binary_append", "blob_append", "clob_append",
+			i*10000000000, time.Now().UnixNano())
 		if err != nil {
 			panic(err)
 		}
@@ -127,8 +136,8 @@ func main() {
 			break
 		}
 		fmt.Printf("1st ----> %d %d %d %d %d %d %f %f %s %s %s %d %d\n",
-		_int16, _uint16, _int32, _uint32, _int64, _uint64, _float, _double,
-		_varchar, _text, _json, _datetime, _datetime_now)
+			_int16, _uint16, _int32, _uint32, _int64, _uint64, _float, _double,
+			_varchar, _text, _json, _datetime, _datetime_now)
 		//fmt.Printf("1st ----> %d %s %v\n", id, name, pre)
 	}
 	rows.Close()
@@ -155,8 +164,8 @@ func main() {
 			break
 		}
 		fmt.Printf("2st ----> %d %d %d %d %d %d %f %f %s %s %s %d %d\n",
-		_int16, _uint16, _int32, _uint32, _int64, _uint64, _float, _double,
-		_varchar, _text, _json, _datetime, _datetime_now)
+			_int16, _uint16, _int32, _uint32, _int64, _uint64, _float, _double,
+			_varchar, _text, _json, _datetime, _datetime_now)
 	}
 	rows.Close()
 

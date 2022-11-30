@@ -28,7 +28,7 @@ type Database struct {
 	handle unsafe.Pointer
 }
 
-func NewDatabase() *Database {
+func New() *Database {
 	return &Database{}
 }
 
