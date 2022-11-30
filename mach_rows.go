@@ -33,7 +33,7 @@ func (this *Rows) Next() bool {
 
 func (rows *Rows) Scan(cols ...any) error {
 	for i, c := range cols {
-		typ, err := machColumnType(rows.stmt, i)
+		typ, _ /*size*/, err := machColumnType(rows.stmt, i)
 		if err != nil {
 			return errors.Wrap(err, "Scan")
 		}

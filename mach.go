@@ -105,13 +105,12 @@ func (this *Database) Appender(tableName string) (*Appender, error) {
 	if err := machAppendOpen(appender.stmt, tableName); err != nil {
 		return nil, err
 	}
-	// MachColumnCount returns -1
-	//
-	// colCount, err := machColumnCount(appender.stmt)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	//fmt.Printf("======> colCount: %d\n", colCount)
+
+	colCount, err := machColumnCount(appender.stmt)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("======> colCount: %d\n", colCount)
 	return appender, nil
 }
 

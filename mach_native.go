@@ -162,12 +162,13 @@ func machColumnCount(stmt unsafe.Pointer) (int, error) {
 	return int(count), nil
 }
 
-func machColumnType(stmt unsafe.Pointer, idx int) (int, error) {
+func machColumnType(stmt unsafe.Pointer, idx int) (int, int, error) {
 	var typ C.int = 0
-	if rt := C.MachColumnType(stmt, C.int(idx), &typ); rt != 0 {
-		return 0, fmt.Errorf("MachColumnType idx %d returns %d", idx, rt)
+	var siz C.int = 0
+	if rt := C.MachColumnType(stmt, C.int(idx), &typ, &siz); rt != 0 {
+		return 0, 0, fmt.Errorf("MachColumnType idx %d returns %d", idx, rt)
 	}
-	return int(typ), nil
+	return int(typ), int(siz), nil
 }
 
 func machColumnLength(stmt unsafe.Pointer, idx int) (int, error) {
