@@ -167,10 +167,11 @@ int MachColumnCount(void* aMachStmt, int* aColumnCount);
  * @brief Fetch row로 부터 각 컬럼의 결과를 가지고 온다.
  * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt 
  * @param [in] aColumnIndex 가져올 column의 인덱스
- * @param [out] aColumnType 컬럼의 데이터 타입
+ * @param [out] aType column type
+ * @param [out] aSize column size 
  * @param [out] aColumnLength 컬럼의 데이터 크기
  */
-int MachColumnType(void* aMachStmt, int aColumnIndex, int* aColumnType);
+int MachColumnType(void* aMachStmt, int aColumnIndex, int* aType, int* aSize);
 int MachColumnLength(void* aMachStmt, int aColumnIndex, int* aColumnLength);
 
 /**
