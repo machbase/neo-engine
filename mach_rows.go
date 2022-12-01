@@ -1,6 +1,7 @@
 package mach
 
 import (
+	"database/sql"
 	"fmt"
 	"net"
 	"strconv"
@@ -9,6 +10,51 @@ import (
 
 	"github.com/pkg/errors"
 )
+
+type Row struct {
+	ok     bool
+	err    error
+	values []any
+}
+
+func (row *Row) Err() error {
+	return row.err
+}
+
+func (row *Row) Scan(cols ...any) error {
+	if row.err != nil {
+		return row.err
+	}
+	if !row.ok {
+		return sql.ErrNoRows
+	}
+	for i := range cols {
+		if i >= len(row.values) {
+			return fmt.Errorf("column %d is out of range %d", i, len(row.values))
+		}
+		switch v := row.values[i].(type) {
+		case *int16:
+			scanInt16(*v, cols[i])
+		case *int32:
+			scanInt32(*v, cols[i])
+		case *int64:
+			scanInt64(*v, cols[i])
+		case *time.Time:
+			scanDateTime(*v, cols[i])
+		case *float32:
+			scanFloat32(*v, cols[i])
+		case *float64:
+			scanFloat64(*v, cols[i])
+		case *net.IP:
+			scanIP(*v, cols[i])
+		case *string:
+			scanString(*v, cols[i])
+		case []byte:
+			scanBytes(v, cols[i])
+		}
+	}
+	return nil
+}
 
 type Rows struct {
 	stmt    unsafe.Pointer
@@ -32,14 +78,18 @@ func (this *Rows) Next() bool {
 }
 
 func (rows *Rows) Scan(cols ...any) error {
+	return scan(rows.stmt, cols...)
+}
+
+func scan(stmt unsafe.Pointer, cols ...any) error {
 	for i, c := range cols {
-		typ, _ /*size*/, err := machColumnType(rows.stmt, i)
+		typ, _ /*size*/, err := machColumnType(stmt, i)
 		if err != nil {
 			return errors.Wrap(err, "Scan")
 		}
 		switch typ {
 		case 0: // MACH_DATA_TYPE_INT16
-			if v, err := machColumnDataInt16(rows.stmt, i); err != nil {
+			if v, err := machColumnDataInt16(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
 			} else {
 				if err = scanInt16(v, c); err != nil {
@@ -47,7 +97,7 @@ func (rows *Rows) Scan(cols ...any) error {
 				}
 			}
 		case 1: // MACH_DATA_TYPE_INT32
-			if v, err := machColumnDataInt32(rows.stmt, i); err != nil {
+			if v, err := machColumnDataInt32(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
 			} else {
 				if err = scanInt32(v, c); err != nil {
@@ -55,7 +105,7 @@ func (rows *Rows) Scan(cols ...any) error {
 				}
 			}
 		case 2: // MACH_DATA_TYPE_INT64
-			if v, err := machColumnDataInt64(rows.stmt, i); err != nil {
+			if v, err := machColumnDataInt64(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
 			} else {
 				if err = scanInt64(v, c); err != nil {
@@ -63,7 +113,7 @@ func (rows *Rows) Scan(cols ...any) error {
 				}
 			}
 		case 3: // MACH_DATA_TYPE_DATETIME
-			if v, err := machColumnDataDateTime(rows.stmt, i); err != nil {
+			if v, err := machColumnDataDateTime(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan datetime")
 			} else {
 				if err = scanDateTime(v, c); err != nil {
@@ -71,7 +121,7 @@ func (rows *Rows) Scan(cols ...any) error {
 				}
 			}
 		case 4: // MACH_DATA_TYPE_FLOAT
-			if v, err := machColumnDataFloat32(rows.stmt, i); err != nil {
+			if v, err := machColumnDataFloat32(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan float32")
 			} else {
 				if err = scanFloat32(v, c); err != nil {
@@ -79,7 +129,7 @@ func (rows *Rows) Scan(cols ...any) error {
 				}
 			}
 		case 5: // MACH_DATA_TYPE_DOUBLE
-			if v, err := machColumnDataFloat64(rows.stmt, i); err != nil {
+			if v, err := machColumnDataFloat64(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan float32")
 			} else {
 				if err = scanFloat64(v, c); err != nil {
@@ -87,7 +137,7 @@ func (rows *Rows) Scan(cols ...any) error {
 				}
 			}
 		case 6: // MACH_DATA_TYPE_IPV4
-			if v, err := machColumnDataIPv4(rows.stmt, i); err != nil {
+			if v, err := machColumnDataIPv4(stmt, i); err != nil {
 				return errors.Wrap(err, "scal IPv4")
 			} else {
 				if err = scanIP(v, c); err != nil {
@@ -95,7 +145,7 @@ func (rows *Rows) Scan(cols ...any) error {
 				}
 			}
 		case 7: // MACH_DATA_TYPE_IPV6
-			if v, err := machColumnDataIPv6(rows.stmt, i); err != nil {
+			if v, err := machColumnDataIPv6(stmt, i); err != nil {
 				return errors.Wrap(err, "scal IPv4")
 			} else {
 				if err = scanIP(v, c); err != nil {
@@ -103,7 +153,7 @@ func (rows *Rows) Scan(cols ...any) error {
 				}
 			}
 		case 8: // MACH_DATA_TYPE_STRING
-			if v, err := machColumnDataString(rows.stmt, i); err != nil {
+			if v, err := machColumnDataString(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan string")
 			} else {
 				if err = scanString(v, c); err != nil {
@@ -111,7 +161,7 @@ func (rows *Rows) Scan(cols ...any) error {
 				}
 			}
 		case 9: // MACH_DATA_TYPE_BINARY
-			if v, err := machColumnDataBinary(rows.stmt, i); err != nil {
+			if v, err := machColumnDataBinary(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan binary")
 			} else {
 				if err = scanBytes(v, c); err != nil {

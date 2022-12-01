@@ -107,6 +107,20 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("---- append done")
+
+	row := db.QueryRow("select count(*) from m$sys_tables  where name = ?", "LOG")
+	if row.Err() != nil {
+		fmt.Printf("ERR-query: %s\n", row.Err().Error())
+	} else {
+		var count int
+		err = row.Scan(&count)
+		if err != nil {
+			fmt.Printf("ERR-scan: %s\n", err.Error())
+		} else {
+			fmt.Printf("============> table 'log' exists=%v\n", count)
+		}
+	}
 
 	rows, err := db.Query(db.SqlTidy(`
 		select
