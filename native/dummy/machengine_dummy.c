@@ -6,6 +6,7 @@ void MachFinalize(){}
 
 int MachCreateDB(){ return -1; }
 int MachDestroyDB() { return -1; }
+int MachIsDBCreated() { return 0; }
 
 int MachStartupDB(int aTimeoutSecond, void** aDBHandle){ return -1; }
 
