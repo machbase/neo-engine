@@ -21,7 +21,9 @@ func main() {
 	homePath := filepath.Dir(exePath)
 	mach.Initialize(homePath)
 
-	mach.DestroyDatabase()
+	if mach.ExistsDatabase() {
+		mach.DestroyDatabase()
+	}
 	mach.CreateDatabase()
 
 	db := mach.New()

@@ -41,6 +41,11 @@ func destroyDatabase0() error {
 	}
 }
 
+func existsDatabase0() bool {
+	rt := C.MachIsDBCreated()
+	return rt == 1
+}
+
 func startup0(handle *unsafe.Pointer, timeout time.Duration) error {
 	timeoutSec := C.int(timeout.Seconds())
 	if rt := C.MachStartupDB(timeoutSec, handle); rt != 0 {

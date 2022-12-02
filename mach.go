@@ -25,6 +25,10 @@ func CreateDatabase() error {
 	return createDatabase0()
 }
 
+func ExistsDatabase() bool {
+	return existsDatabase0()
+}
+
 type Database struct {
 	handle unsafe.Pointer
 }
@@ -174,10 +178,16 @@ func (this *Database) QueryRow(sqlText string, params ...any) *Row {
 
 func (this *Database) Appender(tableName string) (*Appender, error) {
 	appender := &Appender{}
+	appender.tableName = strings.ToUpper(tableName)
 	if err := machAllocStmt(this.handle, &appender.stmt); err != nil {
 		return nil, err
 	}
 	if err := machAppendOpen(appender.stmt, tableName); err != nil {
+		return nil, err
+	}
+
+	row := this.QueryRow("select type from M$SYS_TABLES where name = ?", appender.tableName)
+	if err := row.Scan(&appender.tableType); err != nil {
 		return nil, err
 	}
 
@@ -197,6 +207,8 @@ func (this *Database) Appender(tableName string) (*Appender, error) {
 
 type Appender struct {
 	stmt         unsafe.Pointer
+	tableName    string
+	tableType    int // 0: Log Table, 1: Fixed Table, 3: Volatile Table, 4: Lookup Table, 5: KeyValue Table, 6: Tag Table
 	colCount     int
 	SuccessCount uint64
 	FailureCount uint64
@@ -221,7 +233,46 @@ func (this *Appender) Close() error {
 }
 
 func (this *Appender) Append(cols ...any) error {
-	vals := make([]*machAppendDataNullValue, len(cols))
+	if this.tableType == 0 {
+		return this.appendLogTable(time.Time{}, cols)
+	} else {
+		return this.appendTagTable(cols)
+	}
+}
+
+// supports only Log Table
+func (this *Appender) AppendWithTimestamp(ts time.Time, cols ...any) error {
+	if this.tableType == 0 {
+		return this.appendLogTable(ts, cols)
+	} else {
+		return fmt.Errorf("%s is not a log table, use Append() instead", this.tableName)
+	}
+}
+
+func (this *Appender) appendLogTable(ts time.Time, cols []any) error {
+	if this.colCount-1 != len(cols) {
+		return fmt.Errorf("value count %d, table '%s' has %d columns", len(cols), this.tableName, this.colCount-1)
+	}
+	vals := make([]*machAppendDataNullValue, this.colCount)
+	if ts.IsZero() {
+		vals[0] = bindValue(nil)
+	} else {
+		vals[0] = bindValue(ts)
+	}
+	for i, c := range cols {
+		vals[i+1] = bindValue(c)
+	}
+	if err := machAppendData(this.stmt, vals); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (this *Appender) appendTagTable(cols []any) error {
+	if this.colCount != len(cols) {
+		return fmt.Errorf("value count %d, table '%s' has %d columns", len(cols), this.tableName, this.colCount)
+	}
+	vals := make([]*machAppendDataNullValue, this.colCount)
 	for i, c := range cols {
 		vals[i] = bindValue(c)
 	}
