@@ -105,6 +105,10 @@ func bindValue(c any) *machAppendDataNullValue {
 		*(*uint)(unsafe.Pointer(&nv.Value[0])) = uint(len(cv))
 		*(**C.char)(unsafe.Pointer(&nv.Value[bits.UintSize/8])) = nv.cstr
 	case []byte:
+		if len(cv) == 0 {
+			nv.IsValid = false
+			return nv
+		}
 		*(*uint)(unsafe.Pointer(&nv.Value[0])) = uint(len(cv))
 		*(**C.char)(unsafe.Pointer(&nv.Value[bits.UintSize/8])) = (*C.char)(unsafe.Pointer(&cv[0]))
 	case time.Time:

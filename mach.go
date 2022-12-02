@@ -272,6 +272,9 @@ func (this *Appender) appendLogTable(ts time.Time, cols []any) error {
 }
 
 func (this *Appender) appendTagTable(cols []any) error {
+	if this.colCount == 0 {
+		return fmt.Errorf("table '%s' has no columns", this.tableName)
+	}
 	if this.colCount != len(cols) {
 		return fmt.Errorf("value count %d, table '%s' has %d columns", len(cols), this.tableName, this.colCount)
 	}
