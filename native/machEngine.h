@@ -90,6 +90,10 @@ void MachFinalize();
  */
 int MachCreateDB();
 int MachDestroyDB();
+/**
+ * return 1 if DB is create, otherwise return 0
+ */
+int MachIsDBCreated();
 
 /**
  * @brief Machbase Thread 시작
@@ -223,6 +227,7 @@ int MachAppendClose(void* aMachStmt,
 
 /**
  * @brief 테이블에 데이터를 Append 한다.
+ * @details Log Table의 경우에는 _arrival_time 컬럼 지정을 해야한다.
  * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt
  * @param [in] aAppendParamArr Append 할 데이터 값
  */
