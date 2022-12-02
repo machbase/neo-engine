@@ -265,6 +265,9 @@ func (this *Appender) appendLogTable(ts time.Time, cols []any) error {
 	if err := machAppendData(this.stmt, vals); err != nil {
 		return err
 	}
+	for _, v := range vals {
+		v.Free()
+	}
 	return nil
 }
 
@@ -278,6 +281,9 @@ func (this *Appender) appendTagTable(cols []any) error {
 	}
 	if err := machAppendData(this.stmt, vals); err != nil {
 		return err
+	}
+	for _, v := range vals {
+		v.Free()
 	}
 	return nil
 }

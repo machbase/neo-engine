@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
@@ -53,7 +54,8 @@ func main() {
 	err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		0, 1, 2, 3, 4, 5, 6.6, 7.77,
 		net.ParseIP("127.0.0.1"), net.ParseIP("AB:CC:CC:CC:CC:CC:CC:FF"),
-		"varchar_1", "text_1", "{\"json\":1}", []byte("binary_00"), "blob_01", "clob_01", 1, time.Now())
+		fmt.Sprintf("varchar_1_%s.", randomVarchar()),
+		"text_1", "{\"json\":1}", []byte("binary_00"), "blob_01", "clob_01", 1, time.Now())
 	if err != nil {
 		panic(err)
 	}
@@ -61,7 +63,8 @@ func main() {
 	err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		1, 1, 2, 3, 4, 5, 6.6, 7.77,
 		net.ParseIP("127.0.0.2"), net.ParseIP("AB:CC:CC:CC:CC:CC:CC:DD"),
-		"varchar_2", "text_2", "{\"json\":1}", []byte("binary_01"), "blob_01", "clob_01", 1, time.Now())
+		fmt.Sprintf("varchar_2_%s.", randomVarchar()),
+		"text_2", "{\"json\":1}", []byte("binary_01"), "blob_01", "clob_01", 1, time.Now())
 	if err != nil {
 		panic(err)
 	}
@@ -69,7 +72,8 @@ func main() {
 	err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		2, 1, 2, 3, 4, 5, 6.6, 7.77,
 		net.ParseIP("127.0.0.3"), net.ParseIP("AB:CC:CC:CC:CC:CC:CC:AA"),
-		"varchar_3", "text_3", "{\"json\":2}", []byte("binary_02"), "blob_01", "clob_01", 1, time.Now())
+		fmt.Sprintf("varchar_3_%s.", randomVarchar()),
+		"text_3", "{\"json\":2}", []byte("binary_02"), "blob_01", "clob_01", 1, time.Now())
 	if err != nil {
 		panic(err)
 	}
@@ -94,7 +98,7 @@ func main() {
 			net.ParseIP(fmt.Sprintf("192.168.0.%d", i)),              // IPv4
 			net.ParseIP(fmt.Sprintf("12:FF:FF:FF:CC:EE:FF:%02X", i)), // IPv6
 			fmt.Sprintf("varchar_append-%d", i),
-			fmt.Sprintf("text_append-%d", i),
+			fmt.Sprintf("text_append-%d-%s.", i, randomVarchar()),
 			fmt.Sprintf("{\"json\":%d}", i),
 			[]byte(fmt.Sprintf("binary_append_%02d", i)),
 			"blob_append",
@@ -217,4 +221,25 @@ func main() {
 	// <-quitChan
 
 	fmt.Println("-------------------------------")
+}
+
+var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+func StringWithCharset(length int, charset string) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[seededRand.Intn(len(charset)-1)]
+	}
+	return string(b)
+}
+
+func randomVarchar() string {
+	rangeStart := 0
+	rangeEnd := 10
+	offset := rangeEnd - rangeStart
+	randLength := seededRand.Intn(offset) + rangeStart
+
+	charSet := "aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
+	randString := StringWithCharset(randLength, charSet)
+	return randString
 }

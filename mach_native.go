@@ -18,7 +18,9 @@ import (
 import "C"
 
 func initialize0(homeDir string) error {
-	if rt := C.MachInitialize(C.CString(homeDir)); rt == 0 {
+	cstr := C.CString(homeDir)
+	defer C.free(unsafe.Pointer(cstr))
+	if rt := C.MachInitialize(cstr); rt == 0 {
 		return nil
 	} else {
 		return fmt.Errorf("MachInitialize returns %d", rt)
@@ -108,7 +110,9 @@ func machFreeStmt(stmt unsafe.Pointer) error {
 }
 
 func machPrepare(stmt unsafe.Pointer, sqlText string) error {
-	if rt := C.MachPrepare(stmt, C.CString(sqlText)); rt != 0 {
+	cstr := C.CString(sqlText)
+	defer C.free(unsafe.Pointer(cstr))
+	if rt := C.MachPrepare(stmt, cstr); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
 			return stmtErr
@@ -144,7 +148,9 @@ func machExecuteClean(stmt unsafe.Pointer) error {
 }
 
 func machDirectExecute(stmt unsafe.Pointer, sqlText string) error {
-	if rt := C.MachDirectExecute(stmt, C.CString(sqlText)); rt != 0 {
+	cstr := C.CString(sqlText)
+	defer C.free(unsafe.Pointer(cstr))
+	if rt := C.MachDirectExecute(stmt, cstr); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
 			return stmtErr
@@ -205,7 +211,9 @@ func machBindFloat64(stmt unsafe.Pointer, idx int, val float64) error {
 }
 
 func machBindString(stmt unsafe.Pointer, idx int, val string) error {
-	if rt := C.MachBindString(stmt, C.int(idx), C.CString(val), C.int(len(val))); rt != 0 {
+	cstr := C.CString(val)
+	defer C.free(unsafe.Pointer(cstr))
+	if rt := C.MachBindString(stmt, C.int(idx), cstr, C.int(len(val))); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
 			return stmtErr
@@ -430,7 +438,9 @@ func machColumnDataBinary(stmt unsafe.Pointer, idx int) ([]byte, error) {
 }
 
 func machAppendOpen(stmt unsafe.Pointer, tableName string) error {
-	if rt := C.MachAppendOpen(stmt, C.CString(tableName)); rt != 0 {
+	cstr := C.CString(tableName)
+	defer C.free(unsafe.Pointer(cstr))
+	if rt := C.MachAppendOpen(stmt, cstr); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
 			return stmtErr
@@ -460,8 +470,14 @@ type machAppendDataValue [32]byte
 type machAppendDataNullValue struct {
 	IsValid bool
 	Value   machAppendDataValue
+	cstr    *C.char
 }
 
+func (v *machAppendDataNullValue) Free() {
+	if v.cstr != nil {
+		C.free(unsafe.Pointer(v.cstr))
+	}
+}
 func machAppendData(stmt unsafe.Pointer, valueArr []*machAppendDataNullValue) error {
 	values := make([]C.MachEngineAppendParam, len(valueArr))
 	for i, v := range valueArr {

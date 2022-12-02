@@ -101,8 +101,9 @@ func bindValue(c any) *machAppendDataNullValue {
 			}
 		}
 	case string:
+		nv.cstr = C.CString(cv)
 		*(*uint)(unsafe.Pointer(&nv.Value[0])) = uint(len(cv))
-		*(**C.char)(unsafe.Pointer(&nv.Value[bits.UintSize/8])) = C.CString(cv)
+		*(**C.char)(unsafe.Pointer(&nv.Value[bits.UintSize/8])) = nv.cstr
 	case []byte:
 		*(*uint)(unsafe.Pointer(&nv.Value[0])) = uint(len(cv))
 		*(**C.char)(unsafe.Pointer(&nv.Value[bits.UintSize/8])) = (*C.char)(unsafe.Pointer(&cv[0]))
