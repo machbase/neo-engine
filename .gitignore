@@ -20,3 +20,6 @@
 tmp/
 packages/
 vendor/
+
+native/*_dummy.a
+native/*_dummy.o
