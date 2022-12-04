@@ -476,8 +476,10 @@ type machAppendDataNullValue struct {
 func (v *machAppendDataNullValue) Free() {
 	if v.cstr != nil {
 		C.free(unsafe.Pointer(v.cstr))
+		v.cstr = nil
 	}
 }
+
 func machAppendData(stmt unsafe.Pointer, valueArr []*machAppendDataNullValue) error {
 	values := make([]C.MachEngineAppendParam, len(valueArr))
 	for i, v := range valueArr {

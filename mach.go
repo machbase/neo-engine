@@ -262,11 +262,13 @@ func (this *Appender) appendLogTable(ts time.Time, cols []any) error {
 	for i, c := range cols {
 		vals[i+1] = bindValue(c)
 	}
+	defer func() {
+		for _, v := range vals {
+			v.Free()
+		}
+	}()
 	if err := machAppendData(this.stmt, vals); err != nil {
 		return err
-	}
-	for _, v := range vals {
-		v.Free()
 	}
 	return nil
 }
@@ -282,11 +284,13 @@ func (this *Appender) appendTagTable(cols []any) error {
 	for i, c := range cols {
 		vals[i] = bindValue(c)
 	}
+	defer func() {
+		for _, v := range vals {
+			v.Free()
+		}
+	}()
 	if err := machAppendData(this.stmt, vals); err != nil {
 		return err
-	}
-	for _, v := range vals {
-		v.Free()
 	}
 	return nil
 }
