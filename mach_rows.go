@@ -61,8 +61,13 @@ func (row *Row) Scan(cols ...any) error {
 }
 
 type Rows struct {
-	stmt    unsafe.Pointer
-	sqlText string
+	stmt        unsafe.Pointer
+	sqlText     string
+	columnCount int
+}
+
+func (this *Rows) ColumnCount() int {
+	return this.columnCount
 }
 
 func (this *Rows) Close() {

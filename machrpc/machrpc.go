@@ -24,7 +24,7 @@ func NewClient() *Client {
 }
 
 func (this *Client) Connect(serverAddr string) error {
-	conn, err := MakeGrpcConn("unix://../../tmp/tagd.sock")
+	conn, err := MakeGrpcConn(serverAddr)
 	if err != nil {
 		return errors.Wrap(err, "NewClient")
 	}
@@ -51,7 +51,9 @@ func (this *Client) Exec(ctx context.Context, sqlText string, params ...any) err
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%v\n", rsp)
+	if !rsp.Success {
+		return fmt.Errorf(rsp.Reason)
+	}
 	return nil
 }
 
@@ -68,7 +70,7 @@ func (this *Client) Query(ctx context.Context, sqlText string, params ...any) (*
 	}
 
 	if rsp.Success {
-		return rsp.Rows, nil
+		return &Rows{client: this, handle: rsp.RowsHandle}, nil
 	} else {
 		if len(rsp.Reason) > 0 {
 			return nil, errors.New(rsp.Reason)
@@ -77,8 +79,33 @@ func (this *Client) Query(ctx context.Context, sqlText string, params ...any) (*
 	}
 }
 
+type Rows struct {
+	client *Client
+	handle *RowsHandle
+	values []any
+}
+
 func (rows *Rows) Next() bool {
-	return false
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancelFunc()
+	rsp, err := rows.client.cli.RowsNext(ctx, rows.handle)
+	if err != nil {
+		fmt.Println(err.Error())
+		return false
+	}
+	if rsp.Success {
+		rows.values = pbconv.ConvertPbToAny(rsp.Values)
+	} else {
+		rows.values = nil
+	}
+	return rsp.Success
+}
+
+func (rows *Rows) Scan(cols ...any) error {
+	if rows.values != nil {
+		return sql.ErrNoRows
+	}
+	return scan(rows.values, cols)
 }
 
 func (this *Client) QueryRow(ctx context.Context, sqlText string, params ...any) *Row {
@@ -165,6 +192,57 @@ func (row *Row) Scan(cols ...any) error {
 			valconv.IPToAny(v, cols[i])
 		case string:
 			valconv.StringToAny(v, cols[i])
+		}
+	}
+	return nil
+}
+
+func scan(src []any, dst []any) error {
+	for i := range dst {
+		if i >= len(src) {
+			return fmt.Errorf("column %d is out of range %d", i, len(src))
+		}
+		switch v := src[i].(type) {
+		default:
+			return fmt.Errorf("column %d is %T, not compatible with %T", i, v, dst[i])
+		case *int:
+			valconv.Int32ToAny(int32(*v), dst[i])
+		case *int16:
+			valconv.Int16ToAny(*v, dst[i])
+		case *int32:
+			valconv.Int32ToAny(*v, dst[i])
+		case *int64:
+			valconv.Int64ToAny(*v, dst[i])
+		case *time.Time:
+			valconv.DateTimeToAny(*v, dst[i])
+		case *float32:
+			valconv.Float32ToAny(*v, dst[i])
+		case *float64:
+			valconv.Float64ToAny(*v, dst[i])
+		case *net.IP:
+			valconv.IPToAny(*v, dst[i])
+		case *string:
+			valconv.StringToAny(*v, dst[i])
+		case []byte:
+			valconv.BytesToAny(v, dst[i])
+		case int:
+			valconv.Int32ToAny(int32(v), dst[i])
+		case int16:
+			valconv.Int16ToAny(v, dst[i])
+		case int32:
+			valconv.Int32ToAny(v, dst[i])
+		case int64:
+			valconv.Int64ToAny(v, dst[i])
+		case time.Time:
+			valconv.DateTimeToAny(v, dst[i])
+		case float32:
+			valconv.Float32ToAny(v, dst[i])
+		case float64:
+			valconv.Float64ToAny(v, dst[i])
+		case net.IP:
+			valconv.IPToAny(v, dst[i])
+		case string:
+			valconv.StringToAny(v, dst[i])
 		}
 	}
 	return nil

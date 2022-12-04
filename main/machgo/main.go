@@ -19,7 +19,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	homePath := filepath.Dir(exePath)
+	homePath := filepath.Join(filepath.Dir(exePath), "machbase")
 	mach.Initialize(homePath)
 
 	if mach.ExistsDatabase() {

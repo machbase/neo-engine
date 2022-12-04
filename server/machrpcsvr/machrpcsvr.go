@@ -132,14 +132,20 @@ func (this *svr) HandleConn(ctx context.Context, s stats.ConnStats) {
 //// machrpc server handler
 
 func (this *svr) Exec(pctx context.Context, req *machrpc.ExecRequest) (*machrpc.ExecResponse, error) {
-	// val := pctx.Value(contextCtxKey)
-	// ctx, ok := val.(*sessionCtx)
-	// if !ok {
-	// 	return nil, fmt.Errorf("invlaid session context %T", pctx)
-	// }
-	// fmt.Printf("session id : %s\n", ctx.Id)
-
 	rsp := &machrpc.ExecResponse{}
+	tick := time.Now()
+	defer func() {
+		rsp.Elapse = time.Since(tick).String()
+	}()
+
+	params := pbconv.ConvertPbToAny(req.Params)
+	if err := this.machbase.Exec(req.Sql, params...); err == nil {
+		rsp.Success = true
+		rsp.Reason = "success"
+	} else {
+		rsp.Success = false
+		rsp.Reason = err.Error()
+	}
 	return rsp, nil
 }
 
@@ -216,14 +222,14 @@ func (this *svr) Query(pctx context.Context, req *machrpc.QueryRequest) (*machrp
 
 	rsp.Success = true
 	rsp.Reason = "success"
-	rsp.Rows = &machrpc.Rows{
+	rsp.RowsHandle = &machrpc.RowsHandle{
 		Handle: handle,
 	}
 
 	return rsp, nil
 }
 
-func (this *svr) RowsNext(ctx context.Context, rows *machrpc.Rows) (*machrpc.RowsNextResponse, error) {
+func (this *svr) RowsNext(ctx context.Context, rows *machrpc.RowsHandle) (*machrpc.RowsNextResponse, error) {
 	rsp := &machrpc.RowsNextResponse{}
 	tick := time.Now()
 	defer func() {
@@ -241,18 +247,32 @@ func (this *svr) RowsNext(ctx context.Context, rows *machrpc.Rows) (*machrpc.Row
 		return rsp, nil
 	}
 
-	if rowsWrap.rows.Next() {
-		rsp.Success = true
-		rsp.Reason = "success"
-	} else {
+	if !rowsWrap.rows.Next() {
 		rsp.Success = false
 		rsp.Reason = "no rows"
+		return rsp, nil
 	}
 
+	values := make([]any, rowsWrap.rows.ColumnCount())
+
+	err := rowsWrap.rows.Scan(values...)
+	if err != nil {
+		rsp.Success = false
+		rsp.Reason = err.Error()
+		return rsp, nil
+	}
+	rsp.Values, err = pbconv.ConvertAnyToPb(values)
+	if err != nil {
+		rsp.Success = false
+		rsp.Reason = err.Error()
+		return rsp, nil
+	}
+	rsp.Success = true
+	rsp.Reason = "success"
 	return rsp, nil
 }
 
-func (this *svr) RowsClose(ctx context.Context, rows *machrpc.Rows) (*machrpc.RowsCloseResponse, error) {
+func (this *svr) RowsClose(ctx context.Context, rows *machrpc.RowsHandle) (*machrpc.RowsCloseResponse, error) {
 	rsp := &machrpc.RowsCloseResponse{}
 	tick := time.Now()
 	defer func() {

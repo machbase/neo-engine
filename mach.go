@@ -108,6 +108,11 @@ func (this *Database) Query(sqlText string, params ...any) (*Rows, error) {
 	if err := machExecute(rows.stmt); err != nil {
 		return nil, err
 	}
+	if colCount, err := machColumnCount(rows.stmt); err != nil {
+		return nil, err
+	} else {
+		rows.columnCount = colCount
+	}
 	return rows, nil
 }
 

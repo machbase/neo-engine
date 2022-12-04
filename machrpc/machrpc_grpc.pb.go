@@ -26,8 +26,8 @@ type MachbaseClient interface {
 	Append(ctx context.Context, opts ...grpc.CallOption) (Machbase_AppendClient, error)
 	QueryRow(ctx context.Context, in *QueryRowRequest, opts ...grpc.CallOption) (*QueryRowResponse, error)
 	Query(ctx context.Context, in *QueryRequest, opts ...grpc.CallOption) (*QueryResponse, error)
-	RowsNext(ctx context.Context, in *Rows, opts ...grpc.CallOption) (*RowsNextResponse, error)
-	RowsClose(ctx context.Context, in *Rows, opts ...grpc.CallOption) (*RowsCloseResponse, error)
+	RowsNext(ctx context.Context, in *RowsHandle, opts ...grpc.CallOption) (*RowsNextResponse, error)
+	RowsClose(ctx context.Context, in *RowsHandle, opts ...grpc.CallOption) (*RowsCloseResponse, error)
 }
 
 type machbaseClient struct {
@@ -99,7 +99,7 @@ func (c *machbaseClient) Query(ctx context.Context, in *QueryRequest, opts ...gr
 	return out, nil
 }
 
-func (c *machbaseClient) RowsNext(ctx context.Context, in *Rows, opts ...grpc.CallOption) (*RowsNextResponse, error) {
+func (c *machbaseClient) RowsNext(ctx context.Context, in *RowsHandle, opts ...grpc.CallOption) (*RowsNextResponse, error) {
 	out := new(RowsNextResponse)
 	err := c.cc.Invoke(ctx, "/machrpc.Machbase/RowsNext", in, out, opts...)
 	if err != nil {
@@ -108,7 +108,7 @@ func (c *machbaseClient) RowsNext(ctx context.Context, in *Rows, opts ...grpc.Ca
 	return out, nil
 }
 
-func (c *machbaseClient) RowsClose(ctx context.Context, in *Rows, opts ...grpc.CallOption) (*RowsCloseResponse, error) {
+func (c *machbaseClient) RowsClose(ctx context.Context, in *RowsHandle, opts ...grpc.CallOption) (*RowsCloseResponse, error) {
 	out := new(RowsCloseResponse)
 	err := c.cc.Invoke(ctx, "/machrpc.Machbase/RowsClose", in, out, opts...)
 	if err != nil {
@@ -125,8 +125,8 @@ type MachbaseServer interface {
 	Append(Machbase_AppendServer) error
 	QueryRow(context.Context, *QueryRowRequest) (*QueryRowResponse, error)
 	Query(context.Context, *QueryRequest) (*QueryResponse, error)
-	RowsNext(context.Context, *Rows) (*RowsNextResponse, error)
-	RowsClose(context.Context, *Rows) (*RowsCloseResponse, error)
+	RowsNext(context.Context, *RowsHandle) (*RowsNextResponse, error)
+	RowsClose(context.Context, *RowsHandle) (*RowsCloseResponse, error)
 	mustEmbedUnimplementedMachbaseServer()
 }
 
@@ -146,10 +146,10 @@ func (UnimplementedMachbaseServer) QueryRow(context.Context, *QueryRowRequest) (
 func (UnimplementedMachbaseServer) Query(context.Context, *QueryRequest) (*QueryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Query not implemented")
 }
-func (UnimplementedMachbaseServer) RowsNext(context.Context, *Rows) (*RowsNextResponse, error) {
+func (UnimplementedMachbaseServer) RowsNext(context.Context, *RowsHandle) (*RowsNextResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RowsNext not implemented")
 }
-func (UnimplementedMachbaseServer) RowsClose(context.Context, *Rows) (*RowsCloseResponse, error) {
+func (UnimplementedMachbaseServer) RowsClose(context.Context, *RowsHandle) (*RowsCloseResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RowsClose not implemented")
 }
 func (UnimplementedMachbaseServer) mustEmbedUnimplementedMachbaseServer() {}
@@ -246,7 +246,7 @@ func _Machbase_Query_Handler(srv interface{}, ctx context.Context, dec func(inte
 }
 
 func _Machbase_RowsNext_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Rows)
+	in := new(RowsHandle)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -258,13 +258,13 @@ func _Machbase_RowsNext_Handler(srv interface{}, ctx context.Context, dec func(i
 		FullMethod: "/machrpc.Machbase/RowsNext",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MachbaseServer).RowsNext(ctx, req.(*Rows))
+		return srv.(MachbaseServer).RowsNext(ctx, req.(*RowsHandle))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Machbase_RowsClose_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Rows)
+	in := new(RowsHandle)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -276,7 +276,7 @@ func _Machbase_RowsClose_Handler(srv interface{}, ctx context.Context, dec func(
 		FullMethod: "/machrpc.Machbase/RowsClose",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MachbaseServer).RowsClose(ctx, req.(*Rows))
+		return srv.(MachbaseServer).RowsClose(ctx, req.(*RowsHandle))
 	}
 	return interceptor(ctx, in, info, handler)
 }

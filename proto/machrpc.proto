@@ -11,8 +11,8 @@ service Machbase {
     rpc Append(stream AppendRequest) returns(AppendResponse) {}
     rpc QueryRow(QueryRowRequest) returns(QueryRowResponse) {}
     rpc Query(QueryRequest) returns(QueryResponse) {}
-    rpc RowsNext(Rows) returns(RowsNextResponse) {}
-    rpc RowsClose(Rows) returns (RowsCloseResponse) {}
+    rpc RowsNext(RowsHandle) returns(RowsNextResponse) {}
+    rpc RowsClose(RowsHandle) returns (RowsCloseResponse) {}
 }
 
 message ExecRequest {
@@ -43,10 +43,10 @@ message QueryResponse {
     bool success = 1;
     string reason = 2;
     string elapse = 3;
-    Rows rows = 4;
+    RowsHandle rowsHandle = 4;
 }
 
-message Rows {
+message RowsHandle {
     string handle = 1;
 }
 
@@ -54,6 +54,7 @@ message RowsNextResponse {
     bool success = 1;
     string reason = 2;
     string elapse = 3;
+    repeated google.protobuf.Any values = 4;
 }
 
 message RowsCloseResponse {
