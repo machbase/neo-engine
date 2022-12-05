@@ -33,12 +33,20 @@ type Database struct {
 	handle unsafe.Pointer
 }
 
+var singletonHandle unsafe.Pointer
+
 func New() *Database {
-	return &Database{}
+	return &Database{
+		handle: singletonHandle,
+	}
 }
 
 func (this *Database) Startup(timeout time.Duration) error {
-	return startup0(&this.handle, timeout)
+	err := startup0(&this.handle, timeout)
+	if err == nil {
+		singletonHandle = this.handle
+	}
+	return err
 }
 
 func (this *Database) Shutdown() error {

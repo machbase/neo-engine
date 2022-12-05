@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"net"
-	"strconv"
 	"time"
 	"unsafe"
 
+	"github.com/machbase/dbms-mach-go/valconv"
 	"github.com/pkg/errors"
 )
 
@@ -19,6 +19,10 @@ type Row struct {
 
 func (row *Row) Err() error {
 	return row.err
+}
+
+func (row *Row) Values() []any {
+	return row.values
 }
 
 func (row *Row) Scan(cols ...any) error {
@@ -34,23 +38,23 @@ func (row *Row) Scan(cols ...any) error {
 		}
 		switch v := row.values[i].(type) {
 		case *int16:
-			scanInt16(*v, cols[i])
+			valconv.Int16ToAny(*v, cols[i])
 		case *int32:
-			scanInt32(*v, cols[i])
+			valconv.Int32ToAny(*v, cols[i])
 		case *int64:
-			scanInt64(*v, cols[i])
+			valconv.Int64ToAny(*v, cols[i])
 		case *time.Time:
-			scanDateTime(*v, cols[i])
+			valconv.DateTimeToAny(*v, cols[i])
 		case *float32:
-			scanFloat32(*v, cols[i])
+			valconv.Float32ToAny(*v, cols[i])
 		case *float64:
-			scanFloat64(*v, cols[i])
+			valconv.Float64ToAny(*v, cols[i])
 		case *net.IP:
-			scanIP(*v, cols[i])
+			valconv.IPToAny(*v, cols[i])
 		case *string:
-			scanString(*v, cols[i])
+			valconv.StringToAny(*v, cols[i])
 		case []byte:
-			scanBytes(v, cols[i])
+			valconv.BytesToAny(v, cols[i])
 		}
 	}
 	return nil
@@ -92,7 +96,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			if v, err := machColumnDataInt16(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
 			} else {
-				if err = scanInt16(v, c); err != nil {
+				if err = valconv.Int16ToAny(v, c); err != nil {
 					return err
 				}
 			}
@@ -100,7 +104,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			if v, err := machColumnDataInt32(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
 			} else {
-				if err = scanInt32(v, c); err != nil {
+				if err = valconv.Int32ToAny(v, c); err != nil {
 					return err
 				}
 			}
@@ -108,7 +112,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			if v, err := machColumnDataInt64(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
 			} else {
-				if err = scanInt64(v, c); err != nil {
+				if err = valconv.Int64ToAny(v, c); err != nil {
 					return err
 				}
 			}
@@ -116,7 +120,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			if v, err := machColumnDataDateTime(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan datetime")
 			} else {
-				if err = scanDateTime(v, c); err != nil {
+				if err = valconv.DateTimeToAny(v, c); err != nil {
 					return err
 				}
 			}
@@ -124,7 +128,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			if v, err := machColumnDataFloat32(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan float32")
 			} else {
-				if err = scanFloat32(v, c); err != nil {
+				if err = valconv.Float32ToAny(v, c); err != nil {
 					return err
 				}
 			}
@@ -132,7 +136,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			if v, err := machColumnDataFloat64(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan float32")
 			} else {
-				if err = scanFloat64(v, c); err != nil {
+				if err = valconv.Float64ToAny(v, c); err != nil {
 					return err
 				}
 			}
@@ -140,7 +144,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			if v, err := machColumnDataIPv4(stmt, i); err != nil {
 				return errors.Wrap(err, "scal IPv4")
 			} else {
-				if err = scanIP(v, c); err != nil {
+				if err = valconv.IPToAny(v, c); err != nil {
 					return err
 				}
 			}
@@ -148,7 +152,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			if v, err := machColumnDataIPv6(stmt, i); err != nil {
 				return errors.Wrap(err, "scal IPv4")
 			} else {
-				if err = scanIP(v, c); err != nil {
+				if err = valconv.IPToAny(v, c); err != nil {
 					return err
 				}
 			}
@@ -156,7 +160,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			if v, err := machColumnDataString(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan string")
 			} else {
-				if err = scanString(v, c); err != nil {
+				if err = valconv.StringToAny(v, c); err != nil {
 					return err
 				}
 			}
@@ -164,7 +168,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			if v, err := machColumnDataBinary(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan binary")
 			} else {
-				if err = scanBytes(v, c); err != nil {
+				if err = valconv.BytesToAny(v, c); err != nil {
 					return err
 				}
 			}
@@ -175,6 +179,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 	return nil
 }
 
+/*
 func scanInt16(v int16, c any) error {
 	switch cv := c.(type) {
 	case *int:
@@ -304,3 +309,4 @@ func scanIP(v net.IP, c any) error {
 	}
 	return nil
 }
+*/

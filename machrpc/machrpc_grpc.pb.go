@@ -24,7 +24,10 @@ const _ = grpc.SupportPackageIsVersion7
 type MachbaseClient interface {
 	Exec(ctx context.Context, in *ExecRequest, opts ...grpc.CallOption) (*ExecResponse, error)
 	Append(ctx context.Context, opts ...grpc.CallOption) (Machbase_AppendClient, error)
+	QueryRow(ctx context.Context, in *QueryRowRequest, opts ...grpc.CallOption) (*QueryRowResponse, error)
 	Query(ctx context.Context, in *QueryRequest, opts ...grpc.CallOption) (*QueryResponse, error)
+	RowsNext(ctx context.Context, in *Rows, opts ...grpc.CallOption) (*RowsNextResponse, error)
+	RowsClose(ctx context.Context, in *Rows, opts ...grpc.CallOption) (*RowsCloseResponse, error)
 }
 
 type machbaseClient struct {
@@ -78,9 +81,36 @@ func (x *machbaseAppendClient) CloseAndRecv() (*AppendResponse, error) {
 	return m, nil
 }
 
+func (c *machbaseClient) QueryRow(ctx context.Context, in *QueryRowRequest, opts ...grpc.CallOption) (*QueryRowResponse, error) {
+	out := new(QueryRowResponse)
+	err := c.cc.Invoke(ctx, "/machrpc.Machbase/QueryRow", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *machbaseClient) Query(ctx context.Context, in *QueryRequest, opts ...grpc.CallOption) (*QueryResponse, error) {
 	out := new(QueryResponse)
 	err := c.cc.Invoke(ctx, "/machrpc.Machbase/Query", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *machbaseClient) RowsNext(ctx context.Context, in *Rows, opts ...grpc.CallOption) (*RowsNextResponse, error) {
+	out := new(RowsNextResponse)
+	err := c.cc.Invoke(ctx, "/machrpc.Machbase/RowsNext", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *machbaseClient) RowsClose(ctx context.Context, in *Rows, opts ...grpc.CallOption) (*RowsCloseResponse, error) {
+	out := new(RowsCloseResponse)
+	err := c.cc.Invoke(ctx, "/machrpc.Machbase/RowsClose", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +123,10 @@ func (c *machbaseClient) Query(ctx context.Context, in *QueryRequest, opts ...gr
 type MachbaseServer interface {
 	Exec(context.Context, *ExecRequest) (*ExecResponse, error)
 	Append(Machbase_AppendServer) error
+	QueryRow(context.Context, *QueryRowRequest) (*QueryRowResponse, error)
 	Query(context.Context, *QueryRequest) (*QueryResponse, error)
+	RowsNext(context.Context, *Rows) (*RowsNextResponse, error)
+	RowsClose(context.Context, *Rows) (*RowsCloseResponse, error)
 	mustEmbedUnimplementedMachbaseServer()
 }
 
@@ -107,8 +140,17 @@ func (UnimplementedMachbaseServer) Exec(context.Context, *ExecRequest) (*ExecRes
 func (UnimplementedMachbaseServer) Append(Machbase_AppendServer) error {
 	return status.Errorf(codes.Unimplemented, "method Append not implemented")
 }
+func (UnimplementedMachbaseServer) QueryRow(context.Context, *QueryRowRequest) (*QueryRowResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method QueryRow not implemented")
+}
 func (UnimplementedMachbaseServer) Query(context.Context, *QueryRequest) (*QueryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Query not implemented")
+}
+func (UnimplementedMachbaseServer) RowsNext(context.Context, *Rows) (*RowsNextResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RowsNext not implemented")
+}
+func (UnimplementedMachbaseServer) RowsClose(context.Context, *Rows) (*RowsCloseResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RowsClose not implemented")
 }
 func (UnimplementedMachbaseServer) mustEmbedUnimplementedMachbaseServer() {}
 
@@ -167,6 +209,24 @@ func (x *machbaseAppendServer) Recv() (*AppendRequest, error) {
 	return m, nil
 }
 
+func _Machbase_QueryRow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryRowRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachbaseServer).QueryRow(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/machrpc.Machbase/QueryRow",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachbaseServer).QueryRow(ctx, req.(*QueryRowRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Machbase_Query_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(QueryRequest)
 	if err := dec(in); err != nil {
@@ -185,6 +245,42 @@ func _Machbase_Query_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Machbase_RowsNext_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Rows)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachbaseServer).RowsNext(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/machrpc.Machbase/RowsNext",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachbaseServer).RowsNext(ctx, req.(*Rows))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Machbase_RowsClose_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Rows)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachbaseServer).RowsClose(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/machrpc.Machbase/RowsClose",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachbaseServer).RowsClose(ctx, req.(*Rows))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Machbase_ServiceDesc is the grpc.ServiceDesc for Machbase service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -197,8 +293,20 @@ var Machbase_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Machbase_Exec_Handler,
 		},
 		{
+			MethodName: "QueryRow",
+			Handler:    _Machbase_QueryRow_Handler,
+		},
+		{
 			MethodName: "Query",
 			Handler:    _Machbase_Query_Handler,
+		},
+		{
+			MethodName: "RowsNext",
+			Handler:    _Machbase_RowsNext_Handler,
+		},
+		{
+			MethodName: "RowsClose",
+			Handler:    _Machbase_RowsClose_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
