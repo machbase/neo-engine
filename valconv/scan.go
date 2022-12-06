@@ -55,6 +55,8 @@ func Int64ToAny(v int64, c any) error {
 		*cv = int64(v)
 	case *string:
 		*cv = strconv.Itoa(int(v))
+	case *time.Time:
+		*cv = time.Unix(0, v)
 	default:
 		return fmt.Errorf("Scan convert from INT64 to %T not supported", c)
 	}

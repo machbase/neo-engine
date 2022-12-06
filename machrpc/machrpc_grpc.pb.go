@@ -26,7 +26,7 @@ type MachbaseClient interface {
 	Append(ctx context.Context, opts ...grpc.CallOption) (Machbase_AppendClient, error)
 	QueryRow(ctx context.Context, in *QueryRowRequest, opts ...grpc.CallOption) (*QueryRowResponse, error)
 	Query(ctx context.Context, in *QueryRequest, opts ...grpc.CallOption) (*QueryResponse, error)
-	RowsNext(ctx context.Context, in *RowsHandle, opts ...grpc.CallOption) (*RowsNextResponse, error)
+	RowsFetch(ctx context.Context, in *RowsHandle, opts ...grpc.CallOption) (*RowsFetchResponse, error)
 	RowsClose(ctx context.Context, in *RowsHandle, opts ...grpc.CallOption) (*RowsCloseResponse, error)
 }
 
@@ -99,9 +99,9 @@ func (c *machbaseClient) Query(ctx context.Context, in *QueryRequest, opts ...gr
 	return out, nil
 }
 
-func (c *machbaseClient) RowsNext(ctx context.Context, in *RowsHandle, opts ...grpc.CallOption) (*RowsNextResponse, error) {
-	out := new(RowsNextResponse)
-	err := c.cc.Invoke(ctx, "/machrpc.Machbase/RowsNext", in, out, opts...)
+func (c *machbaseClient) RowsFetch(ctx context.Context, in *RowsHandle, opts ...grpc.CallOption) (*RowsFetchResponse, error) {
+	out := new(RowsFetchResponse)
+	err := c.cc.Invoke(ctx, "/machrpc.Machbase/RowsFetch", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ type MachbaseServer interface {
 	Append(Machbase_AppendServer) error
 	QueryRow(context.Context, *QueryRowRequest) (*QueryRowResponse, error)
 	Query(context.Context, *QueryRequest) (*QueryResponse, error)
-	RowsNext(context.Context, *RowsHandle) (*RowsNextResponse, error)
+	RowsFetch(context.Context, *RowsHandle) (*RowsFetchResponse, error)
 	RowsClose(context.Context, *RowsHandle) (*RowsCloseResponse, error)
 	mustEmbedUnimplementedMachbaseServer()
 }
@@ -146,8 +146,8 @@ func (UnimplementedMachbaseServer) QueryRow(context.Context, *QueryRowRequest) (
 func (UnimplementedMachbaseServer) Query(context.Context, *QueryRequest) (*QueryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Query not implemented")
 }
-func (UnimplementedMachbaseServer) RowsNext(context.Context, *RowsHandle) (*RowsNextResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RowsNext not implemented")
+func (UnimplementedMachbaseServer) RowsFetch(context.Context, *RowsHandle) (*RowsFetchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RowsFetch not implemented")
 }
 func (UnimplementedMachbaseServer) RowsClose(context.Context, *RowsHandle) (*RowsCloseResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RowsClose not implemented")
@@ -245,20 +245,20 @@ func _Machbase_Query_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Machbase_RowsNext_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Machbase_RowsFetch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RowsHandle)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MachbaseServer).RowsNext(ctx, in)
+		return srv.(MachbaseServer).RowsFetch(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/machrpc.Machbase/RowsNext",
+		FullMethod: "/machrpc.Machbase/RowsFetch",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MachbaseServer).RowsNext(ctx, req.(*RowsHandle))
+		return srv.(MachbaseServer).RowsFetch(ctx, req.(*RowsHandle))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -301,8 +301,8 @@ var Machbase_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Machbase_Query_Handler,
 		},
 		{
-			MethodName: "RowsNext",
-			Handler:    _Machbase_RowsNext_Handler,
+			MethodName: "RowsFetch",
+			Handler:    _Machbase_RowsFetch_Handler,
 		},
 		{
 			MethodName: "RowsClose",

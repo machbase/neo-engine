@@ -119,10 +119,10 @@ func (this *svr) HandleConn(ctx context.Context, s stats.ConnStats) {
 	if sessCtx, ok := ctx.(*sessionCtx); ok {
 		switch s.(type) {
 		case *stats.ConnBegin:
-			fmt.Printf("get connBegin: %v\n", sessCtx.Id)
+			// fmt.Printf("get connBegin: %v\n", sessCtx.Id)
 		case *stats.ConnEnd:
 			this.ctxMap.RemoveCb(sessCtx.Id, func(key string, v interface{}, exists bool) bool {
-				fmt.Printf("get connEnd: %v\n", sessCtx.Id)
+				// fmt.Printf("get connEnd: %v\n", sessCtx.Id)
 				return true
 			})
 		}
@@ -208,12 +208,13 @@ func (this *svr) Query(pctx context.Context, req *machrpc.QueryRequest) (*machrp
 	}
 
 	handle := strconv.FormatInt(atomic.AddInt64(&contextIdSerial, 1), 10)
+	// TODO leak detector
 	this.ctxMap.Set(handle, &rowsWrap{
 		id:   handle,
 		rows: realRows,
 		release: func() {
 			this.ctxMap.RemoveCb(handle, func(key string, v interface{}, exists bool) bool {
-				fmt.Printf("close rows: %v\n", handle)
+				// fmt.Printf("close rows: %v\n", handle)
 				realRows.Close()
 				return true
 			})
@@ -229,8 +230,8 @@ func (this *svr) Query(pctx context.Context, req *machrpc.QueryRequest) (*machrp
 	return rsp, nil
 }
 
-func (this *svr) RowsNext(ctx context.Context, rows *machrpc.RowsHandle) (*machrpc.RowsNextResponse, error) {
-	rsp := &machrpc.RowsNextResponse{}
+func (this *svr) RowsFetch(ctx context.Context, rows *machrpc.RowsHandle) (*machrpc.RowsFetchResponse, error) {
+	rsp := &machrpc.RowsFetchResponse{}
 	tick := time.Now()
 	defer func() {
 		rsp.Elapse = time.Since(tick).String()
@@ -247,20 +248,20 @@ func (this *svr) RowsNext(ctx context.Context, rows *machrpc.RowsHandle) (*machr
 		return rsp, nil
 	}
 
-	if !rowsWrap.rows.Next() {
-		rsp.Success = false
-		rsp.Reason = "no rows"
-		return rsp, nil
-	}
-
-	values := make([]any, rowsWrap.rows.ColumnCount())
-
-	err := rowsWrap.rows.Scan(values...)
+	values, next, err := rowsWrap.rows.Fetch()
 	if err != nil {
 		rsp.Success = false
 		rsp.Reason = err.Error()
+		rsp.HasNoRows = !next
 		return rsp, nil
 	}
+	if !next {
+		rsp.Success = true
+		rsp.Reason = "success"
+		rsp.HasNoRows = true
+		return rsp, nil
+	}
+
 	rsp.Values, err = pbconv.ConvertAnyToPb(values)
 	if err != nil {
 		rsp.Success = false

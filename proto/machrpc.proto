@@ -11,7 +11,7 @@ service Machbase {
     rpc Append(stream AppendRequest) returns(AppendResponse) {}
     rpc QueryRow(QueryRowRequest) returns(QueryRowResponse) {}
     rpc Query(QueryRequest) returns(QueryResponse) {}
-    rpc RowsNext(RowsHandle) returns(RowsNextResponse) {}
+    rpc RowsFetch(RowsHandle) returns(RowsFetchResponse) {}
     rpc RowsClose(RowsHandle) returns (RowsCloseResponse) {}
 }
 
@@ -50,11 +50,12 @@ message RowsHandle {
     string handle = 1;
 }
 
-message RowsNextResponse {
+message RowsFetchResponse {
     bool success = 1;
     string reason = 2;
     string elapse = 3;
-    repeated google.protobuf.Any values = 4;
+    bool hasNoRows = 4;
+    repeated google.protobuf.Any values = 5;
 }
 
 message RowsCloseResponse {

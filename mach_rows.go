@@ -61,13 +61,8 @@ func (row *Row) Scan(cols ...any) error {
 }
 
 type Rows struct {
-	stmt        unsafe.Pointer
-	sqlText     string
-	columnCount int
-}
-
-func (this *Rows) ColumnCount() int {
-	return this.columnCount
+	stmt    unsafe.Pointer
+	sqlText string
 }
 
 func (this *Rows) Close() {
@@ -76,6 +71,59 @@ func (this *Rows) Close() {
 		this.stmt = nil
 	}
 	this.sqlText = ""
+}
+
+// internal use only from machrpcserver
+func (this *Rows) Fetch() ([]any, bool, error) {
+	next, err := machFetch(this.stmt)
+	if err != nil {
+		return nil, next, errors.Wrap(err, "Fetch")
+	}
+	if !next {
+		return nil, false, nil
+	}
+
+	colCount, err := machColumnCount(this.stmt)
+	if err != nil {
+		return nil, next, err
+	}
+
+	values := make([]any, colCount)
+	for i := range values {
+		typ, _, err := machColumnType(this.stmt, i)
+		if err != nil {
+			return nil, next, errors.Wrap(err, "Fetch")
+		}
+		switch typ {
+		case 0: // MACH_DATA_TYPE_INT16
+			values[i] = new(int)
+		case 1: // MACH_DATA_TYPE_INT32
+			values[i] = new(int32)
+		case 2: // MACH_DATA_TYPE_INT64
+			values[i] = new(int64)
+		case 3: // MACH_DATA_TYPE_DATETIME
+			values[i] = new(time.Time)
+		case 4: // MACH_DATA_TYPE_FLOAT
+			values[i] = new(float32)
+		case 5: // MACH_DATA_TYPE_DOUBLE
+			values[i] = new(float64)
+		case 6: // MACH_DATA_TYPE_IPV4
+			values[i] = new(net.IP)
+		case 7: // MACH_DATA_TYPE_IPV6
+			values[i] = new(net.IP)
+		case 8: // MACH_DATA_TYPE_STRING
+			values[i] = new(string)
+		case 9: // MACH_DATA_TYPE_BINARY
+			values[i] = []byte{}
+		default:
+			return nil, next, fmt.Errorf("Fetch unsupported type %T", typ)
+		}
+	}
+	err = scan(this.stmt, values...)
+	if err != nil {
+		return nil, next, errors.Wrap(err, "Fetch")
+	}
+	return values, next, nil
 }
 
 func (this *Rows) Next() bool {
