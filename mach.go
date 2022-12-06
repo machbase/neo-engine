@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"time"
 	"unsafe"
@@ -42,6 +43,13 @@ func New() *Database {
 }
 
 func (this *Database) Startup(timeout time.Duration) error {
+	// machbase startup 과정에서 현재 디렉터리를 HOME으로 변경하는데,
+	// application의 Working directory를 유지하기 위해 chdir()을 호출한다.
+	cwd, _ := os.Getwd()
+	defer func() {
+		os.Chdir(cwd)
+	}()
+
 	err := startup0(&this.handle, timeout)
 	if err == nil {
 		singletonHandle = this.handle
