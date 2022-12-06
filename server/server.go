@@ -1,18 +1,23 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/machbase/booter"
+	"github.com/machbase/cemlib/ginutil"
 	"github.com/machbase/cemlib/logging"
 	mach "github.com/machbase/dbms-mach-go"
 	"github.com/machbase/dbms-mach-go/machrpc"
-	"github.com/machbase/dbms-mach-go/server/machrpcsvr"
+	"github.com/machbase/dbms-mach-go/server/httpsvr"
+	"github.com/machbase/dbms-mach-go/server/rpcsvr"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -25,6 +30,10 @@ func init() {
 			Listeners:      []string{"unix://./machsvr.sock"},
 			MaxRecvMsgSize: 4,
 			MaxSendMsgSize: 4,
+		},
+		Http: HttpConfig{
+			Listeners: []string{},
+			Prefix:    "/db",
 		},
 	}
 	booter.Register(
@@ -45,6 +54,7 @@ type Config struct {
 	MachbaseHome   string
 	StartupTimeout time.Duration
 	Grpc           GrpcConfig
+	Http           HttpConfig
 }
 
 type GrpcConfig struct {
@@ -53,11 +63,17 @@ type GrpcConfig struct {
 	MaxSendMsgSize int
 }
 
+type HttpConfig struct {
+	Listeners []string
+	Prefix    string
+}
+
 type svr struct {
 	conf  *Config
 	log   logging.Log
 	db    *mach.Database
 	grpcd *grpc.Server
+	httpd *http.Server
 }
 
 const TagTableName = "tagdata"
@@ -97,9 +113,9 @@ func (this *svr) Start() error {
 		return errors.Wrap(err, "alter log level")
 	}
 
+	// grpc server
 	if len(this.conf.Grpc.Listeners) > 0 {
-		// grpc server
-		machrpcSvr, err := machrpcsvr.New(&machrpcsvr.Config{})
+		machrpcSvr, err := rpcsvr.New(&rpcsvr.Config{})
 		if err != nil {
 			return errors.Wrap(err, "grpc handler")
 		}
@@ -120,16 +136,50 @@ func (this *svr) Start() error {
 			if err != nil {
 				return errors.Wrap(err, "cannot start with failed listener")
 			}
-			this.log.Infof("Listen %s", listen)
+			this.log.Infof("gRPC Listen %s", listen)
 
 			// start go server
 			go this.grpcd.Serve(lsnr)
+		}
+	}
+
+	// http server
+	if len(this.conf.Http.Listeners) > 0 {
+		machHttpSvr, err := httpsvr.New(&httpsvr.Config{Prefix: this.conf.Http.Prefix})
+		if err != nil {
+			return errors.Wrap(err, "http handler")
+		}
+
+		gin.SetMode(gin.ReleaseMode)
+		r := gin.New()
+		r.Use(ginutil.RecoveryWithLogging(this.log))
+		r.Use(ginutil.HttpLogger("http-log"))
+
+		machHttpSvr.Route(r)
+
+		this.httpd = &http.Server{}
+		this.httpd.Handler = r
+
+		for _, listen := range this.conf.Http.Listeners {
+			lsnr, err := makeListener(listen)
+			if err != nil {
+				return errors.Wrap(err, "cannot start with failed listener")
+			}
+			this.log.Infof("HTTP Listen %s", listen)
+
+			go this.httpd.Serve(lsnr)
 		}
 	}
 	return nil
 }
 
 func (this *svr) Stop() {
+	if this.httpd != nil {
+		ctx, cancelFunc := context.WithTimeout(context.Background(), 3*time.Second)
+		this.httpd.Shutdown(ctx)
+		cancelFunc()
+	}
+
 	if this.grpcd != nil {
 		this.grpcd.Stop()
 	}

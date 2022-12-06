@@ -1,4 +1,4 @@
-package machrpcsvr
+package rpcsvr
 
 import (
 	"context"
