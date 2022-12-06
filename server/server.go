@@ -19,10 +19,13 @@ import (
 
 func init() {
 	defaultConf := Config{
-		Listeners:      []string{"unix://./machsvr.sock"},
-		MaxRecvMsgSize: 4,
-		MaxSendMsgSize: 4,
+		MachbaseHome:   ".",
 		StartupTimeout: 5 * time.Second,
+		Grpc: GrpcConfig{
+			Listeners:      []string{"unix://./machsvr.sock"},
+			MaxRecvMsgSize: 4,
+			MaxSendMsgSize: 4,
+		},
 	}
 	booter.Register(
 		"github.com/machbase/dbms-mach-go/server",
@@ -40,11 +43,14 @@ func init() {
 
 type Config struct {
 	MachbaseHome   string
+	StartupTimeout time.Duration
+	Grpc           GrpcConfig
+}
+
+type GrpcConfig struct {
 	Listeners      []string
 	MaxRecvMsgSize int
 	MaxSendMsgSize int
-
-	StartupTimeout time.Duration
 }
 
 type svr struct {
@@ -77,8 +83,6 @@ func (this *svr) Start() error {
 		}
 	}
 
-	// TODO db.Startup() 중에 os.Cwd를 machbasehome으로 변경하므로 application 전체에서
-	// 상대경로를 사용할 수 없게 된다.
 	this.db = mach.New()
 	if this.db == nil {
 		return errors.New("database instance failed")
@@ -93,30 +97,34 @@ func (this *svr) Start() error {
 		return errors.Wrap(err, "alter log level")
 	}
 
-	// grpc server
-	machrpcSvr, err := machrpcsvr.New(&machrpcsvr.Config{})
-
-	// ingest gRPC options
-	grpcOpt := []grpc.ServerOption{
-		grpc.MaxRecvMsgSize(this.conf.MaxRecvMsgSize * 1024 * 1024),
-		grpc.MaxSendMsgSize(this.conf.MaxSendMsgSize * 1024 * 1024),
-		grpc.StatsHandler(machrpcSvr),
-	}
-
-	// create grpc server
-	this.grpcd = grpc.NewServer(grpcOpt...)
-	machrpc.RegisterMachbaseServer(this.grpcd, machrpcSvr)
-
-	// listeners
-	for _, listen := range this.conf.Listeners {
-		lsnr, err := makeListener(listen)
+	if len(this.conf.Grpc.Listeners) > 0 {
+		// grpc server
+		machrpcSvr, err := machrpcsvr.New(&machrpcsvr.Config{})
 		if err != nil {
-			return errors.Wrap(err, "cannot start with failed listener")
+			return errors.Wrap(err, "grpc handler")
 		}
-		this.log.Infof("Listen %s", listen)
+		// ingest gRPC options
+		grpcOpt := []grpc.ServerOption{
+			grpc.MaxRecvMsgSize(this.conf.Grpc.MaxRecvMsgSize * 1024 * 1024),
+			grpc.MaxSendMsgSize(this.conf.Grpc.MaxSendMsgSize * 1024 * 1024),
+			grpc.StatsHandler(machrpcSvr),
+		}
 
-		// start go server
-		go this.grpcd.Serve(lsnr)
+		// create grpc server
+		this.grpcd = grpc.NewServer(grpcOpt...)
+		machrpc.RegisterMachbaseServer(this.grpcd, machrpcSvr)
+
+		// listeners
+		for _, listen := range this.conf.Grpc.Listeners {
+			lsnr, err := makeListener(listen)
+			if err != nil {
+				return errors.Wrap(err, "cannot start with failed listener")
+			}
+			this.log.Infof("Listen %s", listen)
+
+			// start go server
+			go this.grpcd.Serve(lsnr)
+		}
 	}
 	return nil
 }

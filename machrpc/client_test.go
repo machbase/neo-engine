@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestConnect(t *testing.T) {
+func TestGrpc(t *testing.T) {
 	const dropTable = false
 	var tableExists bool
 	var count int
@@ -76,7 +76,7 @@ func TestConnect(t *testing.T) {
 	row = client.QueryRow("select count(*) from " + tableName)
 	err = row.Scan(&count)
 	require.Nil(t, err)
-	t.Logf("count1 = %d", count)
+	t.Logf("count = %d", count)
 
 	id, _ := idgen.NewV6()
 	client.Exec("insert into "+tableName+" (name, time, value, id) values(?, ?, ?, ?)",
@@ -84,14 +84,6 @@ func TestConnect(t *testing.T) {
 		time.Now(),
 		0.1001+0.1001*float32(count),
 		id.String())
-	row = client.QueryRow("select count(*) from tagdata where id > ?", "")
-	if row.Err() != nil {
-		fmt.Printf("ERR> %s\n", row.Err().Error())
-	}
-	err = row.Scan(&count)
-	require.Nil(t, err)
-	t.Logf("count2 = %d", count)
-	require.Nil(t, err)
 
 	////////////
 	// Append
@@ -123,4 +115,15 @@ func TestConnect(t *testing.T) {
 		}
 		t.Logf("==> %v %v %v %v", name, ts, value, id)
 	}
+
+	////////////
+	// QueryRow
+	row = client.QueryRow("select count(*) from tagdata where id > ?", "")
+	if row.Err() != nil {
+		fmt.Printf("ERR> %s\n", row.Err().Error())
+	}
+	err = row.Scan(&count)
+	require.Nil(t, err)
+	t.Logf("count = %d", count)
+	require.Nil(t, err)
 }

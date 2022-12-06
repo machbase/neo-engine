@@ -359,26 +359,26 @@ func (this *svr) Append(stream machrpc.Machbase_AppendServer) error {
 		if wrap == nil {
 			appenderWrapVal, exists := this.ctxMap.Get(m.Handle)
 			if !exists {
-				fmt.Println("ERR>>", "not found", m.Handle)
+				// fmt.Println("ERR>>", "not found", m.Handle)
 				return fmt.Errorf("handle '%s' not found", m.Handle)
 			}
 			appenderWrap, ok := appenderWrapVal.(*appenderWrap)
 			if !ok {
-				fmt.Println("ERR>>", "invalid", m.Handle)
+				// fmt.Println("ERR>>", "invalid", m.Handle)
 				return fmt.Errorf("handle '%s' is not valid", m.Handle)
 			}
 			wrap = appenderWrap
 		}
 
 		if wrap.id != m.Handle {
-			fmt.Println("ERR>>", "handle changed", m.Handle)
+			// fmt.Println("ERR>>", "handle changed", m.Handle)
 			return fmt.Errorf("not allowed changing handle in a stream")
 		}
 
 		values := pbconv.ConvertPbToAny(m.Params)
 		err = wrap.appender.Append(values...)
 		if err != nil {
-			fmt.Println("ERR>>", "append", err.Error())
+			// fmt.Println("ERR>>", "append", err.Error())
 			return stream.SendAndClose(&machrpc.AppendDone{
 				Success: false,
 				Reason:  err.Error(),
