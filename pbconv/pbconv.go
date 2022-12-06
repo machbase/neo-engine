@@ -14,6 +14,10 @@ func ConvertAnyToPb(params []any) ([]*anypb.Any, error) {
 	pbparams := make([]*anypb.Any, len(params))
 	var err error
 	for i, p := range params {
+		if p == nil {
+			pbparams[i] = nil
+			continue
+		}
 		switch v := p.(type) {
 		case *int:
 			pbparams[i], err = anypb.New(wrapperspb.Int32(int32(*v)))
@@ -100,6 +104,8 @@ func ConvertPbToAny(pbvals []*anypb.Any) []any {
 			var v wrapperspb.UInt64Value
 			pbval.UnmarshalTo(&v)
 			value = v.Value
+		case "":
+			value = nil
 		default:
 			value = pbval
 		}

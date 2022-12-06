@@ -1,7 +1,6 @@
 package machrpc_test
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -23,7 +22,7 @@ func TestConnect(t *testing.T) {
 	require.Nil(t, err)
 	defer client.Disconnect()
 
-	row := client.QueryRowContext(context.TODO(), "select count(*) from M$SYS_TABLES where name = ?", tableName)
+	row := client.QueryRow("select count(*) from M$SYS_TABLES where name = ?", tableName)
 	require.NotNil(t, row)
 	require.Nil(t, row.Err())
 
@@ -33,7 +32,7 @@ func TestConnect(t *testing.T) {
 		t.Logf("table '%s' exists", tableName)
 		if dropTable {
 			t.Logf("drop table '%s'", tableName)
-			err = client.ExecContext(context.TODO(), fmt.Sprintf("drop table %s", tableName))
+			err = client.Exec("drop table " + tableName)
 			if err != nil {
 				t.Logf("drop table: %s", err.Error())
 			}
@@ -41,6 +40,9 @@ func TestConnect(t *testing.T) {
 			tableExists = false
 		}
 	}
+
+	////////////
+	// Exec
 
 	if !tableExists {
 		t.Logf("table '%s' doesn't exist, create new one", tableName)
@@ -59,19 +61,21 @@ func TestConnect(t *testing.T) {
 				payload         json
 			)`, tableName)
 
-		err := client.ExecContext(context.TODO(), sqlText)
+		err := client.Exec(sqlText)
 		require.Nil(t, err)
 
-		err = client.ExecContext(context.TODO(), fmt.Sprintf("CREATE INDEX %s_id_idx ON %s (id)", tableName, tableName))
+		err = client.Exec(fmt.Sprintf("CREATE INDEX %s_id_idx ON %s (id)", tableName, tableName))
 		require.Nil(t, err)
 	}
 
 	idgen := uuid.NewGen()
 
-	row = client.QueryRowContext(context.TODO(), "select count(*) from "+tableName)
+	////////////
+	// QueryRow
+	row = client.QueryRow("select count(*) from " + tableName)
 	err = row.Scan(&count)
 	require.Nil(t, err)
-	t.Logf("count = %d", count)
+	t.Logf("count1 = %d", count)
 
 	id, _ := idgen.NewV6()
 	client.Exec("insert into "+tableName+" (name, time, value, id) values(?, ?, ?, ?)",
@@ -79,13 +83,31 @@ func TestConnect(t *testing.T) {
 		time.Now(),
 		0.1001+0.1001*float32(count),
 		id.String())
-	row = client.QueryRowContext(context.TODO(), "select count(*) from tagdata where id > ?", "")
+	row = client.QueryRow("select count(*) from tagdata where id > ?", "")
 	if row.Err() != nil {
 		fmt.Printf("ERR> %s\n", row.Err().Error())
 	}
+	err = row.Scan(&count)
+	require.Nil(t, err)
+	t.Logf("count2 = %d", count)
 	require.Nil(t, err)
 
-	rows, err := client.QueryContext(context.TODO(), "select name, time, value, id from "+tableName+" where id > ?", "")
+	////////////
+	// Append
+	appender, err := client.Appender(tableName)
+	require.Nil(t, err)
+	for i := 0; i < 10; i++ {
+		id, _ := idgen.NewV6()
+		err := appender.Append(
+			fmt.Sprintf("name-%2d", count+2+i), time.Now(), 0.1001+0.1001*float32(count+1+i), "float64", nil, nil, id.String(),
+			"pname", 0, nil)
+		require.Nil(t, err)
+	}
+	appender.Close()
+
+	////////////
+	// Query
+	rows, err := client.Query("select name, time, value, id from "+tableName+" where id > ?", "")
 	require.Nil(t, err)
 	defer rows.Close()
 	for rows.Next() {

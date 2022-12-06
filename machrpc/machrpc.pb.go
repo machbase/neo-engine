@@ -26,8 +26,8 @@ type ExecRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Sql    string     `protobuf:"bytes,1,opt,name=Sql,proto3" json:"Sql,omitempty"`
-	Params []*any.Any `protobuf:"bytes,2,rep,name=Params,proto3" json:"Params,omitempty"`
+	Sql    string     `protobuf:"bytes,1,opt,name=sql,proto3" json:"sql,omitempty"`
+	Params []*any.Any `protobuf:"bytes,2,rep,name=params,proto3" json:"params,omitempty"`
 }
 
 func (x *ExecRequest) Reset() {
@@ -139,14 +139,16 @@ func (x *ExecResponse) GetElapse() string {
 	return ""
 }
 
-type AppendRequest struct {
+type AppenderRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	TableName string `protobuf:"bytes,1,opt,name=tableName,proto3" json:"tableName,omitempty"`
 }
 
-func (x *AppendRequest) Reset() {
-	*x = AppendRequest{}
+func (x *AppenderRequest) Reset() {
+	*x = AppenderRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_machrpc_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -154,13 +156,13 @@ func (x *AppendRequest) Reset() {
 	}
 }
 
-func (x *AppendRequest) String() string {
+func (x *AppenderRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AppendRequest) ProtoMessage() {}
+func (*AppenderRequest) ProtoMessage() {}
 
-func (x *AppendRequest) ProtoReflect() protoreflect.Message {
+func (x *AppenderRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_machrpc_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -172,19 +174,31 @@ func (x *AppendRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AppendRequest.ProtoReflect.Descriptor instead.
-func (*AppendRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use AppenderRequest.ProtoReflect.Descriptor instead.
+func (*AppenderRequest) Descriptor() ([]byte, []int) {
 	return file_machrpc_proto_rawDescGZIP(), []int{2}
 }
 
-type AppendResponse struct {
+func (x *AppenderRequest) GetTableName() string {
+	if x != nil {
+		return x.TableName
+	}
+	return ""
+}
+
+type AppenderResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	Success bool   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Reason  string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	Elapse  string `protobuf:"bytes,3,opt,name=elapse,proto3" json:"elapse,omitempty"`
+	Handle  string `protobuf:"bytes,4,opt,name=handle,proto3" json:"handle,omitempty"`
 }
 
-func (x *AppendResponse) Reset() {
-	*x = AppendResponse{}
+func (x *AppenderResponse) Reset() {
+	*x = AppenderResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_machrpc_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -192,13 +206,13 @@ func (x *AppendResponse) Reset() {
 	}
 }
 
-func (x *AppendResponse) String() string {
+func (x *AppenderResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AppendResponse) ProtoMessage() {}
+func (*AppenderResponse) ProtoMessage() {}
 
-func (x *AppendResponse) ProtoReflect() protoreflect.Message {
+func (x *AppenderResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_machrpc_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -210,9 +224,155 @@ func (x *AppendResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AppendResponse.ProtoReflect.Descriptor instead.
-func (*AppendResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use AppenderResponse.ProtoReflect.Descriptor instead.
+func (*AppenderResponse) Descriptor() ([]byte, []int) {
 	return file_machrpc_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AppenderResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *AppenderResponse) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *AppenderResponse) GetElapse() string {
+	if x != nil {
+		return x.Elapse
+	}
+	return ""
+}
+
+func (x *AppenderResponse) GetHandle() string {
+	if x != nil {
+		return x.Handle
+	}
+	return ""
+}
+
+type AppendData struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Handle string     `protobuf:"bytes,1,opt,name=handle,proto3" json:"handle,omitempty"`
+	Params []*any.Any `protobuf:"bytes,2,rep,name=params,proto3" json:"params,omitempty"`
+}
+
+func (x *AppendData) Reset() {
+	*x = AppendData{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_machrpc_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AppendData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AppendData) ProtoMessage() {}
+
+func (x *AppendData) ProtoReflect() protoreflect.Message {
+	mi := &file_machrpc_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AppendData.ProtoReflect.Descriptor instead.
+func (*AppendData) Descriptor() ([]byte, []int) {
+	return file_machrpc_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AppendData) GetHandle() string {
+	if x != nil {
+		return x.Handle
+	}
+	return ""
+}
+
+func (x *AppendData) GetParams() []*any.Any {
+	if x != nil {
+		return x.Params
+	}
+	return nil
+}
+
+type AppendDone struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Success bool   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Reason  string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	Elapse  string `protobuf:"bytes,3,opt,name=elapse,proto3" json:"elapse,omitempty"`
+}
+
+func (x *AppendDone) Reset() {
+	*x = AppendDone{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_machrpc_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AppendDone) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AppendDone) ProtoMessage() {}
+
+func (x *AppendDone) ProtoReflect() protoreflect.Message {
+	mi := &file_machrpc_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AppendDone.ProtoReflect.Descriptor instead.
+func (*AppendDone) Descriptor() ([]byte, []int) {
+	return file_machrpc_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AppendDone) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *AppendDone) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *AppendDone) GetElapse() string {
+	if x != nil {
+		return x.Elapse
+	}
+	return ""
 }
 
 type QueryRequest struct {
@@ -227,7 +387,7 @@ type QueryRequest struct {
 func (x *QueryRequest) Reset() {
 	*x = QueryRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_machrpc_proto_msgTypes[4]
+		mi := &file_machrpc_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -240,7 +400,7 @@ func (x *QueryRequest) String() string {
 func (*QueryRequest) ProtoMessage() {}
 
 func (x *QueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_machrpc_proto_msgTypes[4]
+	mi := &file_machrpc_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -253,7 +413,7 @@ func (x *QueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryRequest.ProtoReflect.Descriptor instead.
 func (*QueryRequest) Descriptor() ([]byte, []int) {
-	return file_machrpc_proto_rawDescGZIP(), []int{4}
+	return file_machrpc_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *QueryRequest) GetSql() string {
@@ -284,7 +444,7 @@ type QueryResponse struct {
 func (x *QueryResponse) Reset() {
 	*x = QueryResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_machrpc_proto_msgTypes[5]
+		mi := &file_machrpc_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -297,7 +457,7 @@ func (x *QueryResponse) String() string {
 func (*QueryResponse) ProtoMessage() {}
 
 func (x *QueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_machrpc_proto_msgTypes[5]
+	mi := &file_machrpc_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -310,7 +470,7 @@ func (x *QueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryResponse.ProtoReflect.Descriptor instead.
 func (*QueryResponse) Descriptor() ([]byte, []int) {
-	return file_machrpc_proto_rawDescGZIP(), []int{5}
+	return file_machrpc_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *QueryResponse) GetSuccess() bool {
@@ -352,7 +512,7 @@ type RowsHandle struct {
 func (x *RowsHandle) Reset() {
 	*x = RowsHandle{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_machrpc_proto_msgTypes[6]
+		mi := &file_machrpc_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -365,7 +525,7 @@ func (x *RowsHandle) String() string {
 func (*RowsHandle) ProtoMessage() {}
 
 func (x *RowsHandle) ProtoReflect() protoreflect.Message {
-	mi := &file_machrpc_proto_msgTypes[6]
+	mi := &file_machrpc_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -378,7 +538,7 @@ func (x *RowsHandle) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RowsHandle.ProtoReflect.Descriptor instead.
 func (*RowsHandle) Descriptor() ([]byte, []int) {
-	return file_machrpc_proto_rawDescGZIP(), []int{6}
+	return file_machrpc_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *RowsHandle) GetHandle() string {
@@ -403,7 +563,7 @@ type RowsFetchResponse struct {
 func (x *RowsFetchResponse) Reset() {
 	*x = RowsFetchResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_machrpc_proto_msgTypes[7]
+		mi := &file_machrpc_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -416,7 +576,7 @@ func (x *RowsFetchResponse) String() string {
 func (*RowsFetchResponse) ProtoMessage() {}
 
 func (x *RowsFetchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_machrpc_proto_msgTypes[7]
+	mi := &file_machrpc_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -429,7 +589,7 @@ func (x *RowsFetchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RowsFetchResponse.ProtoReflect.Descriptor instead.
 func (*RowsFetchResponse) Descriptor() ([]byte, []int) {
-	return file_machrpc_proto_rawDescGZIP(), []int{7}
+	return file_machrpc_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *RowsFetchResponse) GetSuccess() bool {
@@ -480,7 +640,7 @@ type RowsCloseResponse struct {
 func (x *RowsCloseResponse) Reset() {
 	*x = RowsCloseResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_machrpc_proto_msgTypes[8]
+		mi := &file_machrpc_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -493,7 +653,7 @@ func (x *RowsCloseResponse) String() string {
 func (*RowsCloseResponse) ProtoMessage() {}
 
 func (x *RowsCloseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_machrpc_proto_msgTypes[8]
+	mi := &file_machrpc_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -506,7 +666,7 @@ func (x *RowsCloseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RowsCloseResponse.ProtoReflect.Descriptor instead.
 func (*RowsCloseResponse) Descriptor() ([]byte, []int) {
-	return file_machrpc_proto_rawDescGZIP(), []int{8}
+	return file_machrpc_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *RowsCloseResponse) GetSuccess() bool {
@@ -542,7 +702,7 @@ type QueryRowRequest struct {
 func (x *QueryRowRequest) Reset() {
 	*x = QueryRowRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_machrpc_proto_msgTypes[9]
+		mi := &file_machrpc_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -555,7 +715,7 @@ func (x *QueryRowRequest) String() string {
 func (*QueryRowRequest) ProtoMessage() {}
 
 func (x *QueryRowRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_machrpc_proto_msgTypes[9]
+	mi := &file_machrpc_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -568,7 +728,7 @@ func (x *QueryRowRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryRowRequest.ProtoReflect.Descriptor instead.
 func (*QueryRowRequest) Descriptor() ([]byte, []int) {
-	return file_machrpc_proto_rawDescGZIP(), []int{9}
+	return file_machrpc_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *QueryRowRequest) GetSql() string {
@@ -599,7 +759,7 @@ type QueryRowResponse struct {
 func (x *QueryRowResponse) Reset() {
 	*x = QueryRowResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_machrpc_proto_msgTypes[10]
+		mi := &file_machrpc_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -612,7 +772,7 @@ func (x *QueryRowResponse) String() string {
 func (*QueryRowResponse) ProtoMessage() {}
 
 func (x *QueryRowResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_machrpc_proto_msgTypes[10]
+	mi := &file_machrpc_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -625,7 +785,7 @@ func (x *QueryRowResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryRowResponse.ProtoReflect.Descriptor instead.
 func (*QueryRowResponse) Descriptor() ([]byte, []int) {
-	return file_machrpc_proto_rawDescGZIP(), []int{10}
+	return file_machrpc_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *QueryRowResponse) GetSuccess() bool {
@@ -663,18 +823,37 @@ var file_machrpc_proto_rawDesc = []byte{
 	0x07, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x1a, 0x19, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65,
 	0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x61, 0x6e, 0x79, 0x2e, 0x70, 0x72,
 	0x6f, 0x74, 0x6f, 0x22, 0x4d, 0x0a, 0x0b, 0x45, 0x78, 0x65, 0x63, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x53, 0x71, 0x6c, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x03, 0x53, 0x71, 0x6c, 0x12, 0x2c, 0x0a, 0x06, 0x50, 0x61, 0x72, 0x61, 0x6d, 0x73, 0x18, 0x02,
+	0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x73, 0x71, 0x6c, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x03, 0x73, 0x71, 0x6c, 0x12, 0x2c, 0x0a, 0x06, 0x70, 0x61, 0x72, 0x61, 0x6d, 0x73, 0x18, 0x02,
 	0x20, 0x03, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x41, 0x6e, 0x79, 0x52, 0x06, 0x50, 0x61, 0x72, 0x61,
+	0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x41, 0x6e, 0x79, 0x52, 0x06, 0x70, 0x61, 0x72, 0x61,
 	0x6d, 0x73, 0x22, 0x58, 0x0a, 0x0c, 0x45, 0x78, 0x65, 0x63, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
 	0x73, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20,
 	0x01, 0x28, 0x08, 0x52, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x12, 0x16, 0x0a, 0x06,
 	0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x72, 0x65,
 	0x61, 0x73, 0x6f, 0x6e, 0x12, 0x16, 0x0a, 0x06, 0x65, 0x6c, 0x61, 0x70, 0x73, 0x65, 0x18, 0x03,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x65, 0x6c, 0x61, 0x70, 0x73, 0x65, 0x22, 0x0f, 0x0a, 0x0d,
-	0x41, 0x70, 0x70, 0x65, 0x6e, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x10, 0x0a,
-	0x0e, 0x41, 0x70, 0x70, 0x65, 0x6e, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x65, 0x6c, 0x61, 0x70, 0x73, 0x65, 0x22, 0x2f, 0x0a, 0x0f,
+	0x41, 0x70, 0x70, 0x65, 0x6e, 0x64, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
+	0x1c, 0x0a, 0x09, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x09, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x22, 0x74, 0x0a,
+	0x10, 0x41, 0x70, 0x70, 0x65, 0x6e, 0x64, 0x65, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x12, 0x18, 0x0a, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x08, 0x52, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x12, 0x16, 0x0a, 0x06, 0x72,
+	0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x72, 0x65, 0x61,
+	0x73, 0x6f, 0x6e, 0x12, 0x16, 0x0a, 0x06, 0x65, 0x6c, 0x61, 0x70, 0x73, 0x65, 0x18, 0x03, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x06, 0x65, 0x6c, 0x61, 0x70, 0x73, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x68,
+	0x61, 0x6e, 0x64, 0x6c, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x61, 0x6e,
+	0x64, 0x6c, 0x65, 0x22, 0x52, 0x0a, 0x0a, 0x41, 0x70, 0x70, 0x65, 0x6e, 0x64, 0x44, 0x61, 0x74,
+	0x61, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x61, 0x6e, 0x64, 0x6c, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x06, 0x68, 0x61, 0x6e, 0x64, 0x6c, 0x65, 0x12, 0x2c, 0x0a, 0x06, 0x70, 0x61, 0x72,
+	0x61, 0x6d, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x67, 0x6f, 0x6f, 0x67,
+	0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x41, 0x6e, 0x79, 0x52,
+	0x06, 0x70, 0x61, 0x72, 0x61, 0x6d, 0x73, 0x22, 0x56, 0x0a, 0x0a, 0x41, 0x70, 0x70, 0x65, 0x6e,
+	0x64, 0x44, 0x6f, 0x6e, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x12,
+	0x16, 0x0a, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x12, 0x16, 0x0a, 0x06, 0x65, 0x6c, 0x61, 0x70, 0x73,
+	0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x65, 0x6c, 0x61, 0x70, 0x73, 0x65, 0x22,
 	0x4e, 0x0a, 0x0c, 0x51, 0x75, 0x65, 0x72, 0x79, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
 	0x10, 0x0a, 0x03, 0x73, 0x71, 0x6c, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x73, 0x71,
 	0x6c, 0x12, 0x2c, 0x0a, 0x06, 0x70, 0x61, 0x72, 0x61, 0x6d, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28,
@@ -722,34 +901,38 @@ var file_machrpc_proto_rawDesc = []byte{
 	0x70, 0x73, 0x65, 0x12, 0x2c, 0x0a, 0x06, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x18, 0x04, 0x20,
 	0x03, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f,
 	0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x41, 0x6e, 0x79, 0x52, 0x06, 0x76, 0x61, 0x6c, 0x75, 0x65,
-	0x73, 0x32, 0xfd, 0x02, 0x0a, 0x08, 0x4d, 0x61, 0x63, 0x68, 0x62, 0x61, 0x73, 0x65, 0x12, 0x35,
+	0x73, 0x32, 0xb9, 0x03, 0x0a, 0x08, 0x4d, 0x61, 0x63, 0x68, 0x62, 0x61, 0x73, 0x65, 0x12, 0x35,
 	0x0a, 0x04, 0x45, 0x78, 0x65, 0x63, 0x12, 0x14, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63,
 	0x2e, 0x45, 0x78, 0x65, 0x63, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x15, 0x2e, 0x6d,
 	0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x45, 0x78, 0x65, 0x63, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x3d, 0x0a, 0x06, 0x41, 0x70, 0x70, 0x65, 0x6e, 0x64, 0x12,
-	0x16, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x41, 0x70, 0x70, 0x65, 0x6e, 0x64,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x17, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70,
-	0x63, 0x2e, 0x41, 0x70, 0x70, 0x65, 0x6e, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x00, 0x28, 0x01, 0x12, 0x41, 0x0a, 0x08, 0x51, 0x75, 0x65, 0x72, 0x79, 0x52, 0x6f, 0x77,
-	0x12, 0x18, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79,
-	0x52, 0x6f, 0x77, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19, 0x2e, 0x6d, 0x61, 0x63,
-	0x68, 0x72, 0x70, 0x63, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x52, 0x6f, 0x77, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x38, 0x0a, 0x05, 0x51, 0x75, 0x65, 0x72, 0x79,
-	0x12, 0x15, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x16, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70,
-	0x63, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
-	0x00, 0x12, 0x3e, 0x0a, 0x09, 0x52, 0x6f, 0x77, 0x73, 0x46, 0x65, 0x74, 0x63, 0x68, 0x12, 0x13,
-	0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x52, 0x6f, 0x77, 0x73, 0x48, 0x61, 0x6e,
-	0x64, 0x6c, 0x65, 0x1a, 0x1a, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x52, 0x6f,
-	0x77, 0x73, 0x46, 0x65, 0x74, 0x63, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
-	0x00, 0x12, 0x3e, 0x0a, 0x09, 0x52, 0x6f, 0x77, 0x73, 0x43, 0x6c, 0x6f, 0x73, 0x65, 0x12, 0x13,
-	0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x52, 0x6f, 0x77, 0x73, 0x48, 0x61, 0x6e,
-	0x64, 0x6c, 0x65, 0x1a, 0x1a, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x52, 0x6f,
-	0x77, 0x73, 0x43, 0x6c, 0x6f, 0x73, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
-	0x00, 0x42, 0x2a, 0x5a, 0x28, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f,
-	0x6d, 0x61, 0x63, 0x68, 0x62, 0x61, 0x73, 0x65, 0x2f, 0x64, 0x62, 0x6d, 0x73, 0x2d, 0x6d, 0x61,
-	0x63, 0x68, 0x2d, 0x67, 0x6f, 0x2f, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x41, 0x0a, 0x08, 0x51, 0x75, 0x65, 0x72, 0x79, 0x52, 0x6f,
+	0x77, 0x12, 0x18, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x51, 0x75, 0x65, 0x72,
+	0x79, 0x52, 0x6f, 0x77, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19, 0x2e, 0x6d, 0x61,
+	0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x52, 0x6f, 0x77, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x38, 0x0a, 0x05, 0x51, 0x75, 0x65, 0x72,
+	0x79, 0x12, 0x15, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x51, 0x75, 0x65, 0x72,
+	0x79, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x16, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72,
+	0x70, 0x63, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x22, 0x00, 0x12, 0x3e, 0x0a, 0x09, 0x52, 0x6f, 0x77, 0x73, 0x46, 0x65, 0x74, 0x63, 0x68, 0x12,
+	0x13, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x52, 0x6f, 0x77, 0x73, 0x48, 0x61,
+	0x6e, 0x64, 0x6c, 0x65, 0x1a, 0x1a, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x52,
+	0x6f, 0x77, 0x73, 0x46, 0x65, 0x74, 0x63, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x22, 0x00, 0x12, 0x3e, 0x0a, 0x09, 0x52, 0x6f, 0x77, 0x73, 0x43, 0x6c, 0x6f, 0x73, 0x65, 0x12,
+	0x13, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x52, 0x6f, 0x77, 0x73, 0x48, 0x61,
+	0x6e, 0x64, 0x6c, 0x65, 0x1a, 0x1a, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x52,
+	0x6f, 0x77, 0x73, 0x43, 0x6c, 0x6f, 0x73, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x22, 0x00, 0x12, 0x41, 0x0a, 0x08, 0x41, 0x70, 0x70, 0x65, 0x6e, 0x64, 0x65, 0x72, 0x12, 0x18,
+	0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x41, 0x70, 0x70, 0x65, 0x6e, 0x64, 0x65,
+	0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72,
+	0x70, 0x63, 0x2e, 0x41, 0x70, 0x70, 0x65, 0x6e, 0x64, 0x65, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x36, 0x0a, 0x06, 0x41, 0x70, 0x70, 0x65, 0x6e, 0x64, 0x12,
+	0x13, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x41, 0x70, 0x70, 0x65, 0x6e, 0x64,
+	0x44, 0x61, 0x74, 0x61, 0x1a, 0x13, 0x2e, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x2e, 0x41,
+	0x70, 0x70, 0x65, 0x6e, 0x64, 0x44, 0x6f, 0x6e, 0x65, 0x22, 0x00, 0x28, 0x01, 0x42, 0x2a, 0x5a,
+	0x28, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x6d, 0x61, 0x63, 0x68,
+	0x62, 0x61, 0x73, 0x65, 0x2f, 0x64, 0x62, 0x6d, 0x73, 0x2d, 0x6d, 0x61, 0x63, 0x68, 0x2d, 0x67,
+	0x6f, 0x2f, 0x6d, 0x61, 0x63, 0x68, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x33,
 }
 
 var (
@@ -764,45 +947,50 @@ func file_machrpc_proto_rawDescGZIP() []byte {
 	return file_machrpc_proto_rawDescData
 }
 
-var file_machrpc_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_machrpc_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_machrpc_proto_goTypes = []interface{}{
 	(*ExecRequest)(nil),       // 0: machrpc.ExecRequest
 	(*ExecResponse)(nil),      // 1: machrpc.ExecResponse
-	(*AppendRequest)(nil),     // 2: machrpc.AppendRequest
-	(*AppendResponse)(nil),    // 3: machrpc.AppendResponse
-	(*QueryRequest)(nil),      // 4: machrpc.QueryRequest
-	(*QueryResponse)(nil),     // 5: machrpc.QueryResponse
-	(*RowsHandle)(nil),        // 6: machrpc.RowsHandle
-	(*RowsFetchResponse)(nil), // 7: machrpc.RowsFetchResponse
-	(*RowsCloseResponse)(nil), // 8: machrpc.RowsCloseResponse
-	(*QueryRowRequest)(nil),   // 9: machrpc.QueryRowRequest
-	(*QueryRowResponse)(nil),  // 10: machrpc.QueryRowResponse
-	(*any.Any)(nil),           // 11: google.protobuf.Any
+	(*AppenderRequest)(nil),   // 2: machrpc.AppenderRequest
+	(*AppenderResponse)(nil),  // 3: machrpc.AppenderResponse
+	(*AppendData)(nil),        // 4: machrpc.AppendData
+	(*AppendDone)(nil),        // 5: machrpc.AppendDone
+	(*QueryRequest)(nil),      // 6: machrpc.QueryRequest
+	(*QueryResponse)(nil),     // 7: machrpc.QueryResponse
+	(*RowsHandle)(nil),        // 8: machrpc.RowsHandle
+	(*RowsFetchResponse)(nil), // 9: machrpc.RowsFetchResponse
+	(*RowsCloseResponse)(nil), // 10: machrpc.RowsCloseResponse
+	(*QueryRowRequest)(nil),   // 11: machrpc.QueryRowRequest
+	(*QueryRowResponse)(nil),  // 12: machrpc.QueryRowResponse
+	(*any.Any)(nil),           // 13: google.protobuf.Any
 }
 var file_machrpc_proto_depIdxs = []int32{
-	11, // 0: machrpc.ExecRequest.Params:type_name -> google.protobuf.Any
-	11, // 1: machrpc.QueryRequest.params:type_name -> google.protobuf.Any
-	6,  // 2: machrpc.QueryResponse.rowsHandle:type_name -> machrpc.RowsHandle
-	11, // 3: machrpc.RowsFetchResponse.values:type_name -> google.protobuf.Any
-	11, // 4: machrpc.QueryRowRequest.params:type_name -> google.protobuf.Any
-	11, // 5: machrpc.QueryRowResponse.values:type_name -> google.protobuf.Any
-	0,  // 6: machrpc.Machbase.Exec:input_type -> machrpc.ExecRequest
-	2,  // 7: machrpc.Machbase.Append:input_type -> machrpc.AppendRequest
-	9,  // 8: machrpc.Machbase.QueryRow:input_type -> machrpc.QueryRowRequest
-	4,  // 9: machrpc.Machbase.Query:input_type -> machrpc.QueryRequest
-	6,  // 10: machrpc.Machbase.RowsFetch:input_type -> machrpc.RowsHandle
-	6,  // 11: machrpc.Machbase.RowsClose:input_type -> machrpc.RowsHandle
-	1,  // 12: machrpc.Machbase.Exec:output_type -> machrpc.ExecResponse
-	3,  // 13: machrpc.Machbase.Append:output_type -> machrpc.AppendResponse
-	10, // 14: machrpc.Machbase.QueryRow:output_type -> machrpc.QueryRowResponse
-	5,  // 15: machrpc.Machbase.Query:output_type -> machrpc.QueryResponse
-	7,  // 16: machrpc.Machbase.RowsFetch:output_type -> machrpc.RowsFetchResponse
-	8,  // 17: machrpc.Machbase.RowsClose:output_type -> machrpc.RowsCloseResponse
-	12, // [12:18] is the sub-list for method output_type
-	6,  // [6:12] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	13, // 0: machrpc.ExecRequest.params:type_name -> google.protobuf.Any
+	13, // 1: machrpc.AppendData.params:type_name -> google.protobuf.Any
+	13, // 2: machrpc.QueryRequest.params:type_name -> google.protobuf.Any
+	8,  // 3: machrpc.QueryResponse.rowsHandle:type_name -> machrpc.RowsHandle
+	13, // 4: machrpc.RowsFetchResponse.values:type_name -> google.protobuf.Any
+	13, // 5: machrpc.QueryRowRequest.params:type_name -> google.protobuf.Any
+	13, // 6: machrpc.QueryRowResponse.values:type_name -> google.protobuf.Any
+	0,  // 7: machrpc.Machbase.Exec:input_type -> machrpc.ExecRequest
+	11, // 8: machrpc.Machbase.QueryRow:input_type -> machrpc.QueryRowRequest
+	6,  // 9: machrpc.Machbase.Query:input_type -> machrpc.QueryRequest
+	8,  // 10: machrpc.Machbase.RowsFetch:input_type -> machrpc.RowsHandle
+	8,  // 11: machrpc.Machbase.RowsClose:input_type -> machrpc.RowsHandle
+	2,  // 12: machrpc.Machbase.Appender:input_type -> machrpc.AppenderRequest
+	4,  // 13: machrpc.Machbase.Append:input_type -> machrpc.AppendData
+	1,  // 14: machrpc.Machbase.Exec:output_type -> machrpc.ExecResponse
+	12, // 15: machrpc.Machbase.QueryRow:output_type -> machrpc.QueryRowResponse
+	7,  // 16: machrpc.Machbase.Query:output_type -> machrpc.QueryResponse
+	9,  // 17: machrpc.Machbase.RowsFetch:output_type -> machrpc.RowsFetchResponse
+	10, // 18: machrpc.Machbase.RowsClose:output_type -> machrpc.RowsCloseResponse
+	3,  // 19: machrpc.Machbase.Appender:output_type -> machrpc.AppenderResponse
+	5,  // 20: machrpc.Machbase.Append:output_type -> machrpc.AppendDone
+	14, // [14:21] is the sub-list for method output_type
+	7,  // [7:14] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_machrpc_proto_init() }
@@ -836,7 +1024,7 @@ func file_machrpc_proto_init() {
 			}
 		}
 		file_machrpc_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AppendRequest); i {
+			switch v := v.(*AppenderRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -848,7 +1036,7 @@ func file_machrpc_proto_init() {
 			}
 		}
 		file_machrpc_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AppendResponse); i {
+			switch v := v.(*AppenderResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -860,7 +1048,7 @@ func file_machrpc_proto_init() {
 			}
 		}
 		file_machrpc_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryRequest); i {
+			switch v := v.(*AppendData); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -872,7 +1060,7 @@ func file_machrpc_proto_init() {
 			}
 		}
 		file_machrpc_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryResponse); i {
+			switch v := v.(*AppendDone); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -884,7 +1072,7 @@ func file_machrpc_proto_init() {
 			}
 		}
 		file_machrpc_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RowsHandle); i {
+			switch v := v.(*QueryRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -896,7 +1084,7 @@ func file_machrpc_proto_init() {
 			}
 		}
 		file_machrpc_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RowsFetchResponse); i {
+			switch v := v.(*QueryResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -908,7 +1096,7 @@ func file_machrpc_proto_init() {
 			}
 		}
 		file_machrpc_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RowsCloseResponse); i {
+			switch v := v.(*RowsHandle); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -920,7 +1108,7 @@ func file_machrpc_proto_init() {
 			}
 		}
 		file_machrpc_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryRowRequest); i {
+			switch v := v.(*RowsFetchResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -932,6 +1120,30 @@ func file_machrpc_proto_init() {
 			}
 		}
 		file_machrpc_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RowsCloseResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_machrpc_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*QueryRowRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_machrpc_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*QueryRowResponse); i {
 			case 0:
 				return &v.state
@@ -950,7 +1162,7 @@ func file_machrpc_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_machrpc_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

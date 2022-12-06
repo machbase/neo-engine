@@ -17,14 +17,16 @@ type Client struct {
 	conn grpc.ClientConnInterface
 	cli  MachbaseClient
 
-	closeTimeout time.Duration
-	queryTimeout time.Duration
+	closeTimeout  time.Duration
+	queryTimeout  time.Duration
+	appendTimeout time.Duration
 }
 
 func NewClient(options ...ClientOption) *Client {
 	client := &Client{
-		closeTimeout: 3 * time.Second,
-		queryTimeout: 0,
+		closeTimeout:  3 * time.Second,
+		queryTimeout:  0,
+		appendTimeout: 3 * time.Second,
 	}
 	for _, opt := range options {
 		switch o := opt.(type) {
@@ -271,4 +273,70 @@ func scan(src []any, dst []any) error {
 		}
 	}
 	return nil
+}
+
+func (this *Client) Appender(tableName string) (*Appender, error) {
+	var ctx0 context.Context
+	if this.appendTimeout > 0 {
+		_ctx, _cf := context.WithTimeout(context.Background(), this.appendTimeout)
+		defer _cf()
+		ctx0 = _ctx
+	} else {
+		ctx0 = context.Background()
+	}
+
+	openRsp, err := this.cli.Appender(ctx0, &AppenderRequest{TableName: tableName})
+	if err != nil {
+		return nil, errors.Wrap(err, "Appender")
+	}
+
+	appendClient, err := this.cli.Append(context.Background())
+	if err != nil {
+		return nil, errors.Wrap(err, "AppendClient")
+	}
+
+	return &Appender{
+		client:       this,
+		appendClient: appendClient,
+		tableName:    tableName,
+		handle:       openRsp.Handle,
+	}, nil
+}
+
+type Appender struct {
+	client       *Client
+	appendClient Machbase_AppendClient
+	tableName    string
+	handle       string
+}
+
+func (this *Appender) Close() error {
+	if this.appendClient == nil {
+		return nil
+	}
+
+	client := this.appendClient
+	this.appendClient = nil
+
+	err := client.CloseSend()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (this *Appender) Append(cols ...any) error {
+	if this.appendClient == nil {
+		return sql.ErrTxDone
+	}
+
+	params, err := pbconv.ConvertAnyToPb(cols)
+	if err != nil {
+		return err
+	}
+	err = this.appendClient.Send(&AppendData{
+		Handle: this.handle,
+		Params: params,
+	})
+	return err
 }

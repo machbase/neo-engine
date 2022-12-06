@@ -8,16 +8,17 @@ import "google/protobuf/any.proto";
 
 service Machbase {
     rpc Exec(ExecRequest) returns(ExecResponse) {}
-    rpc Append(stream AppendRequest) returns(AppendResponse) {}
     rpc QueryRow(QueryRowRequest) returns(QueryRowResponse) {}
     rpc Query(QueryRequest) returns(QueryResponse) {}
     rpc RowsFetch(RowsHandle) returns(RowsFetchResponse) {}
     rpc RowsClose(RowsHandle) returns (RowsCloseResponse) {}
+    rpc Appender(AppenderRequest) returns (AppenderResponse){}
+    rpc Append(stream AppendData) returns(AppendDone) {}
 }
 
 message ExecRequest {
-    string Sql = 1;
-    repeated google.protobuf.Any Params = 2;
+    string sql = 1;
+    repeated google.protobuf.Any params = 2;
 }
 
 message ExecResponse {
@@ -26,12 +27,26 @@ message ExecResponse {
     string elapse = 3;
 }
 
-message AppendRequest {
-
+message AppenderRequest {
+    string tableName = 1;
 }
 
-message AppendResponse {
+message AppenderResponse {
+    bool success = 1;
+    string reason = 2;
+    string elapse = 3;
+    string handle = 4;
+}
 
+message AppendData {
+    string handle = 1;
+    repeated google.protobuf.Any params = 2;
+}
+
+message AppendDone {
+    bool success = 1;
+    string reason = 2;
+    string elapse = 3;
 }
 
 message QueryRequest {

@@ -297,23 +297,93 @@ func (this *svr) RowsClose(ctx context.Context, rows *machrpc.RowsHandle) (*mach
 	return rsp, nil
 }
 
-func (this *svr) Append(stream machrpc.Machbase_AppendServer) error {
-	pctx := stream.Context()
-	val := pctx.Value(contextCtxKey)
-	ctx, ok := val.(*sessionCtx)
-	if !ok {
-		return fmt.Errorf("invlaid session context %T", pctx)
+func (this *svr) Appender(ctx context.Context, req *machrpc.AppenderRequest) (*machrpc.AppenderResponse, error) {
+	rsp := &machrpc.AppenderResponse{}
+	tick := time.Now()
+	defer func() {
+		rsp.Elapse = time.Since(tick).String()
+	}()
+	realAppender, err := this.machbase.Appender(req.TableName)
+	if err != nil {
+		rsp.Reason = err.Error()
+		return rsp, nil
 	}
-	fmt.Printf("session id : %s\n", ctx.Id)
+	handle := strconv.FormatInt(atomic.AddInt64(&contextIdSerial, 1), 10)
+	this.ctxMap.Set(handle, &appenderWrap{
+		id:       handle,
+		appender: realAppender,
+		release: func() {
+			this.ctxMap.RemoveCb(handle, func(key string, v interface{}, exists bool) bool {
+				// fmt.Printf("close appender: %v\n", handle)
+				realAppender.Close()
+				return true
+			})
+		},
+	})
+	rsp.Success = true
+	rsp.Reason = "success"
+	rsp.Handle = handle
+	return rsp, nil
+}
 
+type appenderWrap struct {
+	id       string
+	appender *mach.Appender
+	release  func()
+}
+
+func (this *svr) Append(stream machrpc.Machbase_AppendServer) error {
+	var wrap *appenderWrap
+	defer func() {
+		if wrap == nil {
+			return
+		}
+		// fmt.Printf("--- release %s\n", wrap.id)
+		wrap.release()
+	}()
+
+	tick := time.Now()
 	for {
 		m, err := stream.Recv()
 		if err == io.EOF {
-			return stream.SendAndClose(&machrpc.AppendResponse{})
+			// caution: m is nil
+			return stream.SendAndClose(&machrpc.AppendDone{
+				Success: true,
+				Reason:  "success",
+				Elapse:  time.Since(tick).String(),
+			})
 		} else if err != nil {
-			fmt.Printf("Recv %s\n", err.Error())
 			return err
 		}
-		fmt.Printf("==> %+v\n", m)
+
+		if wrap == nil {
+			appenderWrapVal, exists := this.ctxMap.Get(m.Handle)
+			if !exists {
+				fmt.Println("ERR>>", "not found", m.Handle)
+				return fmt.Errorf("handle '%s' not found", m.Handle)
+			}
+			appenderWrap, ok := appenderWrapVal.(*appenderWrap)
+			if !ok {
+				fmt.Println("ERR>>", "invalid", m.Handle)
+				return fmt.Errorf("handle '%s' is not valid", m.Handle)
+			}
+			wrap = appenderWrap
+		}
+
+		if wrap.id != m.Handle {
+			fmt.Println("ERR>>", "handle changed", m.Handle)
+			return fmt.Errorf("not allowed changing handle in a stream")
+		}
+
+		values := pbconv.ConvertPbToAny(m.Params)
+		err = wrap.appender.Append(values...)
+		if err != nil {
+			fmt.Println("ERR>>", "append", err.Error())
+			return stream.SendAndClose(&machrpc.AppendDone{
+				Success: false,
+				Reason:  err.Error(),
+				Elapse:  time.Since(tick).String(),
+			})
+		}
 	}
 }
