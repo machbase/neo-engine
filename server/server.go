@@ -19,7 +19,7 @@ import (
 
 func init() {
 	defaultConf := Config{
-		Listen:         "unix://./machsvr.sock",
+		Listeners:      []string{"unix://./machsvr.sock"},
 		MaxRecvMsgSize: 4,
 		MaxSendMsgSize: 4,
 		StartupTimeout: 5 * time.Second,
@@ -40,7 +40,7 @@ func init() {
 
 type Config struct {
 	MachbaseHome   string
-	Listen         string
+	Listeners      []string
 	MaxRecvMsgSize int
 	MaxSendMsgSize int
 
@@ -93,13 +93,7 @@ func (this *svr) Start() error {
 		return errors.Wrap(err, "alter log level")
 	}
 
-	// ingest listener
-	lsnr, err := makeListener(this.conf.Listen)
-	if err != nil {
-		return errors.Wrap(err, "cannot start with failed listener")
-	}
-	this.log.Infof("Listen %s", this.conf.Listen)
-
+	// grpc server
 	machrpcSvr, err := machrpcsvr.New(&machrpcsvr.Config{})
 
 	// ingest gRPC options
@@ -113,8 +107,17 @@ func (this *svr) Start() error {
 	this.grpcd = grpc.NewServer(grpcOpt...)
 	machrpc.RegisterMachbaseServer(this.grpcd, machrpcSvr)
 
-	// start go server
-	go this.grpcd.Serve(lsnr)
+	// listeners
+	for _, listen := range this.conf.Listeners {
+		lsnr, err := makeListener(listen)
+		if err != nil {
+			return errors.Wrap(err, "cannot start with failed listener")
+		}
+		this.log.Infof("Listen %s", listen)
+
+		// start go server
+		go this.grpcd.Serve(lsnr)
+	}
 	return nil
 }
 
