@@ -23,7 +23,7 @@ type QueryResponse struct {
 	Data    any    `json:"data,omitempty"`
 }
 
-func (this *Server) handleQuery(ctx *gin.Context) {
+func (my *Server) handleQuery(ctx *gin.Context) {
 	req := &QueryRequest{}
 	rsp := &QueryResponse{Success: false, Reason: "not specified"}
 	tick := time.Now()
@@ -72,7 +72,7 @@ func (this *Server) handleQuery(ctx *gin.Context) {
 	cursor := req.Cursor
 	limit := req.Limit
 
-	rows, err := this.db.Query(req.SqlText)
+	rows, err := my.db.Query(req.SqlText)
 	if err != nil {
 		rsp.Reason = err.Error()
 		rsp.Elapse = time.Since(tick).String()
@@ -98,6 +98,18 @@ func (this *Server) handleQuery(ctx *gin.Context) {
 		rownum++
 		if rownum-1 < cursor {
 			continue
+		}
+		for i, n := range rec {
+			if n == nil {
+				my.log.Tracef("%02d)) nill", i)
+				continue
+			}
+			switch v := n.(type) {
+			case *int64:
+				my.log.Tracef("%02d))%v", i, *v)
+			default:
+				my.log.Tracef("%02d>>%#v", i, n)
+			}
 		}
 		data = append(data, rec)
 

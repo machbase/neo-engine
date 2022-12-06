@@ -26,21 +26,21 @@ type Server struct {
 	db   *mach.Database
 }
 
-func (this *Server) Start() error {
+func (my *Server) Start() error {
 	return nil
 }
 
-func (this *Server) Stop() {
+func (my *Server) Stop() {
 }
 
-func (this *Server) Route(r *gin.Engine) {
-	prefix := this.conf.Prefix
+func (my *Server) Route(r *gin.Engine) {
+	prefix := my.conf.Prefix
 	// remove trailing slash
 	for strings.HasSuffix(prefix, "/") {
 		prefix = prefix[0 : len(prefix)-1]
 	}
 
-	r.GET(prefix+"/query", this.handleQuery)
-	r.POST(prefix+"/query", this.handleQuery)
-	r.POST(prefix+"/write", this.handleWrite)
+	r.GET(prefix+"/query", my.handleQuery)
+	r.POST(prefix+"/query", my.handleQuery)
+	r.POST(prefix+"/write", my.handleWrite)
 }

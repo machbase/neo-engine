@@ -50,11 +50,11 @@ type svr struct {
 	machbase *mach.Database
 }
 
-func (this *svr) Start() error {
+func (s *svr) Start() error {
 	return nil
 }
 
-func (this *svr) Stop() {
+func (s *svr) Stop() {
 
 }
 
@@ -101,27 +101,27 @@ var contextIdSerial int64
 
 //// grpc stat handler
 
-func (this *svr) TagRPC(ctx context.Context, nfo *stats.RPCTagInfo) context.Context {
+func (s *svr) TagRPC(ctx context.Context, nfo *stats.RPCTagInfo) context.Context {
 	return ctx
 }
 
-func (this *svr) HandleRPC(ctx context.Context, stat stats.RPCStats) {
+func (s *svr) HandleRPC(ctx context.Context, stat stats.RPCStats) {
 }
 
-func (this *svr) TagConn(ctx context.Context, nfo *stats.ConnTagInfo) context.Context {
+func (s *svr) TagConn(ctx context.Context, nfo *stats.ConnTagInfo) context.Context {
 	id := strconv.FormatInt(atomic.AddInt64(&contextIdSerial, 1), 10)
 	ctx = &sessionCtx{Context: ctx, Id: id}
-	this.ctxMap.Set(id, ctx)
+	s.ctxMap.Set(id, ctx)
 	return ctx
 }
 
-func (this *svr) HandleConn(ctx context.Context, s stats.ConnStats) {
+func (s *svr) HandleConn(ctx context.Context, stat stats.ConnStats) {
 	if sessCtx, ok := ctx.(*sessionCtx); ok {
-		switch s.(type) {
+		switch stat.(type) {
 		case *stats.ConnBegin:
 			// fmt.Printf("get connBegin: %v\n", sessCtx.Id)
 		case *stats.ConnEnd:
-			this.ctxMap.RemoveCb(sessCtx.Id, func(key string, v interface{}, exists bool) bool {
+			s.ctxMap.RemoveCb(sessCtx.Id, func(key string, v interface{}, exists bool) bool {
 				// fmt.Printf("get connEnd: %v\n", sessCtx.Id)
 				return true
 			})
@@ -131,7 +131,7 @@ func (this *svr) HandleConn(ctx context.Context, s stats.ConnStats) {
 
 //// machrpc server handler
 
-func (this *svr) Exec(pctx context.Context, req *machrpc.ExecRequest) (*machrpc.ExecResponse, error) {
+func (s *svr) Exec(pctx context.Context, req *machrpc.ExecRequest) (*machrpc.ExecResponse, error) {
 	rsp := &machrpc.ExecResponse{}
 	tick := time.Now()
 	defer func() {
@@ -139,7 +139,7 @@ func (this *svr) Exec(pctx context.Context, req *machrpc.ExecRequest) (*machrpc.
 	}()
 
 	params := pbconv.ConvertPbToAny(req.Params)
-	if err := this.machbase.Exec(req.Sql, params...); err == nil {
+	if err := s.machbase.Exec(req.Sql, params...); err == nil {
 		rsp.Success = true
 		rsp.Reason = "success"
 	} else {
@@ -149,7 +149,7 @@ func (this *svr) Exec(pctx context.Context, req *machrpc.ExecRequest) (*machrpc.
 	return rsp, nil
 }
 
-func (this *svr) QueryRow(pctx context.Context, req *machrpc.QueryRowRequest) (*machrpc.QueryRowResponse, error) {
+func (s *svr) QueryRow(pctx context.Context, req *machrpc.QueryRowRequest) (*machrpc.QueryRowResponse, error) {
 	rsp := &machrpc.QueryRowResponse{}
 
 	tick := time.Now()
@@ -164,7 +164,7 @@ func (this *svr) QueryRow(pctx context.Context, req *machrpc.QueryRowRequest) (*
 	// }
 
 	params := pbconv.ConvertPbToAny(req.Params)
-	row := this.machbase.QueryRow(req.Sql, params...)
+	row := s.machbase.QueryRow(req.Sql, params...)
 
 	// fmt.Printf("QueryRow : %s  %s   rows: %d\n", ctx.Id, req.Sql, len(row.Values()))
 
@@ -185,7 +185,7 @@ func (this *svr) QueryRow(pctx context.Context, req *machrpc.QueryRowRequest) (*
 	return rsp, err
 }
 
-func (this *svr) Query(pctx context.Context, req *machrpc.QueryRequest) (*machrpc.QueryResponse, error) {
+func (s *svr) Query(pctx context.Context, req *machrpc.QueryRequest) (*machrpc.QueryResponse, error) {
 	rsp := &machrpc.QueryResponse{}
 
 	tick := time.Now()
@@ -201,7 +201,7 @@ func (this *svr) Query(pctx context.Context, req *machrpc.QueryRequest) (*machrp
 	// fmt.Printf("Query : %s %s\n", ctx.Id, req.Sql)
 
 	params := pbconv.ConvertPbToAny(req.Params)
-	realRows, err := this.machbase.Query(req.Sql, params...)
+	realRows, err := s.machbase.Query(req.Sql, params...)
 	if err != nil {
 		rsp.Reason = err.Error()
 		return rsp, nil
@@ -209,11 +209,11 @@ func (this *svr) Query(pctx context.Context, req *machrpc.QueryRequest) (*machrp
 
 	handle := strconv.FormatInt(atomic.AddInt64(&contextIdSerial, 1), 10)
 	// TODO leak detector
-	this.ctxMap.Set(handle, &rowsWrap{
+	s.ctxMap.Set(handle, &rowsWrap{
 		id:   handle,
 		rows: realRows,
 		release: func() {
-			this.ctxMap.RemoveCb(handle, func(key string, v interface{}, exists bool) bool {
+			s.ctxMap.RemoveCb(handle, func(key string, v interface{}, exists bool) bool {
 				// fmt.Printf("close rows: %v\n", handle)
 				realRows.Close()
 				return true
@@ -230,14 +230,14 @@ func (this *svr) Query(pctx context.Context, req *machrpc.QueryRequest) (*machrp
 	return rsp, nil
 }
 
-func (this *svr) RowsFetch(ctx context.Context, rows *machrpc.RowsHandle) (*machrpc.RowsFetchResponse, error) {
+func (s *svr) RowsFetch(ctx context.Context, rows *machrpc.RowsHandle) (*machrpc.RowsFetchResponse, error) {
 	rsp := &machrpc.RowsFetchResponse{}
 	tick := time.Now()
 	defer func() {
 		rsp.Elapse = time.Since(tick).String()
 	}()
 
-	rowsWrapVal, exists := this.ctxMap.Get(rows.Handle)
+	rowsWrapVal, exists := s.ctxMap.Get(rows.Handle)
 	if !exists {
 		rsp.Reason = fmt.Sprintf("handle '%s' not found", rows.Handle)
 		return rsp, nil
@@ -273,14 +273,14 @@ func (this *svr) RowsFetch(ctx context.Context, rows *machrpc.RowsHandle) (*mach
 	return rsp, nil
 }
 
-func (this *svr) RowsClose(ctx context.Context, rows *machrpc.RowsHandle) (*machrpc.RowsCloseResponse, error) {
+func (s *svr) RowsClose(ctx context.Context, rows *machrpc.RowsHandle) (*machrpc.RowsCloseResponse, error) {
 	rsp := &machrpc.RowsCloseResponse{}
 	tick := time.Now()
 	defer func() {
 		rsp.Elapse = time.Since(tick).String()
 	}()
 
-	rowsWrapVal, exists := this.ctxMap.Get(rows.Handle)
+	rowsWrapVal, exists := s.ctxMap.Get(rows.Handle)
 	if !exists {
 		rsp.Reason = fmt.Sprintf("handle '%s' not found", rows.Handle)
 		return rsp, nil
@@ -297,23 +297,23 @@ func (this *svr) RowsClose(ctx context.Context, rows *machrpc.RowsHandle) (*mach
 	return rsp, nil
 }
 
-func (this *svr) Appender(ctx context.Context, req *machrpc.AppenderRequest) (*machrpc.AppenderResponse, error) {
+func (s *svr) Appender(ctx context.Context, req *machrpc.AppenderRequest) (*machrpc.AppenderResponse, error) {
 	rsp := &machrpc.AppenderResponse{}
 	tick := time.Now()
 	defer func() {
 		rsp.Elapse = time.Since(tick).String()
 	}()
-	realAppender, err := this.machbase.Appender(req.TableName)
+	realAppender, err := s.machbase.Appender(req.TableName)
 	if err != nil {
 		rsp.Reason = err.Error()
 		return rsp, nil
 	}
 	handle := strconv.FormatInt(atomic.AddInt64(&contextIdSerial, 1), 10)
-	this.ctxMap.Set(handle, &appenderWrap{
+	s.ctxMap.Set(handle, &appenderWrap{
 		id:       handle,
 		appender: realAppender,
 		release: func() {
-			this.ctxMap.RemoveCb(handle, func(key string, v interface{}, exists bool) bool {
+			s.ctxMap.RemoveCb(handle, func(key string, v interface{}, exists bool) bool {
 				// fmt.Printf("close appender: %v\n", handle)
 				realAppender.Close()
 				return true
@@ -332,7 +332,7 @@ type appenderWrap struct {
 	release  func()
 }
 
-func (this *svr) Append(stream machrpc.Machbase_AppendServer) error {
+func (s *svr) Append(stream machrpc.Machbase_AppendServer) error {
 	var wrap *appenderWrap
 	defer func() {
 		if wrap == nil {
@@ -357,7 +357,7 @@ func (this *svr) Append(stream machrpc.Machbase_AppendServer) error {
 		}
 
 		if wrap == nil {
-			appenderWrapVal, exists := this.ctxMap.Get(m.Handle)
+			appenderWrapVal, exists := s.ctxMap.Get(m.Handle)
 			if !exists {
 				// fmt.Println("ERR>>", "not found", m.Handle)
 				return fmt.Errorf("handle '%s' not found", m.Handle)

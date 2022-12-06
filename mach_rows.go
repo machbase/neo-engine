@@ -65,17 +65,17 @@ type Rows struct {
 	sqlText string
 }
 
-func (this *Rows) Close() {
-	if this.stmt != nil {
-		machFreeStmt(this.stmt)
-		this.stmt = nil
+func (rows *Rows) Close() {
+	if rows.stmt != nil {
+		machFreeStmt(rows.stmt)
+		rows.stmt = nil
 	}
-	this.sqlText = ""
+	rows.sqlText = ""
 }
 
 // internal use only from machrpcserver
-func (this *Rows) Fetch() ([]any, bool, error) {
-	next, err := machFetch(this.stmt)
+func (rows *Rows) Fetch() ([]any, bool, error) {
+	next, err := machFetch(rows.stmt)
 	if err != nil {
 		return nil, next, errors.Wrap(err, "Fetch")
 	}
@@ -83,14 +83,14 @@ func (this *Rows) Fetch() ([]any, bool, error) {
 		return nil, false, nil
 	}
 
-	colCount, err := machColumnCount(this.stmt)
+	colCount, err := machColumnCount(rows.stmt)
 	if err != nil {
 		return nil, next, err
 	}
 
 	values := make([]any, colCount)
 	for i := range values {
-		typ, _, err := machColumnType(this.stmt, i)
+		typ, _, err := machColumnType(rows.stmt, i)
 		if err != nil {
 			return nil, next, errors.Wrap(err, "Fetch")
 		}
@@ -119,15 +119,15 @@ func (this *Rows) Fetch() ([]any, bool, error) {
 			return nil, next, fmt.Errorf("Fetch unsupported type %T", typ)
 		}
 	}
-	err = scan(this.stmt, values...)
+	err = scan(rows.stmt, values...)
 	if err != nil {
 		return nil, next, errors.Wrap(err, "Fetch")
 	}
 	return values, next, nil
 }
 
-func (this *Rows) Next() bool {
-	next, err := machFetch(this.stmt)
+func (rows *Rows) Next() bool {
+	next, err := machFetch(rows.stmt)
 	if err != nil {
 		return false
 	}

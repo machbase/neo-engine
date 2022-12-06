@@ -78,14 +78,14 @@ type svr struct {
 
 const TagTableName = "tagdata"
 
-func (this *svr) Start() error {
-	this.log = logging.GetLog("machsvr")
+func (s *svr) Start() error {
+	s.log = logging.GetLog("machsvr")
 
-	_, err := os.Stat(this.conf.MachbaseHome)
+	_, err := os.Stat(s.conf.MachbaseHome)
 	if err != nil {
 		return errors.Wrap(err, "config file not found")
 	}
-	homepath, err := filepath.Abs(this.conf.MachbaseHome)
+	homepath, err := filepath.Abs(s.conf.MachbaseHome)
 	if err != nil {
 		return errors.Wrap(err, "config file path")
 	}
@@ -93,97 +93,97 @@ func (this *svr) Start() error {
 		return errors.Wrap(err, "initialize database")
 	}
 	if !mach.ExistsDatabase() {
-		this.log.Info("create database")
+		s.log.Info("create database")
 		if err := mach.CreateDatabase(); err != nil {
 			return errors.Wrap(err, "create database")
 		}
 	}
 
-	this.db = mach.New()
-	if this.db == nil {
+	s.db = mach.New()
+	if s.db == nil {
 		return errors.New("database instance failed")
 	}
 
-	if err := this.db.Startup(this.conf.StartupTimeout); err != nil {
+	if err := s.db.Startup(s.conf.StartupTimeout); err != nil {
 		return errors.Wrap(err, "startup database")
 	}
 
-	err = this.db.Exec("alter system set trace_log_level=1023")
+	err = s.db.Exec("alter system set trace_log_level=1023")
 	if err != nil {
 		return errors.Wrap(err, "alter log level")
 	}
 
 	// grpc server
-	if len(this.conf.Grpc.Listeners) > 0 {
+	if len(s.conf.Grpc.Listeners) > 0 {
 		machrpcSvr, err := rpcsvr.New(&rpcsvr.Config{})
 		if err != nil {
 			return errors.Wrap(err, "grpc handler")
 		}
 		// ingest gRPC options
 		grpcOpt := []grpc.ServerOption{
-			grpc.MaxRecvMsgSize(this.conf.Grpc.MaxRecvMsgSize * 1024 * 1024),
-			grpc.MaxSendMsgSize(this.conf.Grpc.MaxSendMsgSize * 1024 * 1024),
+			grpc.MaxRecvMsgSize(s.conf.Grpc.MaxRecvMsgSize * 1024 * 1024),
+			grpc.MaxSendMsgSize(s.conf.Grpc.MaxSendMsgSize * 1024 * 1024),
 			grpc.StatsHandler(machrpcSvr),
 		}
 
 		// create grpc server
-		this.grpcd = grpc.NewServer(grpcOpt...)
-		machrpc.RegisterMachbaseServer(this.grpcd, machrpcSvr)
+		s.grpcd = grpc.NewServer(grpcOpt...)
+		machrpc.RegisterMachbaseServer(s.grpcd, machrpcSvr)
 
 		// listeners
-		for _, listen := range this.conf.Grpc.Listeners {
+		for _, listen := range s.conf.Grpc.Listeners {
 			lsnr, err := makeListener(listen)
 			if err != nil {
 				return errors.Wrap(err, "cannot start with failed listener")
 			}
-			this.log.Infof("gRPC Listen %s", listen)
+			s.log.Infof("gRPC Listen %s", listen)
 
 			// start go server
-			go this.grpcd.Serve(lsnr)
+			go s.grpcd.Serve(lsnr)
 		}
 	}
 
 	// http server
-	if len(this.conf.Http.Listeners) > 0 {
-		machHttpSvr, err := httpsvr.New(&httpsvr.Config{Prefix: this.conf.Http.Prefix})
+	if len(s.conf.Http.Listeners) > 0 {
+		machHttpSvr, err := httpsvr.New(&httpsvr.Config{Prefix: s.conf.Http.Prefix})
 		if err != nil {
 			return errors.Wrap(err, "http handler")
 		}
 
 		gin.SetMode(gin.ReleaseMode)
 		r := gin.New()
-		r.Use(ginutil.RecoveryWithLogging(this.log))
+		r.Use(ginutil.RecoveryWithLogging(s.log))
 		r.Use(ginutil.HttpLogger("http-log"))
 
 		machHttpSvr.Route(r)
 
-		this.httpd = &http.Server{}
-		this.httpd.Handler = r
+		s.httpd = &http.Server{}
+		s.httpd.Handler = r
 
-		for _, listen := range this.conf.Http.Listeners {
+		for _, listen := range s.conf.Http.Listeners {
 			lsnr, err := makeListener(listen)
 			if err != nil {
 				return errors.Wrap(err, "cannot start with failed listener")
 			}
-			this.log.Infof("HTTP Listen %s", listen)
+			s.log.Infof("HTTP Listen %s", listen)
 
-			go this.httpd.Serve(lsnr)
+			go s.httpd.Serve(lsnr)
 		}
 	}
 	return nil
 }
 
-func (this *svr) Stop() {
-	if this.httpd != nil {
+func (s *svr) Stop() {
+	if s.httpd != nil {
 		ctx, cancelFunc := context.WithTimeout(context.Background(), 3*time.Second)
-		this.httpd.Shutdown(ctx)
+		s.httpd.Shutdown(ctx)
 		cancelFunc()
 	}
 
-	if this.grpcd != nil {
-		this.grpcd.Stop()
+	if s.grpcd != nil {
+		s.grpcd.Stop()
 	}
-	this.log.Infof("shutdown.")
+	s.log.Infof("shutdown.")
 }
 
 func makeListener(addr string) (net.Listener, error) {

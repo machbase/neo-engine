@@ -42,7 +42,7 @@ func New() *Database {
 	}
 }
 
-func (this *Database) Startup(timeout time.Duration) error {
+func (db *Database) Startup(timeout time.Duration) error {
 	// machbase startup 과정에서 현재 디렉터리를 HOME으로 변경하는데,
 	// application의 Working directory를 유지하기 위해 chdir()을 호출한다.
 	cwd, _ := os.Getwd()
@@ -50,22 +50,22 @@ func (this *Database) Startup(timeout time.Duration) error {
 		os.Chdir(cwd)
 	}()
 
-	err := startup0(&this.handle, timeout)
+	err := startup0(&db.handle, timeout)
 	if err == nil {
-		singletonHandle = this.handle
+		singletonHandle = db.handle
 	}
 	return err
 }
 
-func (this *Database) Shutdown() error {
-	return shutdown0(this.handle)
+func (db *Database) Shutdown() error {
+	return shutdown0(db.handle)
 }
 
-func (this *Database) Error() error {
-	return machError0(this.handle)
+func (db *Database) Error() error {
+	return machError0(db.handle)
 }
 
-func (this *Database) SqlTidy(sqlText string) string {
+func (db *Database) SqlTidy(sqlText string) string {
 	lines := strings.Split(sqlText, "\n")
 	for i, ln := range lines {
 		lines[i] = strings.TrimSpace(ln)
@@ -73,9 +73,9 @@ func (this *Database) SqlTidy(sqlText string) string {
 	return strings.TrimSpace(strings.Join(lines, " "))
 }
 
-func (this *Database) Exec(sqlText string, params ...any) error {
+func (db *Database) Exec(sqlText string, params ...any) error {
 	var stmt unsafe.Pointer
-	if err := machAllocStmt(this.handle, &stmt); err != nil {
+	if err := machAllocStmt(db.handle, &stmt); err != nil {
 		return err
 	}
 	defer machFreeStmt(stmt)
@@ -94,15 +94,18 @@ func (this *Database) Exec(sqlText string, params ...any) error {
 			}
 		}
 		err = machExecute(stmt)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (this *Database) Query(sqlText string, params ...any) (*Rows, error) {
+func (db *Database) Query(sqlText string, params ...any) (*Rows, error) {
 	rows := &Rows{
 		sqlText: sqlText,
 	}
-	if err := machAllocStmt(this.handle, &rows.stmt); err != nil {
+	if err := machAllocStmt(db.handle, &rows.stmt); err != nil {
 		return nil, err
 	}
 	if err := machPrepare(rows.stmt, sqlText); err != nil {
@@ -119,11 +122,11 @@ func (this *Database) Query(sqlText string, params ...any) (*Rows, error) {
 	return rows, nil
 }
 
-func (this *Database) QueryRow(sqlText string, params ...any) *Row {
+func (db *Database) QueryRow(sqlText string, params ...any) *Row {
 	var row = &Row{}
 
 	var stmt unsafe.Pointer
-	if row.err = machAllocStmt(this.handle, &stmt); row.err != nil {
+	if row.err = machAllocStmt(db.handle, &stmt); row.err != nil {
 		return row
 	}
 	defer func() {
@@ -192,17 +195,17 @@ func (this *Database) QueryRow(sqlText string, params ...any) *Row {
 	return row
 }
 
-func (this *Database) Appender(tableName string) (*Appender, error) {
+func (db *Database) Appender(tableName string) (*Appender, error) {
 	appender := &Appender{}
 	appender.tableName = strings.ToUpper(tableName)
-	if err := machAllocStmt(this.handle, &appender.stmt); err != nil {
+	if err := machAllocStmt(db.handle, &appender.stmt); err != nil {
 		return nil, err
 	}
 	if err := machAppendOpen(appender.stmt, tableName); err != nil {
 		return nil, err
 	}
 
-	row := this.QueryRow("select type from M$SYS_TABLES where name = ?", appender.tableName)
+	row := db.QueryRow("select type from M$SYS_TABLES where name = ?", appender.tableName)
 	if err := row.Scan(&appender.tableType); err != nil {
 		return nil, err
 	}
@@ -230,46 +233,46 @@ type Appender struct {
 	FailureCount uint64
 }
 
-func (this *Appender) Close() error {
-	if this.stmt == nil {
+func (db *Appender) Close() error {
+	if db.stmt == nil {
 		return nil
 	}
-	s, f, err := machAppendClose(this.stmt)
+	s, f, err := machAppendClose(db.stmt)
 	if err != nil {
 		return err
 	}
-	this.SuccessCount = s
-	this.FailureCount = f
+	db.SuccessCount = s
+	db.FailureCount = f
 
-	if err := machFreeStmt(this.stmt); err != nil {
+	if err := machFreeStmt(db.stmt); err != nil {
 		return err
 	}
-	this.stmt = nil
+	db.stmt = nil
 	return nil
 }
 
-func (this *Appender) Append(cols ...any) error {
-	if this.tableType == 0 {
-		return this.appendLogTable(time.Time{}, cols)
+func (db *Appender) Append(cols ...any) error {
+	if db.tableType == 0 {
+		return db.appendLogTable(time.Time{}, cols)
 	} else {
-		return this.appendTagTable(cols)
+		return db.appendTagTable(cols)
 	}
 }
 
 // supports only Log Table
-func (this *Appender) AppendWithTimestamp(ts time.Time, cols ...any) error {
-	if this.tableType == 0 {
-		return this.appendLogTable(ts, cols)
+func (db *Appender) AppendWithTimestamp(ts time.Time, cols ...any) error {
+	if db.tableType == 0 {
+		return db.appendLogTable(ts, cols)
 	} else {
-		return fmt.Errorf("%s is not a log table, use Append() instead", this.tableName)
+		return fmt.Errorf("%s is not a log table, use Append() instead", db.tableName)
 	}
 }
 
-func (this *Appender) appendLogTable(ts time.Time, cols []any) error {
-	if this.colCount-1 != len(cols) {
-		return fmt.Errorf("value count %d, table '%s' has %d columns", len(cols), this.tableName, this.colCount-1)
+func (db *Appender) appendLogTable(ts time.Time, cols []any) error {
+	if db.colCount-1 != len(cols) {
+		return fmt.Errorf("value count %d, table '%s' has %d columns", len(cols), db.tableName, db.colCount-1)
 	}
-	vals := make([]*machAppendDataNullValue, this.colCount)
+	vals := make([]*machAppendDataNullValue, db.colCount)
 	if ts.IsZero() {
 		vals[0] = bindValue(nil)
 	} else {
@@ -283,20 +286,20 @@ func (this *Appender) appendLogTable(ts time.Time, cols []any) error {
 			v.Free()
 		}
 	}()
-	if err := machAppendData(this.stmt, vals); err != nil {
+	if err := machAppendData(db.stmt, vals); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (this *Appender) appendTagTable(cols []any) error {
-	if this.colCount == 0 {
-		return fmt.Errorf("table '%s' has no columns", this.tableName)
+func (db *Appender) appendTagTable(cols []any) error {
+	if db.colCount == 0 {
+		return fmt.Errorf("table '%s' has no columns", db.tableName)
 	}
-	if this.colCount != len(cols) {
-		return fmt.Errorf("value count %d, table '%s' has %d columns", len(cols), this.tableName, this.colCount)
+	if db.colCount != len(cols) {
+		return fmt.Errorf("value count %d, table '%s' has %d columns", len(cols), db.tableName, db.colCount)
 	}
-	vals := make([]*machAppendDataNullValue, this.colCount)
+	vals := make([]*machAppendDataNullValue, db.colCount)
 	for i, c := range cols {
 		vals[i] = bindValue(c)
 	}
@@ -305,7 +308,7 @@ func (this *Appender) appendTagTable(cols []any) error {
 			v.Free()
 		}
 	}()
-	if err := machAppendData(this.stmt, vals); err != nil {
+	if err := machAppendData(db.stmt, vals); err != nil {
 		return err
 	}
 	return nil
