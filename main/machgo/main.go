@@ -37,11 +37,11 @@ func main() {
 	}
 	defer db.Shutdown()
 
-	err = db.Exec("alter system set trace_log_level=1023")
+	_, err = db.Exec("alter system set trace_log_level=1023")
 	if err != nil {
 		panic(err)
 	}
-	err = db.Exec(db.SqlTidy(
+	_, err = db.Exec(db.SqlTidy(
 		`create log table log(
 			short short, ushort ushort, integer integer, uinteger uinteger, long long, ulong ulong, float float, double double, 
 			ipv4 ipv4, ipv6 ipv6, varchar varchar(20), text text, json json, binary binary, blob blob, clob clob, 
@@ -51,7 +51,7 @@ func main() {
 		panic(err)
 	}
 
-	err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+	_, err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		0, 1, 2, 3, 4, 5, 6.6, 7.77,
 		net.ParseIP("127.0.0.1"), net.ParseIP("AB:CC:CC:CC:CC:CC:CC:FF"),
 		fmt.Sprintf("varchar_1_%s.", randomVarchar()),
@@ -60,7 +60,7 @@ func main() {
 		panic(err)
 	}
 
-	err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+	_, err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		1, 1, 2, 3, 4, 5, 6.6, 7.77,
 		net.ParseIP("127.0.0.2"), net.ParseIP("AB:CC:CC:CC:CC:CC:CC:DD"),
 		fmt.Sprintf("varchar_2_%s.", randomVarchar()),
@@ -69,7 +69,7 @@ func main() {
 		panic(err)
 	}
 
-	err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+	_, err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		2, 1, 2, 3, 4, 5, 6.6, 7.77,
 		net.ParseIP("127.0.0.3"), net.ParseIP("AB:CC:CC:CC:CC:CC:CC:AA"),
 		fmt.Sprintf("varchar_3_%s.", randomVarchar()),
@@ -181,7 +181,9 @@ func main() {
 			datetime, datetime_now 
 		from 
 			log where short = ? and varchar = ?`), 0, "varchar_1")
-
+	if err != nil {
+		fmt.Printf("error:%s\n", err.Error())
+	}
 	for rows.Next() {
 		var _int16 int16
 		var _uint16 int16
@@ -202,7 +204,7 @@ func main() {
 			&_varchar, &_text, &_json,
 			&_datetime, &_datetime_now)
 		if err != nil {
-			fmt.Printf("error: %s]\n", err.Error())
+			fmt.Printf("error: %s\n", err.Error())
 			break
 		}
 		fmt.Printf("2nd ----> %d %d %d %d %d %d %f %f %s %s %s %d %d\n",
