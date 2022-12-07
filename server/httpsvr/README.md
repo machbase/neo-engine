@@ -3,7 +3,7 @@
 
 ```sh
 curl -o - -X POST http://127.0.0.1:4088/db/query \
-    --data-urlencode "q=select count(*) from M\$SYS_TABLES where name = 'sample'"
+    --data-urlencode "q=select count(*) from M\$SYS_TABLES where name = 'SAMPLE'"
 ```
 
 ```json

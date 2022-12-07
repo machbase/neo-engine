@@ -119,6 +119,11 @@ func (db *Database) Query(sqlText string, params ...any) (*Rows, error) {
 	if err := machExecute(rows.stmt); err != nil {
 		return nil, err
 	}
+	if stmtType, err := machStmtType(rows.stmt); err != nil {
+		return nil, err
+	} else {
+		rows.stmtType = stmtType
+	}
 	return rows, nil
 }
 
@@ -145,10 +150,22 @@ func (db *Database) QueryRow(sqlText string, params ...any) *Row {
 		return row
 	}
 
+	typ, err := machStmtType(stmt)
+	if err != nil {
+		row.err = err
+		return row
+	}
+
+	row.ok = true
+
+	// select 가 아니면 fetch를 진행하지 않는다.
+	if !isFetchableStmtType(typ) {
+		return row
+	}
+
 	if _, row.err = machFetch(stmt); row.err != nil {
 		return row
 	}
-	row.ok = true
 
 	var count int
 	count, row.err = machColumnCount(stmt)

@@ -161,6 +161,23 @@ func machDirectExecute(stmt unsafe.Pointer, sqlText string) error {
 	return nil
 }
 
+func machStmtType(stmt unsafe.Pointer) (int, error) {
+	var typ C.int
+	if rt := C.MachStmtType(stmt, &typ); rt != 0 {
+		stmtErr := machError0(stmt)
+		if stmtErr != nil {
+			return 0, stmtErr
+		} else {
+			return 0, fmt.Errorf("MachStmtType returns %d", rt)
+		}
+	}
+	return int(typ), nil
+}
+
+func isFetchableStmtType(typ int) bool {
+	return typ == 512 || typ == 516
+}
+
 func machEffectRows(stmt unsafe.Pointer) (int64, error) {
 	var rn C.ulonglong
 	if rt := C.MachEffectRows(stmt, &rn); rt != 0 {
@@ -245,6 +262,18 @@ func machBindBinary(stmt unsafe.Pointer, idx int, data []byte) error {
 			return stmtErr
 		} else {
 			return fmt.Errorf("MachBindBinary idx %d returns %d", idx, rt)
+		}
+	}
+	return nil
+}
+
+func machBindNull(stmt unsafe.Pointer, idx int) error {
+	if rt := C.MachBindNull(stmt, C.int(idx)); rt != 0 {
+		stmtErr := machError0(stmt)
+		if stmtErr != nil {
+			return stmtErr
+		} else {
+			return fmt.Errorf("MachBindNull returns %d", rt)
 		}
 	}
 	return nil

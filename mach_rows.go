@@ -66,6 +66,7 @@ func (row *Row) Scan(cols ...any) error {
 
 type Rows struct {
 	stmt       unsafe.Pointer
+	stmtType   int
 	sqlText    string
 	timeFormat string
 }
@@ -76,6 +77,10 @@ func (rows *Rows) Close() {
 		rows.stmt = nil
 	}
 	rows.sqlText = ""
+}
+
+func (rows *Rows) IsFetchable() bool {
+	return isFetchableStmtType(rows.stmtType)
 }
 
 func (rows *Rows) SetTimeFormat(format string) {
@@ -136,6 +141,11 @@ func (rows *Rows) ColumnTypes() ([]string, error) {
 
 // internal use only from machrpcserver
 func (rows *Rows) Fetch() ([]any, bool, error) {
+	// select 가 아니면 fetch를 진행하지 않는다.
+	if !rows.IsFetchable() {
+		return nil, false, sql.ErrNoRows
+	}
+
 	next, err := machFetch(rows.stmt)
 	if err != nil {
 		return nil, next, errors.Wrap(err, "Fetch")
@@ -195,6 +205,11 @@ func (rows *Rows) Fetch() ([]any, bool, error) {
 }
 
 func (rows *Rows) Next() bool {
+	// select 가 아니면
+	if !rows.IsFetchable() {
+		return false
+	}
+
 	next, err := machFetch(rows.stmt)
 	if err != nil {
 		return false

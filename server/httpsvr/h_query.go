@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -102,8 +101,7 @@ func (svr *Server) handleQuery(ctx *gin.Context) {
 	defer rows.Close()
 	rows.SetTimeFormat(timeformat)
 
-	// TODO: 임시 코드 (fetch가 가능한지 여부를 확인할 수 있는 방법?)
-	if !strings.HasPrefix(strings.TrimSpace(strings.ToLower(req.SqlText)), "select") {
+	if !rows.IsFetchable() {
 		rsp.Success = true
 		rsp.Reason = "success"
 		rsp.Elapse = time.Since(tick).String()

@@ -16,7 +16,9 @@ import (
 
 func bind(stmt unsafe.Pointer, idx int, c any) error {
 	if c == nil {
-		return fmt.Errorf("bind nil idx %d type %T", idx, c)
+		if err := machBindNull(stmt, idx); err != nil {
+			return errors.Wrapf(err, "bind error idx %d with NULL", idx)
+		}
 	}
 	switch cv := c.(type) {
 	case int:
