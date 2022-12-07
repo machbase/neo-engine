@@ -1,6 +1,6 @@
 
 - version:  
-  libmachengine (7ca9bca4)
+  libmachengine (ad68a7ab)
   
 - [C native APIs](http://intra.machbase.com:8888/pages/viewpage.action?pageId=321884164)
 
