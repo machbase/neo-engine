@@ -139,7 +139,7 @@ func (s *svr) Exec(pctx context.Context, req *machrpc.ExecRequest) (*machrpc.Exe
 	}()
 
 	params := pbconv.ConvertPbToAny(req.Params)
-	if err := s.machbase.Exec(req.Sql, params...); err == nil {
+	if _, err := s.machbase.Exec(req.Sql, params...); err == nil {
 		rsp.Success = true
 		rsp.Reason = "success"
 	} else {

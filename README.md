@@ -2,31 +2,40 @@
 - version:  
   libmachengine (7ca9bca4)
   
-- APIs:  
-  http://intra.machbase.com:8888/pages/viewpage.action?pageId=321884164
+- [C native APIs](http://intra.machbase.com:8888/pages/viewpage.action?pageId=321884164)
+
+- [HTTP API README](./server/httpsvr/README.md)
 
 
-```
 ## Settings for VSCode
 
-- `.vscode/settings.json`
+<details>
 
-```
-{
-    "protoc": {
-        "options": [
-            "--proto_path=./proto"
-        ]
-    },
-        "files.exclude": {
-        "vendor": true
-    },
-    "editor.tabSize": 4,
-    "[go]": {
-        "editor.tabSize": 4
-    }
-}
-```
+  - `.vscode/settings.json`
+
+  ```json
+  {
+      "protoc": {
+          "options": [
+              "--proto_path=./proto"
+          ]
+      },
+          "files.exclude": {
+          "vendor": true
+      },
+      "editor.tabSize": 4,
+      "[go]": {
+          "editor.tabSize": 4
+      }
+  }
+  ```
+
+</details>
+
+
+## gRPC developer's info
+
+<details>
 
 ## protobuf compiler
 
@@ -70,3 +79,4 @@ go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
   c.Data(http.StatusOK, gin.MIMEJSON, buf)
 ```
 
+</details>

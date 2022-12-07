@@ -161,6 +161,19 @@ func machDirectExecute(stmt unsafe.Pointer, sqlText string) error {
 	return nil
 }
 
+func machEffectRows(stmt unsafe.Pointer) (int64, error) {
+	var rn C.ulonglong
+	if rt := C.MachEffectRows(stmt, &rn); rt != 0 {
+		stmtErr := machError0(stmt)
+		if stmtErr != nil {
+			return 0, stmtErr
+		} else {
+			return 0, fmt.Errorf("MachEffectRows returns %d", rt)
+		}
+	}
+	return int64(rn), nil
+}
+
 func machFetch(stmt unsafe.Pointer) (bool, error) {
 	var fetchEnd C.int
 	if rt := C.MachFetch(stmt, &fetchEnd); rt != 0 {

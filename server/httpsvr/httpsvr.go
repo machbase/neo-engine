@@ -42,5 +42,5 @@ func (my *Server) Route(r *gin.Engine) {
 
 	r.GET(prefix+"/query", my.handleQuery)
 	r.POST(prefix+"/query", my.handleQuery)
-	r.POST(prefix+"/write", my.handleWrite)
+	r.POST(prefix+"/write/:table", my.handleWrite)
 }

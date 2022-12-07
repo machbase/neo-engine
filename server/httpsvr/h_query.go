@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -29,7 +30,7 @@ type QueryData struct {
 	Recorods [][]any  `json:"records"`
 }
 
-func (my *Server) handleQuery(ctx *gin.Context) {
+func (svr *Server) handleQuery(ctx *gin.Context) {
 	req := &QueryRequest{}
 	rsp := &QueryResponse{Success: false, Reason: "not specified"}
 	tick := time.Now()
@@ -67,7 +68,7 @@ func (my *Server) handleQuery(ctx *gin.Context) {
 		}
 	}
 	if len(strLimit) == 0 {
-		req.Limit = 10
+		req.Limit = 0
 	} else {
 		req.Limit, err = strconv.Atoi(strLimit)
 		if err != nil {
@@ -84,8 +85,14 @@ func (my *Server) handleQuery(ctx *gin.Context) {
 
 	cursor := req.Cursor
 	limit := req.Limit
+	if limit == 0 {
+		limit = 50
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
 
-	rows, err := my.db.Query(req.SqlText)
+	rows, err := svr.db.Query(req.SqlText)
 	if err != nil {
 		rsp.Reason = err.Error()
 		rsp.Elapse = time.Since(tick).String()
@@ -95,6 +102,14 @@ func (my *Server) handleQuery(ctx *gin.Context) {
 	defer rows.Close()
 	rows.SetTimeFormat(timeformat)
 
+	// TODO: 임시 코드 (fetch가 가능한지 여부를 확인할 수 있는 방법?)
+	if !strings.HasPrefix(strings.TrimSpace(strings.ToLower(req.SqlText)), "select") {
+		rsp.Success = true
+		rsp.Reason = "success"
+		rsp.Elapse = time.Since(tick).String()
+		ctx.JSON(http.StatusOK, rsp)
+		return
+	}
 	data := &QueryData{}
 	data.Recorods = make([][]any, 0)
 	data.Columns, err = rows.ColumnNames()

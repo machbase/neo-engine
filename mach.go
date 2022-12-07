@@ -73,32 +73,32 @@ func (db *Database) SqlTidy(sqlText string) string {
 	return strings.TrimSpace(strings.Join(lines, " "))
 }
 
-func (db *Database) Exec(sqlText string, params ...any) error {
+func (db *Database) Exec(sqlText string, params ...any) (int64, error) {
 	var stmt unsafe.Pointer
 	if err := machAllocStmt(db.handle, &stmt); err != nil {
-		return err
+		return 0, err
 	}
 	defer machFreeStmt(stmt)
 	if len(params) == 0 {
 		if err := machDirectExecute(stmt, sqlText); err != nil {
-			return err
+			return 0, err
 		}
 	} else {
 		err := machPrepare(stmt, sqlText)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		for i, p := range params {
 			if err := bind(stmt, i, p); err != nil {
-				return err
+				return 0, err
 			}
 		}
 		err = machExecute(stmt)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
-	return nil
+	return machEffectRows(stmt)
 }
 
 func (db *Database) Query(sqlText string, params ...any) (*Rows, error) {
