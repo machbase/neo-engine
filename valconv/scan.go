@@ -2,12 +2,17 @@ package valconv
 
 import (
 	"fmt"
+	"math"
 	"net"
 	"strconv"
 	"time"
 )
 
-func Int16ToAny(v int16, c any) error {
+func Int16ToAny(v int16, c any, isNull *bool) error {
+	if v == math.MinInt16 {
+		*isNull = true
+		return nil
+	}
 	switch cv := c.(type) {
 	case *int:
 		*cv = int(v)
@@ -20,12 +25,16 @@ func Int16ToAny(v int16, c any) error {
 	case *string:
 		*cv = strconv.Itoa(int(v))
 	default:
-		return fmt.Errorf("Scan convert from INT16 to %T not supported", c)
+		return fmt.Errorf("scan convert from INT16 to %T not supported", c)
 	}
 	return nil
 }
 
-func Int32ToAny(v int32, c any) error {
+func Int32ToAny(v int32, c any, isNull *bool) error {
+	if v == math.MinInt32 {
+		*isNull = true
+		return nil
+	}
 	switch cv := c.(type) {
 	case *int:
 		*cv = int(v)
@@ -38,12 +47,17 @@ func Int32ToAny(v int32, c any) error {
 	case *string:
 		*cv = strconv.Itoa(int(v))
 	default:
-		return fmt.Errorf("Scan convert from INT32 to %T not supported", c)
+		return fmt.Errorf("scan convert from INT32 to %T not supported", c)
 	}
 	return nil
 }
 
-func Int64ToAny(v int64, c any) error {
+func Int64ToAny(v int64, c any, isNull *bool) error {
+	if v == math.MinInt64 {
+		*isNull = true
+		return nil
+	}
+	*isNull = false
 	switch cv := c.(type) {
 	case *int:
 		*cv = int(v)
@@ -58,7 +72,7 @@ func Int64ToAny(v int64, c any) error {
 	case *time.Time:
 		*cv = time.Unix(0, v)
 	default:
-		return fmt.Errorf("Scan convert from INT64 to %T not supported", c)
+		return fmt.Errorf("scan convert from INT64 to %T not supported", c)
 	}
 	return nil
 }
@@ -72,7 +86,7 @@ func DateTimeToAny(v time.Time, c any) error {
 	case *string:
 		*cv = v.String()
 	default:
-		return fmt.Errorf("Scan convert from INT64 to %T not supported", c)
+		return fmt.Errorf("scan convert from INT64 to %T not supported", c)
 	}
 	return nil
 }
@@ -86,7 +100,7 @@ func Float32ToAny(v float32, c any) error {
 	case *string:
 		*cv = strconv.FormatFloat(float64(v), 'f', -1, 32)
 	default:
-		return fmt.Errorf("Scan convert from FLOAT32 to %T not supported", c)
+		return fmt.Errorf("scan convert from FLOAT32 to %T not supported", c)
 	}
 	return nil
 }
@@ -100,17 +114,21 @@ func Float64ToAny(v float64, c any) error {
 	case *string:
 		*cv = strconv.FormatFloat(v, 'f', -1, 32)
 	default:
-		return fmt.Errorf("Scan convert from FLOAT64 to %T not supported", c)
+		return fmt.Errorf("scan convert from FLOAT64 to %T not supported", c)
 	}
 	return nil
 }
 
-func StringToAny(v string, c any) error {
+func StringToAny(v string, c any, isNull *bool) error {
+	if len(v) == 0 {
+		*isNull = true
+		return nil
+	}
 	switch cv := c.(type) {
 	case *string:
 		*cv = v
 	default:
-		return fmt.Errorf("Scan convert from STRING to %T not supported", c)
+		return fmt.Errorf("scan convert from STRING to %T not supported", c)
 	}
 	return nil
 }
@@ -122,7 +140,7 @@ func BytesToAny(v []byte, c any) error {
 	case *string:
 		*cv = string(v)
 	default:
-		return fmt.Errorf("Scan convert from STRING to %T not supported", c)
+		return fmt.Errorf("scan convert from STRING to %T not supported", c)
 	}
 	return nil
 }
@@ -134,7 +152,7 @@ func IPToAny(v net.IP, c any) error {
 	case *string:
 		*cv = v.String()
 	default:
-		return fmt.Errorf("Scan convert from IPv4 to %T not supported", c)
+		return fmt.Errorf("scan convert from IPv4 to %T not supported", c)
 	}
 	return nil
 }

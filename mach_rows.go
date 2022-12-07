@@ -36,13 +36,14 @@ func (row *Row) Scan(cols ...any) error {
 		if i >= len(row.values) {
 			return fmt.Errorf("column %d is out of range %d", i, len(row.values))
 		}
+		var isNull bool
 		switch v := row.values[i].(type) {
 		case *int16:
-			valconv.Int16ToAny(*v, cols[i])
+			valconv.Int16ToAny(*v, cols[i], &isNull)
 		case *int32:
-			valconv.Int32ToAny(*v, cols[i])
+			valconv.Int32ToAny(*v, cols[i], &isNull)
 		case *int64:
-			valconv.Int64ToAny(*v, cols[i])
+			valconv.Int64ToAny(*v, cols[i], &isNull)
 		case *time.Time:
 			valconv.DateTimeToAny(*v, cols[i])
 		case *float32:
@@ -52,17 +53,21 @@ func (row *Row) Scan(cols ...any) error {
 		case *net.IP:
 			valconv.IPToAny(*v, cols[i])
 		case *string:
-			valconv.StringToAny(*v, cols[i])
+			valconv.StringToAny(*v, cols[i], &isNull)
 		case []byte:
 			valconv.BytesToAny(v, cols[i])
+		}
+		if isNull {
+			cols[i] = nil
 		}
 	}
 	return nil
 }
 
 type Rows struct {
-	stmt    unsafe.Pointer
-	sqlText string
+	stmt       unsafe.Pointer
+	sqlText    string
+	timeFormat string
 }
 
 func (rows *Rows) Close() {
@@ -71,6 +76,62 @@ func (rows *Rows) Close() {
 		rows.stmt = nil
 	}
 	rows.sqlText = ""
+}
+
+func (rows *Rows) SetTimeFormat(format string) {
+	rows.timeFormat = format
+}
+
+func (rows *Rows) ColumnNames() ([]string, error) {
+	count, err := machColumnCount(rows.stmt)
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, count)
+	for i := 0; i < count; i++ {
+		// TODO native api가 구현되면 실제 구현으로 변경...
+		names[i] = fmt.Sprintf("col%02d", i+1)
+	}
+	return names, nil
+}
+
+func (rows *Rows) ColumnTypes() ([]string, error) {
+	count, err := machColumnCount(rows.stmt)
+	if err != nil {
+		return nil, err
+	}
+	types := make([]string, count)
+	for i := 0; i < count; i++ {
+		typ, _, err := machColumnType(rows.stmt, i)
+		if err != nil {
+			return nil, errors.Wrap(err, "ColumnTypes")
+		}
+		switch typ {
+		case 0: // MACH_DATA_TYPE_INT16
+			types[i] = "int16"
+		case 1: // MACH_DATA_TYPE_INT32
+			types[i] = "int32"
+		case 2: // MACH_DATA_TYPE_INT64
+			types[i] = "int64"
+		case 3: // MACH_DATA_TYPE_DATETIME
+			types[i] = "time"
+		case 4: // MACH_DATA_TYPE_FLOAT
+			types[i] = "float32"
+		case 5: // MACH_DATA_TYPE_DOUBLE
+			types[i] = "float64"
+		case 6: // MACH_DATA_TYPE_IPV4
+			types[i] = "ipv4"
+		case 7: // MACH_DATA_TYPE_IPV6
+			types[i] = "ipv6"
+		case 8: // MACH_DATA_TYPE_STRING
+			types[i] = "string"
+		case 9: // MACH_DATA_TYPE_BINARY
+			types[i] = "binary"
+		default:
+			return nil, fmt.Errorf("Fetch unsupported type %T", typ)
+		}
+	}
+	return types, nil
 }
 
 // internal use only from machrpcserver
@@ -102,7 +163,14 @@ func (rows *Rows) Fetch() ([]any, bool, error) {
 		case 2: // MACH_DATA_TYPE_INT64
 			values[i] = new(int64)
 		case 3: // MACH_DATA_TYPE_DATETIME
-			values[i] = new(time.Time)
+			switch rows.timeFormat {
+			case "epoch":
+				values[i] = new(int64)
+			case "":
+				values[i] = new(time.Time)
+			default:
+				values[i] = new(string)
+			}
 		case 4: // MACH_DATA_TYPE_FLOAT
 			values[i] = new(float32)
 		case 5: // MACH_DATA_TYPE_DOUBLE
@@ -144,12 +212,13 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 		if err != nil {
 			return errors.Wrap(err, "Scan")
 		}
+		var isNull bool
 		switch typ {
 		case 0: // MACH_DATA_TYPE_INT16
 			if v, err := machColumnDataInt16(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
 			} else {
-				if err = valconv.Int16ToAny(v, c); err != nil {
+				if err = valconv.Int16ToAny(v, c, &isNull); err != nil {
 					return err
 				}
 			}
@@ -157,7 +226,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			if v, err := machColumnDataInt32(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
 			} else {
-				if err = valconv.Int32ToAny(v, c); err != nil {
+				if err = valconv.Int32ToAny(v, c, &isNull); err != nil {
 					return err
 				}
 			}
@@ -165,7 +234,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			if v, err := machColumnDataInt64(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
 			} else {
-				if err = valconv.Int64ToAny(v, c); err != nil {
+				if err = valconv.Int64ToAny(v, c, &isNull); err != nil {
 					return err
 				}
 			}
@@ -213,7 +282,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			if v, err := machColumnDataString(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan string")
 			} else {
-				if err = valconv.StringToAny(v, c); err != nil {
+				if err = valconv.StringToAny(v, c, &isNull); err != nil {
 					return err
 				}
 			}
@@ -227,6 +296,9 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			}
 		default:
 			return fmt.Errorf("MachGetColumnData unsupported type %T", c)
+		}
+		if isNull {
+			cols[i] = nil
 		}
 	}
 	return nil

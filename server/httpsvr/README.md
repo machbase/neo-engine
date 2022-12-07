@@ -7,25 +7,41 @@ curl -o - -X POST http://127.0.0.1:4088/db/query \
     |jq
 ```
 
+| param      | default  | desc              |
+| ---------- | -------- | ----------------- |
+| q          |          | sql text          |
+| limit      | 10       | result set limit  |
+| cursor     | 0        | result set cursor |
+| timeformat | epoch    | format of datetime column           |
+|            |          | `epoch`: unix epoch in nano seconds |
+
 ```json
 {
   "success": true,
   "reason": "1 records selected",
-  "elapse": "814.337µs",
-  "cursor": 3,
-  "data": [
-    [
-      "name-09",
-      "2022-12-06T09:27:10.474136952+09:00",
-      0.9009000062942505,
-      "",
-      -9223372036854776000,
-      "",
-      "1ed74fcb-91ed-6bf1-9121-bef8031ae3fb",
-      "",
-      -9223372036854776000,
-      ""
+  "elapse": "1.044079ms",
+  "cursor": 5,
+  "data": {
+    "colums": [
+      "col01", "col02", "col03", "col04", "col05", "col06", "col07", "col08", "col09", "col10"
+    ],
+    "types": [
+      "string", "datetime", "float64", "string", "int64", "string", "string", "string", "int64", "string"
+    ],
+    "records": [
+      [
+        "name-17",
+        1670291684975704000,
+        1.7017000913619995,
+        "",
+        null,
+        "",
+        "1ed7508f-50c2-6b67-aecc-7b54ab426d7a",
+        "",
+        null,
+        ""
+      ]
     ]
-  ]
+  }
 }
 ```

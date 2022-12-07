@@ -16,11 +16,17 @@ type QueryRequest struct {
 }
 
 type QueryResponse struct {
-	Success bool   `json:"success"`
-	Reason  string `json:"reason"`
-	Elapse  string `json:"elapse"`
-	Cursor  int    `json:"cursor,omitempty"`
-	Data    any    `json:"data,omitempty"`
+	Success bool       `json:"success"`
+	Reason  string     `json:"reason"`
+	Elapse  string     `json:"elapse"`
+	Data    *QueryData `json:"data,omitempty"`
+}
+
+type QueryData struct {
+	Cursor   int      `json:"cursor,omitempty"`
+	Columns  []string `json:"colums"`
+	Types    []string `json:"types"`
+	Recorods [][]any  `json:"records"`
 }
 
 func (my *Server) handleQuery(ctx *gin.Context) {
@@ -31,14 +37,17 @@ func (my *Server) handleQuery(ctx *gin.Context) {
 	var err error
 	var strCursor string
 	var strLimit string
+	var timeformat string
 	if ctx.Request.Method == http.MethodPost {
 		req.SqlText = ctx.PostForm("q")
 		strCursor = ctx.PostForm("cursor")
 		strLimit = ctx.PostForm("limit")
+		timeformat = ctx.PostForm("timeformat")
 	} else if ctx.Request.Method == http.MethodGet {
 		req.SqlText = ctx.Query("q")
 		strCursor = ctx.Query("cursor")
 		strLimit = ctx.Query("limit")
+		timeformat = ctx.PostForm("timeformat")
 	}
 	if len(req.SqlText) == 0 {
 		rsp.Reason = "empty sql"
@@ -69,6 +78,10 @@ func (my *Server) handleQuery(ctx *gin.Context) {
 		}
 	}
 
+	if len(timeformat) == 0 {
+		timeformat = "epoch"
+	}
+
 	cursor := req.Cursor
 	limit := req.Limit
 
@@ -80,8 +93,24 @@ func (my *Server) handleQuery(ctx *gin.Context) {
 		return
 	}
 	defer rows.Close()
+	rows.SetTimeFormat(timeformat)
 
-	data := make([][]any, 0)
+	data := &QueryData{}
+	data.Recorods = make([][]any, 0)
+	data.Columns, err = rows.ColumnNames()
+	if err != nil {
+		rsp.Reason = err.Error()
+		rsp.Elapse = time.Since(tick).String()
+		ctx.JSON(http.StatusInternalServerError, rsp)
+		return
+	}
+	data.Types, err = rows.ColumnTypes()
+	if err != nil {
+		rsp.Reason = err.Error()
+		rsp.Elapse = time.Since(tick).String()
+		ctx.JSON(http.StatusInternalServerError, rsp)
+		return
+	}
 	rownum := 0
 	for {
 		rec, next, err := rows.Fetch()
@@ -99,29 +128,29 @@ func (my *Server) handleQuery(ctx *gin.Context) {
 		if rownum-1 < cursor {
 			continue
 		}
-		for i, n := range rec {
-			if n == nil {
-				my.log.Tracef("%02d)) nill", i)
-				continue
-			}
-			switch v := n.(type) {
-			case *int64:
-				my.log.Tracef("%02d))%v", i, *v)
-			default:
-				my.log.Tracef("%02d>>%#v", i, n)
-			}
-		}
-		data = append(data, rec)
+		// for i, n := range rec {
+		// 	if n == nil {
+		// 		continue
+		// 	}
+		// 	switch v := n.(type) {
+		// 	case *int64:
+		// 		my.log.Tracef("%02d]]%v", i, *v)
+		// 	default:
+		// 		my.log.Tracef("%02d>>%#v", i, n)
+		// 	}
+		// }
+		data.Recorods = append(data.Recorods, rec)
 
 		if (rownum - cursor) >= limit {
 			cursor = req.Cursor + (rownum - cursor)
 			break
 		}
 	}
+	data.Cursor = cursor
+
 	rsp.Success = true
-	rsp.Reason = fmt.Sprintf("%d records selected", len(data))
+	rsp.Reason = fmt.Sprintf("%d records selected", len(data.Recorods))
 	rsp.Elapse = time.Since(tick).String()
-	rsp.Cursor = cursor
 	rsp.Data = data
 	ctx.JSON(http.StatusOK, rsp)
 }

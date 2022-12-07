@@ -39,37 +39,37 @@ func NewClient(options ...ClientOption) *Client {
 	return client
 }
 
-func (this *Client) Connect(serverAddr string) error {
+func (client *Client) Connect(serverAddr string) error {
 	conn, err := MakeGrpcConn(serverAddr)
 	if err != nil {
 		return errors.Wrap(err, "NewClient")
 	}
-	this.conn = conn
-	this.cli = NewMachbaseClient(conn)
+	client.conn = conn
+	client.cli = NewMachbaseClient(conn)
 	return nil
 }
 
-func (this *Client) Disconnect() {
-	this.conn = nil
-	this.cli = nil
+func (client *Client) Disconnect() {
+	client.conn = nil
+	client.cli = nil
 }
 
-func (this *Client) queryContext() (context.Context, context.CancelFunc) {
-	if this.queryTimeout > 0 {
-		return context.WithTimeout(context.Background(), this.queryTimeout)
+func (client *Client) queryContext() (context.Context, context.CancelFunc) {
+	if client.queryTimeout > 0 {
+		return context.WithTimeout(context.Background(), client.queryTimeout)
 	} else {
 		ctx := context.Background()
 		return ctx, func() {}
 	}
 }
 
-func (this *Client) Exec(sqlText string, params ...any) error {
-	ctx, cancelFunc := this.queryContext()
+func (client *Client) Exec(sqlText string, params ...any) error {
+	ctx, cancelFunc := client.queryContext()
 	defer cancelFunc()
-	return this.ExecContext(ctx, sqlText, params...)
+	return client.ExecContext(ctx, sqlText, params...)
 }
 
-func (this *Client) ExecContext(ctx context.Context, sqlText string, params ...any) error {
+func (client *Client) ExecContext(ctx context.Context, sqlText string, params ...any) error {
 	pbparams, err := pbconv.ConvertAnyToPb(params)
 	if err != nil {
 		return err
@@ -78,7 +78,7 @@ func (this *Client) ExecContext(ctx context.Context, sqlText string, params ...a
 		Sql:    sqlText,
 		Params: pbparams,
 	}
-	rsp, err := this.cli.Exec(ctx, req)
+	rsp, err := client.cli.Exec(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -88,26 +88,26 @@ func (this *Client) ExecContext(ctx context.Context, sqlText string, params ...a
 	return nil
 }
 
-func (this *Client) Query(sqlText string, params ...any) (*Rows, error) {
-	ctx, cancelFunc := this.queryContext()
+func (client *Client) Query(sqlText string, params ...any) (*Rows, error) {
+	ctx, cancelFunc := client.queryContext()
 	defer cancelFunc()
-	return this.QueryContext(ctx, sqlText, params...)
+	return client.QueryContext(ctx, sqlText, params...)
 }
 
-func (this *Client) QueryContext(ctx context.Context, sqlText string, params ...any) (*Rows, error) {
+func (client *Client) QueryContext(ctx context.Context, sqlText string, params ...any) (*Rows, error) {
 	pbparams, err := pbconv.ConvertAnyToPb(params)
 	if err != nil {
 		return nil, err
 	}
 
 	req := &QueryRequest{Sql: sqlText, Params: pbparams}
-	rsp, err := this.cli.Query(ctx, req)
+	rsp, err := client.cli.Query(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
 	if rsp.Success {
-		return &Rows{client: this, handle: rsp.RowsHandle}, nil
+		return &Rows{client: client, handle: rsp.RowsHandle}, nil
 	} else {
 		if len(rsp.Reason) > 0 {
 			return nil, errors.New(rsp.Reason)
@@ -171,20 +171,20 @@ func (rows *Rows) Scan(cols ...any) error {
 	return scan(rows.values, cols)
 }
 
-func (this *Client) QueryRow(sqlText string, params ...any) *Row {
-	ctx, cancelFunc := this.queryContext()
+func (client *Client) QueryRow(sqlText string, params ...any) *Row {
+	ctx, cancelFunc := client.queryContext()
 	defer cancelFunc()
-	return this.QueryRowContext(ctx, sqlText, params...)
+	return client.QueryRowContext(ctx, sqlText, params...)
 }
 
-func (this *Client) QueryRowContext(ctx context.Context, sqlText string, params ...any) *Row {
+func (client *Client) QueryRowContext(ctx context.Context, sqlText string, params ...any) *Row {
 	pbparams, err := pbconv.ConvertAnyToPb(params)
 	if err != nil {
 		return &Row{success: false, err: err}
 	}
 
 	req := &QueryRowRequest{Sql: sqlText, Params: pbparams}
-	rsp, err := this.cli.QueryRow(ctx, req)
+	rsp, err := client.cli.QueryRow(ctx, req)
 	if err != nil {
 		return &Row{success: false, err: err}
 	}
@@ -221,22 +221,23 @@ func (row *Row) Scan(cols ...any) error {
 }
 
 func scan(src []any, dst []any) error {
-	var err error
 	for i := range dst {
 		if i >= len(src) {
 			return fmt.Errorf("column %d is out of range %d", i, len(src))
 		}
+		var err error
+		var isNull bool
 		switch v := src[i].(type) {
 		default:
 			return fmt.Errorf("column %d is %T, not compatible with %T", i, v, dst[i])
 		case *int:
-			err = valconv.Int32ToAny(int32(*v), dst[i])
+			err = valconv.Int32ToAny(int32(*v), dst[i], &isNull)
 		case *int16:
-			err = valconv.Int16ToAny(*v, dst[i])
+			err = valconv.Int16ToAny(*v, dst[i], &isNull)
 		case *int32:
-			err = valconv.Int32ToAny(*v, dst[i])
+			err = valconv.Int32ToAny(*v, dst[i], &isNull)
 		case *int64:
-			err = valconv.Int64ToAny(*v, dst[i])
+			err = valconv.Int64ToAny(*v, dst[i], &isNull)
 		case *time.Time:
 			err = valconv.DateTimeToAny(*v, dst[i])
 		case *float32:
@@ -246,17 +247,17 @@ func scan(src []any, dst []any) error {
 		case *net.IP:
 			err = valconv.IPToAny(*v, dst[i])
 		case *string:
-			err = valconv.StringToAny(*v, dst[i])
+			err = valconv.StringToAny(*v, dst[i], &isNull)
 		case []byte:
 			err = valconv.BytesToAny(v, dst[i])
 		case int:
-			err = valconv.Int32ToAny(int32(v), dst[i])
+			err = valconv.Int32ToAny(int32(v), dst[i], &isNull)
 		case int16:
-			err = valconv.Int16ToAny(v, dst[i])
+			err = valconv.Int16ToAny(v, dst[i], &isNull)
 		case int32:
-			err = valconv.Int32ToAny(v, dst[i])
+			err = valconv.Int32ToAny(v, dst[i], &isNull)
 		case int64:
-			err = valconv.Int64ToAny(v, dst[i])
+			err = valconv.Int64ToAny(v, dst[i], &isNull)
 		case time.Time:
 			err = valconv.DateTimeToAny(v, dst[i])
 		case float32:
@@ -266,37 +267,40 @@ func scan(src []any, dst []any) error {
 		case net.IP:
 			err = valconv.IPToAny(v, dst[i])
 		case string:
-			err = valconv.StringToAny(v, dst[i])
+			err = valconv.StringToAny(v, dst[i], &isNull)
 		}
 		if err != nil {
 			return err
+		}
+		if isNull {
+			dst[i] = nil
 		}
 	}
 	return nil
 }
 
-func (this *Client) Appender(tableName string) (*Appender, error) {
+func (client *Client) Appender(tableName string) (*Appender, error) {
 	var ctx0 context.Context
-	if this.appendTimeout > 0 {
-		_ctx, _cf := context.WithTimeout(context.Background(), this.appendTimeout)
+	if client.appendTimeout > 0 {
+		_ctx, _cf := context.WithTimeout(context.Background(), client.appendTimeout)
 		defer _cf()
 		ctx0 = _ctx
 	} else {
 		ctx0 = context.Background()
 	}
 
-	openRsp, err := this.cli.Appender(ctx0, &AppenderRequest{TableName: tableName})
+	openRsp, err := client.cli.Appender(ctx0, &AppenderRequest{TableName: tableName})
 	if err != nil {
 		return nil, errors.Wrap(err, "Appender")
 	}
 
-	appendClient, err := this.cli.Append(context.Background())
+	appendClient, err := client.cli.Append(context.Background())
 	if err != nil {
 		return nil, errors.Wrap(err, "AppendClient")
 	}
 
 	return &Appender{
-		client:       this,
+		client:       client,
 		appendClient: appendClient,
 		tableName:    tableName,
 		handle:       openRsp.Handle,
@@ -310,13 +314,13 @@ type Appender struct {
 	handle       string
 }
 
-func (this *Appender) Close() error {
-	if this.appendClient == nil {
+func (appender *Appender) Close() error {
+	if appender.appendClient == nil {
 		return nil
 	}
 
-	client := this.appendClient
-	this.appendClient = nil
+	client := appender.appendClient
+	appender.appendClient = nil
 
 	err := client.CloseSend()
 	if err != nil {
@@ -325,8 +329,8 @@ func (this *Appender) Close() error {
 	return nil
 }
 
-func (this *Appender) Append(cols ...any) error {
-	if this.appendClient == nil {
+func (appender *Appender) Append(cols ...any) error {
+	if appender.appendClient == nil {
 		return sql.ErrTxDone
 	}
 
@@ -334,8 +338,8 @@ func (this *Appender) Append(cols ...any) error {
 	if err != nil {
 		return err
 	}
-	err = this.appendClient.Send(&AppendData{
-		Handle: this.handle,
+	err = appender.appendClient.Send(&AppendData{
+		Handle: appender.handle,
 		Params: params,
 	})
 	return err
