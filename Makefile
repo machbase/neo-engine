@@ -11,7 +11,7 @@ cleanpackage:
 	@rm -rf packages/*
 
 test:
-	@go test $(ARGS) .
+	@go test $(ARGS) ./server/test
 
 test-all:
 	@make -f Makefile ARGS="-cover -v -count 1" test

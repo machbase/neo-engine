@@ -1,7 +1,6 @@
 package httpsvr
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -36,9 +35,7 @@ func (svr *Server) handleQuery(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, rsp)
 		return
 	}
-	if len(strCursor) == 0 {
-		req.Cursor = 0
-	} else {
+	if len(strCursor) > 0 {
 		req.Cursor, err = strconv.Atoi(strCursor)
 		if err != nil {
 			rsp.Reason = "invalid cursor"
@@ -47,9 +44,7 @@ func (svr *Server) handleQuery(ctx *gin.Context) {
 			return
 		}
 	}
-	if len(strLimit) == 0 {
-		req.Limit = 0
-	} else {
+	if len(strLimit) > 0 {
 		req.Limit, err = strconv.Atoi(strLimit)
 		if err != nil {
 			rsp.Reason = "invalid limit"
@@ -63,88 +58,14 @@ func (svr *Server) handleQuery(ctx *gin.Context) {
 		timeformat = "epoch"
 	}
 
-	cursor := req.Cursor
-	limit := req.Limit
-	if limit == 0 {
-		limit = 50
-	}
-	if limit > 1000 {
-		limit = 1000
-	}
+	req.Timeformat = timeformat
 
-	rows, err := svr.db.Query(req.SqlText)
-	if err != nil {
-		rsp.Reason = err.Error()
-		rsp.Elapse = time.Since(tick).String()
-		ctx.JSON(http.StatusInternalServerError, rsp)
-		return
-	}
-	defer rows.Close()
-	rows.SetTimeFormat(timeformat)
-
-	if !rows.IsFetchable() {
-		rsp.Success = true
-		rsp.Reason = "success"
-		rsp.Elapse = time.Since(tick).String()
-		ctx.JSON(http.StatusOK, rsp)
-		return
-	}
-	data := &msg.QueryData{}
-	data.Recorods = make([][]any, 0)
-	data.Columns, err = rows.ColumnNames()
-	if err != nil {
-		rsp.Reason = err.Error()
-		rsp.Elapse = time.Since(tick).String()
-		ctx.JSON(http.StatusInternalServerError, rsp)
-		return
-	}
-	data.Types, err = rows.ColumnTypes()
-	if err != nil {
-		rsp.Reason = err.Error()
-		rsp.Elapse = time.Since(tick).String()
-		ctx.JSON(http.StatusInternalServerError, rsp)
-		return
-	}
-	rownum := 0
-	for {
-		rec, next, err := rows.Fetch()
-		if err != nil {
-			rsp.Reason = err.Error()
-			rsp.Elapse = time.Since(tick).String()
-			ctx.JSON(http.StatusInternalServerError, rsp)
-			return
-		}
-		if !next {
-			cursor = 0
-			break
-		}
-		rownum++
-		if rownum-1 < cursor {
-			continue
-		}
-		// for i, n := range rec {
-		// 	if n == nil {
-		// 		continue
-		// 	}
-		// 	switch v := n.(type) {
-		// 	case *int64:
-		// 		my.log.Tracef("%02d]]%v", i, *v)
-		// 	default:
-		// 		my.log.Tracef("%02d>>%#v", i, n)
-		// 	}
-		// }
-		data.Recorods = append(data.Recorods, rec)
-
-		if (rownum - cursor) >= limit {
-			cursor = req.Cursor + (rownum - cursor)
-			break
-		}
-	}
-	data.Cursor = cursor
-
-	rsp.Success = true
-	rsp.Reason = fmt.Sprintf("%d records selected", len(data.Recorods))
+	msg.Query(svr.db, req, rsp)
 	rsp.Elapse = time.Since(tick).String()
-	rsp.Data = data
-	ctx.JSON(http.StatusOK, rsp)
+
+	if rsp.Success {
+		ctx.JSON(http.StatusOK, rsp)
+	} else {
+		ctx.JSON(http.StatusInternalServerError, rsp)
+	}
 }

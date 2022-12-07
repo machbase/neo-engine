@@ -13,6 +13,7 @@ require (
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.0
+	github.com/tidwall/gjson v1.14.4
 	google.golang.org/grpc v1.51.0
 	google.golang.org/protobuf v1.28.1
 )
@@ -43,6 +44,8 @@ require (
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/sevlyar/go-daemon v0.1.6 // indirect
 	github.com/teris-io/shortid v0.0.0-20220617161101-71ec9f2aa569 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/ugorji/go/codec v1.2.7 // indirect
 	github.com/zclconf/go-cty v1.11.0 // indirect
 	golang.org/x/crypto v0.0.0-20220824171710-5757bc0c5503 // indirect

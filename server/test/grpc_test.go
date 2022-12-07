@@ -1,4 +1,4 @@
-package machrpc_test
+package test
 
 import (
 	"fmt"
@@ -12,19 +12,22 @@ import (
 )
 
 func TestGrpc(t *testing.T) {
-	const dropTable = false
+	const dropTable = true
 	var tableExists bool
 	var count int
 	var tableName = strings.ToUpper("tagdata")
 
 	client := machrpc.NewClient(machrpc.QueryTimeout(3 * time.Second))
-	err := client.Connect("unix://../tmp/machsvr.sock")
+	err := client.Connect("unix://../../tmp/machsvr.sock")
 	//err := client.Connect("tcp://127.0.0.1:4056")
 	require.Nil(t, err)
 	defer client.Disconnect()
 
 	row := client.QueryRow("select count(*) from M$SYS_TABLES where name = ?", tableName)
 	require.NotNil(t, row)
+	if row.Err() != nil {
+		panic(row.Err())
+	}
 	require.Nil(t, row.Err())
 
 	err = row.Scan(&count)

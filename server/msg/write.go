@@ -8,7 +8,8 @@ import (
 )
 
 type WriteRequest struct {
-	Data *WriteRequestData `json:"data"`
+	Table string            `json:"table"`
+	Data  *WriteRequestData `json:"data"`
 }
 
 type WriteRequestData struct {
@@ -27,7 +28,7 @@ type WriteResponseData struct {
 	AffectedRows uint64 `json:"affectedRows"`
 }
 
-func Write(db *mach.Database, tableName string, req *WriteRequest, rsp *WriteResponse) {
+func Write(db *mach.Database, req *WriteRequest, rsp *WriteResponse) {
 	vf := make([]string, len(req.Data.Columns))
 	for i := range vf {
 		vf[i] = "?"
@@ -35,7 +36,7 @@ func Write(db *mach.Database, tableName string, req *WriteRequest, rsp *WriteRes
 	valuesFormat := strings.Join(vf, ",")
 	columns := strings.Join(req.Data.Columns, ",")
 
-	sqlText := fmt.Sprintf("insert into %s (%s) values(%s)", tableName, columns, valuesFormat)
+	sqlText := fmt.Sprintf("insert into %s (%s) values(%s)", req.Table, columns, valuesFormat)
 	var nrows uint64
 	for i, rec := range req.Data.Records {
 		_, err := db.Exec(sqlText, rec...)

@@ -119,8 +119,7 @@ func (svr *Server) OnMessage(evt *mqtt.EvtMessage) error {
 		msg.Query(svr.db, req, rsp)
 		rsp.Elapse = time.Since(tick).String()
 		reply(rsp)
-	} else if strings.HasPrefix(topic, "write/") {
-		tableName := strings.TrimPrefix(topic, "write/")
+	} else if strings.HasPrefix(topic, "write") {
 		req := &msg.WriteRequest{}
 		rsp := &msg.WriteResponse{Reason: "not specified"}
 		err := json.Unmarshal(evt.Raw, req)
@@ -130,13 +129,19 @@ func (svr *Server) OnMessage(evt *mqtt.EvtMessage) error {
 			reply(rsp)
 			return nil
 		}
-		msg.Write(svr.db, tableName, req, rsp)
+		if len(req.Table) == 0 {
+			req.Table = strings.TrimPrefix(topic, "write/")
+		}
+
+		if len(req.Table) == 0 {
+			rsp.Reason = "table is not specified"
+			rsp.Elapse = time.Since(tick).String()
+			reply(rsp)
+			return nil
+		}
+		msg.Write(svr.db, req, rsp)
 		rsp.Elapse = time.Since(tick).String()
 		reply(rsp)
 	}
 	return nil
-}
-
-func (svr *Server) handleQuery(req *msg.QueryRequest, rsp *msg.QueryResponse, reply func(any)) {
-	reply("OK")
 }

@@ -1,4 +1,4 @@
-package mqttsvr_test
+package test
 
 import (
 	"sync"
@@ -7,27 +7,23 @@ import (
 
 	paho "github.com/eclipse/paho.mqtt.golang"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 )
 
-func getOptions(broker string, clientId string, keepAlive time.Duration) *paho.ClientOptions {
+func TestMqttClient(t *testing.T) {
 	cfg := paho.NewClientOptions()
-	cfg.SetKeepAlive(keepAlive)
 	cfg.SetCleanSession(true)
 	cfg.SetConnectRetry(false)
 	cfg.SetAutoReconnect(false)
 	cfg.SetProtocolVersion(4)
+	cfg.SetClientID("machbase-test-cli")
+	cfg.AddBroker("127.0.0.1:4083")
+	cfg.SetKeepAlive(3 * time.Second)
+	cfg.SetUsername("user")
+	cfg.SetPassword("pass")
 
-	cfg.SetClientID(clientId)
-	cfg.AddBroker(broker)
-	return cfg
-}
-
-func TestSmartCsClient(t *testing.T) {
-	ops := getOptions("127.0.0.1:4086", "machbase-cli", 3*time.Second)
-	ops.SetUsername("user")
-	ops.SetPassword("pass")
-
-	client := paho.NewClient(ops)
+	//// connect mqtt server
+	client := paho.NewClient(cfg)
 	require.NotNil(t, client)
 
 	result := client.Connect()
@@ -38,22 +34,40 @@ func TestSmartCsClient(t *testing.T) {
 	require.True(t, ok)
 	require.Nil(t, result.Error())
 
-	wg := sync.WaitGroup{}
+	tableExistsQuery := false
+	tableExists := false
 
+	//// subscribe to reply topic
+	wg := sync.WaitGroup{}
 	client.Subscribe("db/reply", 1, func(_ paho.Client, msg paho.Message) {
 		buff := msg.Payload()
-		t.Logf("RECV: %v", string(buff))
+		str := string(buff)
+		t.Logf("RECV: %v", str)
+		vSuccess := gjson.Get(str, "success")
+		require.True(t, vSuccess.Bool())
+
+		if tableExistsQuery {
+			vCount := gjson.Get(str, "data.records.0.0")
+			tableExists = vCount.Int() > 0
+		}
 		wg.Done()
 	})
 
-	//// ceck table exists
-	jsonStr := `{
-		"q": "select count(*) from M$SYS_TABLES where name = 'SAMPLE'",
-		"limit": 10,
-		"cursor": 0
-	}`
+	//// check table exists
+	jsonStr := `{ "q": "select count(*) from M$SYS_TABLES where name = 'SAMPLE'" }`
 	wg.Add(1)
+	tableExistsQuery = true
 	client.Publish("db/query", 1, false, []byte(jsonStr))
+
+	wg.Wait()
+	tableExistsQuery = false
+	//// drop table
+	if tableExists {
+		jsonStr = `{ "q": "drop table sample" }`
+		wg.Add(1)
+		client.Publish("db/query", 1, false, []byte(jsonStr))
+		wg.Wait()
+	}
 
 	//// create table
 	jsonStr = `{
@@ -61,6 +75,7 @@ func TestSmartCsClient(t *testing.T) {
 	}`
 	wg.Add(1)
 	client.Publish("db/query", 1, false, []byte(jsonStr))
+	wg.Wait()
 
 	//// insert
 	jsonStr = `{
