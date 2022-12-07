@@ -134,6 +134,12 @@ curl -o - -X POST http://127.0.0.1:4088/db/query \
     --data-urlencode "cursor=0"
 ```
 
+or use GET method
+
+```sh
+curl -o - http://127.0.0.1:4088/db/query?q=select%20*%20from%20sample&limit=2&cursor=0
+```
+
 | param      | default  | desc                                |
 | ---------- | -------- | ----------------------------------- |
 | q          |          | sql text                            |
@@ -148,7 +154,7 @@ curl -o - -X POST http://127.0.0.1:4088/db/query \
   "reason": "2 records selected",
   "elapse": "387.663µs",
   "data": {
-    "cursor": 2,
+    "cursor": 0,
     "colums": [
       "col01",
       "col02",
