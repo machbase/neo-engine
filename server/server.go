@@ -17,6 +17,7 @@ import (
 	mach "github.com/machbase/dbms-mach-go"
 	"github.com/machbase/dbms-mach-go/machrpc"
 	"github.com/machbase/dbms-mach-go/server/httpsvr"
+	"github.com/machbase/dbms-mach-go/server/mqttsvr"
 	"github.com/machbase/dbms-mach-go/server/rpcsvr"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -34,6 +35,10 @@ func init() {
 		Http: HttpConfig{
 			Listeners: []string{},
 			Prefix:    "/db",
+		},
+		Mqtt: mqttsvr.Config{
+			Listeners: []string{},
+			Prefix:    "db",
 		},
 	}
 	booter.Register(
@@ -55,6 +60,7 @@ type Config struct {
 	StartupTimeout time.Duration
 	Grpc           GrpcConfig
 	Http           HttpConfig
+	Mqtt           mqttsvr.Config
 }
 
 type GrpcConfig struct {
@@ -74,6 +80,7 @@ type svr struct {
 	db    *mach.Database
 	grpcd *grpc.Server
 	httpd *http.Server
+	mqttd *mqttsvr.Server
 }
 
 const TagTableName = "tagdata"
@@ -170,10 +177,24 @@ func (s *svr) Start() error {
 			go s.httpd.Serve(lsnr)
 		}
 	}
+
+	// mqtt server
+	if len(s.conf.Mqtt.Listeners) > 0 {
+		s.mqttd = mqttsvr.New(&s.conf.Mqtt)
+		err := s.mqttd.Start()
+		if err != nil {
+			return errors.Wrap(err, "mqtt server")
+		}
+	}
+
 	return nil
 }
 
 func (s *svr) Stop() {
+	if s.mqttd != nil {
+		s.mqttd.Stop()
+	}
+
 	if s.httpd != nil {
 		ctx, cancelFunc := context.WithTimeout(context.Background(), 3*time.Second)
 		s.httpd.Shutdown(ctx)

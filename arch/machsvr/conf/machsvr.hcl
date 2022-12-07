@@ -3,6 +3,8 @@ define VARS {
     GRPC_LISTEN_PORT = flag("--grpc-listen-port", "4056")
     HTTP_LISTEN_HOST = flag("--http-listen-host", "127.0.0.1")
     HTTP_LISTEN_PORT = flag("--http-listen-port", "4088")
+    MQTT_LISTEN_HOST = flag("--mqtt-listen-host", "127.0.0.1")
+    MQTT_LISTEN_PORT = flag("--mqtt-listen-port", "4083")
 }
 
 module "github.com/machbase/cemlib/logging" {
@@ -37,6 +39,10 @@ module "github.com/machbase/dbms-mach-go/server" {
         Http = {
             Listeners        = [ "tcp://${VARS_HTTP_LISTEN_HOST}:${VARS_HTTP_LISTEN_PORT}" ]
             Prefix           = "/db"
+        }
+        Mqtt = {
+            Listeners        = [ "tcp://${VARS_MQTT_LISTEN_HOST}:${VARS_MQTT_LISTEN_PORT}"]
+            Prefix           = "db"
         }
     }
 }
