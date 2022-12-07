@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/Masterminds/semver/v3 v3.1.1
+	github.com/eclipse/paho.mqtt.golang v1.4.1
 	github.com/gin-gonic/gin v1.8.1
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/golang/protobuf v1.5.2
@@ -26,6 +27,7 @@ require (
 	github.com/go-playground/validator/v10 v10.10.0 // indirect
 	github.com/goccy/go-json v0.9.7 // indirect
 	github.com/golang-jwt/jwt/v4 v4.4.2 // indirect
+	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/hashicorp/hcl/v2 v2.14.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
@@ -45,6 +47,7 @@ require (
 	github.com/zclconf/go-cty v1.11.0 // indirect
 	golang.org/x/crypto v0.0.0-20220824171710-5757bc0c5503 // indirect
 	golang.org/x/net v0.0.0-20220722155237-a158d28d115b // indirect
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220919091848-fb04ddd9f9c8 // indirect
 	golang.org/x/text v0.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect

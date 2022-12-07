@@ -7,31 +7,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/machbase/dbms-mach-go/server/msg"
 )
 
-type QueryRequest struct {
-	SqlText string `json:"q"`
-	Cursor  int    `json:"cursor"`
-	Limit   int    `json:"limit"`
-}
-
-type QueryResponse struct {
-	Success bool       `json:"success"`
-	Reason  string     `json:"reason"`
-	Elapse  string     `json:"elapse"`
-	Data    *QueryData `json:"data,omitempty"`
-}
-
-type QueryData struct {
-	Cursor   int      `json:"cursor,omitempty"`
-	Columns  []string `json:"colums"`
-	Types    []string `json:"types"`
-	Recorods [][]any  `json:"records"`
-}
-
 func (svr *Server) handleQuery(ctx *gin.Context) {
-	req := &QueryRequest{}
-	rsp := &QueryResponse{Success: false, Reason: "not specified"}
+	req := &msg.QueryRequest{}
+	rsp := &msg.QueryResponse{Success: false, Reason: "not specified"}
 	tick := time.Now()
 
 	var err error
@@ -108,7 +89,7 @@ func (svr *Server) handleQuery(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, rsp)
 		return
 	}
-	data := &QueryData{}
+	data := &msg.QueryData{}
 	data.Recorods = make([][]any, 0)
 	data.Columns, err = rows.ColumnNames()
 	if err != nil {
