@@ -147,6 +147,20 @@ int MachExecuteClean(void* aMachStmt);
 int MachDirectExecute(void* aMachStmt, char* aSQL);
 
 /**
+ * It must be called after the statement is PREPARED or APPEND_OPEN
+ * @param [out] aStmtType stmt type to be stored
+ *
+ * DDL: 1-255
+ * ALTER SYSTEM: 256-511
+ * SELECT: 512
+ * INSERT: 513
+ * DELETE: 514-515
+ * INSERT_SELECT: 516
+ * UPDATE: 517
+ */
+int MachStmtType(void* aMachStmt, int* aStmtType);
+
+/**
  * @brief 실행된 쿼리의 결과 개수를 가져온다.
  * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt
  * @param [out] aEffectRows 결과 개수를 저장할 변수의 주소
@@ -210,6 +224,7 @@ int MachBindInt64(void* aMachStmt, int aParamNo, long long aValue);
 int MachBindDouble(void* aMachStmt, int aParamNo, double aValue);
 int MachBindString(void* aMachStmt, int aParamNo, char* aValue, int aLength);
 int MachBindBinary(void* aMachStmt, int aParamNo, void* aValue, int aLength);
+int MachBindNull(void* aMachStmt, int aParamNo);
 
 /*************************Append Function*********************************/
 
