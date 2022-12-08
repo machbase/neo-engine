@@ -4,14 +4,13 @@ import (
 	"testing"
 
 	"github.com/machbase/booter"
-	_ "github.com/machbase/cemlib/banner"
 	_ "github.com/machbase/cemlib/logging"
 	_ "github.com/machbase/dbms-mach-go/server"
 )
 
 var serverConf = []byte(`
 define VARS {
-	WORKDIR = "../../tmp"
+	WORKDIR = "../tmp"
 }
 
 module "github.com/machbase/cemlib/logging" {
@@ -24,13 +23,6 @@ module "github.com/machbase/cemlib/logging" {
         Levels = [
             { Pattern="tagd", Level="TRACE" },
         ]
-    }
-}
-
-module "github.com/machbase/cemlib/banner" {
-    config {
-        Label = pname()
-        Info  = version()
     }
 }
 

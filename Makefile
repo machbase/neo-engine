@@ -1,4 +1,4 @@
-.PHONY: all
+.PHONY: all test
 
 targets := $(shell ls main)
 
@@ -11,7 +11,7 @@ cleanpackage:
 	@rm -rf packages/*
 
 test:
-	@go test $(ARGS) ./server/test
+	@go test $(ARGS) ./test/
 
 test-all:
 	@make -f Makefile ARGS="-cover -v -count 1" test
