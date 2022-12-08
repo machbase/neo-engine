@@ -27,6 +27,7 @@ func init() {
 	defaultConf := Config{
 		MachbaseHome:   ".",
 		StartupTimeout: 5 * time.Second,
+		Machbase:       *defaultMachbaseConfig(),
 		Grpc: GrpcConfig{
 			Listeners:      []string{"unix://./machsvr.sock"},
 			MaxRecvMsgSize: 4,
@@ -58,6 +59,7 @@ func init() {
 type Config struct {
 	MachbaseHome   string
 	StartupTimeout time.Duration
+	Machbase       MachbaseConfig
 	Grpc           GrpcConfig
 	Http           HttpConfig
 	Mqtt           mqttsvr.Config
@@ -88,14 +90,30 @@ const TagTableName = "tagdata"
 func (s *svr) Start() error {
 	s.log = logging.GetLog("machsvr")
 
-	_, err := os.Stat(s.conf.MachbaseHome)
-	if err != nil {
-		return errors.Wrap(err, "config file not found")
-	}
 	homepath, err := filepath.Abs(s.conf.MachbaseHome)
 	if err != nil {
-		return errors.Wrap(err, "config file path")
+		return errors.Wrap(err, "machbase path")
 	}
+
+	if err := mkdirIfNotExists(homepath); err != nil {
+		return errors.Wrap(err, "machbase")
+	}
+
+	if err := mkdirIfNotExists(filepath.Join(homepath, "conf")); err != nil {
+		return errors.Wrap(err, "machbase conf")
+	}
+	if err := mkdirIfNotExists(filepath.Join(homepath, "dbs")); err != nil {
+		return errors.Wrap(err, "machbase dbs")
+	}
+	if err := mkdirIfNotExists(filepath.Join(homepath, "trc")); err != nil {
+		return errors.Wrap(err, "machbase trc")
+	}
+
+	confpath := filepath.Join(homepath, "conf", "machbase.conf")
+	if err := applyMachbaseConfig(confpath, &s.conf.Machbase); err != nil {
+		return errors.Wrap(err, "machbase.conf")
+	}
+
 	if err := mach.Initialize(homepath); err != nil {
 		return errors.Wrap(err, "initialize database")
 	}
@@ -205,6 +223,18 @@ func (s *svr) Stop() {
 		s.grpcd.Stop()
 	}
 	s.log.Infof("shutdown.")
+}
+
+func mkdirIfNotExists(path string) error {
+	_, err := os.Stat(path)
+	if err != nil && os.IsNotExist(err) {
+		if err := os.Mkdir(path, 0755); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+	return nil
 }
 
 func makeListener(addr string) (net.Listener, error) {
