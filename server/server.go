@@ -25,48 +25,14 @@ import (
 )
 
 func init() {
-	defaultConf := Config{
-		MachbaseHome:   ".",
-		StartupTimeout: 5 * time.Second,
-		Grpc: GrpcConfig{
-			Listeners:      []string{"unix://./machsvr.sock"},
-			MaxRecvMsgSize: 4,
-			MaxSendMsgSize: 4,
-		},
-		Http: HttpConfig{
-			Listeners: []string{},
-			Prefix:    "/db",
-		},
-		Mqtt: mqttsvr.Config{
-			Listeners: []string{},
-			Prefix:    "db",
-		},
-	}
+
 	booter.Register(
 		"github.com/machbase/dbms-mach-go/server",
 		func() *Config {
-			conf := defaultConf
-			switch mach.Edition() {
-			case "fog":
-				conf.MachbasePreset = PresetFog
-			case "edge":
-				conf.MachbasePreset = PresetEdge
-			default:
-				sysCPU := runtime.NumCPU()
-				conf.MachbasePreset = PresetNone
-				if sysCPU < 8 {
-					conf.MachbasePreset = PresetEdge
-				} else {
-					conf.MachbasePreset = PresetFog
-				}
-			}
-			conf.Machbase = *DefaultMachbaseConfig(conf.MachbasePreset)
-			return &conf
+			return NewConfig()
 		},
 		func(conf *Config) (booter.Boot, error) {
-			return &svr{
-				conf: conf,
-			}, nil
+			return NewServer(conf)
 		},
 	)
 }
@@ -92,6 +58,10 @@ type HttpConfig struct {
 	Prefix    string
 }
 
+type Server interface {
+	booter.Boot
+}
+
 type svr struct {
 	conf  *Config
 	log   logging.Log
@@ -102,6 +72,49 @@ type svr struct {
 }
 
 const TagTableName = "tagdata"
+
+func NewConfig() *Config {
+	conf := Config{
+		MachbaseHome:   ".",
+		StartupTimeout: 5 * time.Second,
+		Grpc: GrpcConfig{
+			Listeners:      []string{"unix://./machsvr.sock"},
+			MaxRecvMsgSize: 4,
+			MaxSendMsgSize: 4,
+		},
+		Http: HttpConfig{
+			Listeners: []string{},
+			Prefix:    "/db",
+		},
+		Mqtt: mqttsvr.Config{
+			Listeners: []string{},
+			Prefix:    "db",
+		},
+	}
+
+	switch mach.Edition() {
+	case "fog":
+		conf.MachbasePreset = PresetFog
+	case "edge":
+		conf.MachbasePreset = PresetEdge
+	default:
+		sysCPU := runtime.NumCPU()
+		conf.MachbasePreset = PresetNone
+		if sysCPU < 8 {
+			conf.MachbasePreset = PresetEdge
+		} else {
+			conf.MachbasePreset = PresetFog
+		}
+	}
+	conf.Machbase = *DefaultMachbaseConfig(conf.MachbasePreset)
+	return &conf
+}
+
+func NewServer(conf *Config) (Server, error) {
+	return &svr{
+		conf: conf,
+	}, nil
+}
 
 func (s *svr) Start() error {
 	s.log = logging.GetLog("machsvr")
