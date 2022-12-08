@@ -1,6 +1,7 @@
 package httpsvr
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -19,10 +20,26 @@ func (svr *Server) handleQuery(ctx *gin.Context) {
 	var strLimit string
 	var timeformat string
 	if ctx.Request.Method == http.MethodPost {
-		req.SqlText = ctx.PostForm("q")
-		strCursor = ctx.PostForm("cursor")
-		strLimit = ctx.PostForm("limit")
-		timeformat = ctx.PostForm("timeformat")
+		contentType := ctx.ContentType()
+		if contentType == "application/json" {
+			if err = ctx.Bind(req); err != nil {
+				rsp.Reason = err.Error()
+				rsp.Elapse = time.Since(tick).String()
+				ctx.JSON(http.StatusBadRequest, rsp)
+				return
+			}
+			timeformat = req.Timeformat
+		} else if contentType == "application/x-www-form-urlencoded" {
+			req.SqlText = ctx.PostForm("q")
+			strCursor = ctx.PostForm("cursor")
+			strLimit = ctx.PostForm("limit")
+			timeformat = ctx.PostForm("timeformat")
+		} else {
+			rsp.Reason = fmt.Sprintf("unsupported content-type: %s", contentType)
+			rsp.Elapse = time.Since(tick).String()
+			ctx.JSON(http.StatusBadRequest, rsp)
+			return
+		}
 	} else if ctx.Request.Method == http.MethodGet {
 		req.SqlText = ctx.Query("q")
 		strCursor = ctx.Query("cursor")
