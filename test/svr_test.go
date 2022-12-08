@@ -21,7 +21,7 @@ module "github.com/machbase/cemlib/logging" {
         DefaultEnableSourceLocation = true
         DefaultLevel                = "TRACE"
         Levels = [
-            { Pattern="tagd", Level="TRACE" },
+            { Pattern="machsvr", Level="TRACE" },
         ]
     }
 }
@@ -30,6 +30,9 @@ module "github.com/machbase/dbms-mach-go/server" {
     name = "machsvr"
     config {
         MachbaseHome     = "${VARS_WORKDIR}/machbase"
+        Machbase = {
+            HANDLE_LIMIT = 1024
+        }
         Grpc = {
             Listeners        = [ 
                 "unix://${VARS_WORKDIR}/machsvr.sock", 
