@@ -112,7 +112,8 @@ func (p MachbasePreset) String() string {
 		return "edge"
 	}
 }
-func defaultMachbaseConfig(preset MachbasePreset) *MachbaseConfig {
+
+func DefaultMachbaseConfig(preset MachbasePreset) *MachbaseConfig {
 	c := &MachbaseConfig{
 		PORT_NO:             5656,
 		DBS_PATH:            "?/dbs",

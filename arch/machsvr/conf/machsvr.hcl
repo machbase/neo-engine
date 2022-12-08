@@ -31,6 +31,8 @@ module "github.com/machbase/dbms-mach-go/server" {
     name = "machsvr"
     config {
         MachbaseHome     = "${execDir()}/machbase"
+        Machbase         = {
+        }
         Grpc = {
             Listeners        = [ "unix://${execDir()}/machsvr.sock", "tcp://${VARS_GRPC_LISTEN_HOST}:${VARS_GRPC_LISTEN_PORT}" ]
             MaxRecvMsgSize   = 4

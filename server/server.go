@@ -60,7 +60,7 @@ func init() {
 					conf.MachbasePreset = PresetFog
 				}
 			}
-			conf.Machbase = *defaultMachbaseConfig(conf.MachbasePreset)
+			conf.Machbase = *DefaultMachbaseConfig(conf.MachbasePreset)
 			return &conf
 		},
 		func(conf *Config) (booter.Boot, error) {
