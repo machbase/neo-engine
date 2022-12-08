@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -27,7 +28,6 @@ func init() {
 	defaultConf := Config{
 		MachbaseHome:   ".",
 		StartupTimeout: 5 * time.Second,
-		Machbase:       *defaultMachbaseConfig(),
 		Grpc: GrpcConfig{
 			Listeners:      []string{"unix://./machsvr.sock"},
 			MaxRecvMsgSize: 4,
@@ -46,6 +46,21 @@ func init() {
 		"github.com/machbase/dbms-mach-go/server",
 		func() *Config {
 			conf := defaultConf
+			switch mach.Edition() {
+			case "fog":
+				conf.MachbasePreset = PresetFog
+			case "edge":
+				conf.MachbasePreset = PresetEdge
+			default:
+				sysCPU := runtime.NumCPU()
+				conf.MachbasePreset = PresetNone
+				if sysCPU < 8 {
+					conf.MachbasePreset = PresetEdge
+				} else {
+					conf.MachbasePreset = PresetFog
+				}
+			}
+			conf.Machbase = *defaultMachbaseConfig(conf.MachbasePreset)
 			return &conf
 		},
 		func(conf *Config) (booter.Boot, error) {
@@ -58,6 +73,7 @@ func init() {
 
 type Config struct {
 	MachbaseHome   string
+	MachbasePreset MachbasePreset
 	StartupTimeout time.Duration
 	Machbase       MachbaseConfig
 	Grpc           GrpcConfig
@@ -109,6 +125,7 @@ func (s *svr) Start() error {
 		return errors.Wrap(err, "machbase trc")
 	}
 
+	s.log.Infof("apply machbase '%s' preset", s.conf.MachbasePreset)
 	confpath := filepath.Join(homepath, "conf", "machbase.conf")
 	if err := applyMachbaseConfig(confpath, &s.conf.Machbase); err != nil {
 		return errors.Wrap(err, "machbase.conf")

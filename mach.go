@@ -14,6 +14,16 @@ func LinkInfo() string {
 	return LibMachLinkInfo
 }
 
+func Edition() string {
+	if strings.Contains(LibMachLinkInfo, "edge") {
+		return "edge"
+	} else if strings.Contains(LibMachLinkInfo, "fog") {
+		return "fog"
+	} else {
+		return "none"
+	}
+}
+
 func Initialize(homeDir string) error {
 	return initialize0(homeDir)
 }
