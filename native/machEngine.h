@@ -79,17 +79,22 @@ typedef struct MachEngineAppendParam
 } MachEngineAppendParam;
 
 /**
- * @brief MachEngineConfig 초기화..
+ * @brief Initialize MachEngineEnv
  * @param [in] aHomePath 설정할 Machbase Home 경로
+ * @param [out] aEnvHandle to be allocated
  */
-int MachInitialize(char* aHomePath);
-void MachFinalize();
+int MachInitialize(char* aHomePath, void** aEnvHandle);
+/**
+ * Finalize MachEngineEnv
+ * aEnvHandle will be freed
+ */
+void MachFinalize(void* aEnvHandle);
 
 /**
  * @brief Machbase Database 생성 및 삭제
  */
-int MachCreateDB();
-int MachDestroyDB();
+int MachCreateDB(void* aEnvHandle);
+int MachDestroyDB(void* aEnvHandle);
 /**
  * return 1 if DB is create, otherwise return 0
  */
@@ -100,7 +105,7 @@ int MachIsDBCreated();
  * @details Machbase Thread가 Startup 완료될 때 까지 기다린다
  * @param [in] aTimeoutSecond timeout 시간 (단위 :초)
  */
-int MachStartupDB(int aTimeoutSecond, void** aDBHandle);
+int MachStartupDB(void* aEnvHandle, int aTimeoutSecond);
 
 /**
  * @brief Machbase Thread 종료
@@ -109,8 +114,9 @@ int MachStartupDB(int aTimeoutSecond, void** aDBHandle);
 int MachShutdownDB(void* aDBHandle);
 
 /**
- * @brief Handle 또는 Stmt로 부터 설정된 에러 코드 및 메시지를 반환한다.
- * @param [in] aStmt (db handle / stmt)
+ * These functions retrieve the error code and error message after error occurs.
+ * It must be called after MachInitialize() success.
+ * @param [in] env handle or stmt handle
  * @return error code / error msg
  */
 int MachErrorCode(void* aHandle);
@@ -123,8 +129,8 @@ char* MachErrorMsg(void* aHandle);
  * @brief MachStmt를 할당 및 해제
  * @param [inout] aMachStmt 할당 및 해제할 MachStmt 주소
  */
-int MachAllocStmt(void* aDBHandle, void** aMachStmt);
-int MachFreeStmt(void* aMachStmt);
+int MachAllocStmt(void* aEnvHandle, void** aMachStmt);
+int MachFreeStmt(void* aEnvHandle, void* aMachStmt);
 
 /**
  * @brief 쿼리 Prepare 및 Prepare Clean
@@ -185,10 +191,13 @@ int MachColumnCount(void* aMachStmt, int* aColumnCount);
  * @brief Fetch row로 부터 각 컬럼의 결과를 가지고 온다.
  * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt 
  * @param [in] aColumnIndex 가져올 column의 인덱스
+ * @param [out] aColumnName column name 복사할 버퍼
+ * @param [in] aBufSize aColumName의 버퍼 크기
  * @param [out] aType column type
  * @param [out] aSize column size 
  * @param [out] aColumnLength 컬럼의 데이터 크기
  */
+int MachColumnName(void* aMachStmt, int aColumnIndex, char* aColumnName, int aBufSize);
 int MachColumnType(void* aMachStmt, int aColumnIndex, int* aType, int* aSize);
 int MachColumnLength(void* aMachStmt, int aColumnIndex, int* aColumnLength);
 
@@ -197,21 +206,22 @@ int MachColumnLength(void* aMachStmt, int aColumnIndex, int* aColumnLength);
  * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt 
  * @param [in] aColumnIndex 가져올 column의 인덱스
  * @param [out] aDest column 데이터를 저장할 변수의 주소 (column 타입과 동일한 타입의 변수의 주소를 보내줘야한다)
+ * @param [out] aIsNull column 데이터 null 여부 0 : not null, 1 : null
  */
-int MachColumnData(void* aMachStmt, int aColumnIndex, void* aDest, int aBufSize);
+int MachColumnData(void* aMachStmt, int aColumnIndex, void* aDest, int aBufSize, char* aIsNull);
 /**
  * @brief MachColumnData 함수를 컬럼 타입에 맞게 호출하는 함수이다.
  */
-int MachColumnDataInt16(void* aMachStmt, int aColumnIndex, short* aDest);
-int MachColumnDataInt32(void* aMachStmt, int aColumnIndex, int* aDest);
-int MachColumnDataInt64(void* aMachStmt, int aColumnIndex, long long* aDest);
-int MachColumnDataDateTime(void* aMachStmt, int aColumnIndex, long long* aDest);
-int MachColumnDataFloat(void* aMachStmt, int aColumnIndex, float* aDest);
-int MachColumnDataDouble(void* aMachStmt, int aColumnIndex, double* aDest);
-int MachColumnDataIPV4(void* aMachStmt, int aColumnIndex, void* aDest);
-int MachColumnDataIPV6(void* aMachStmt, int aColumnIndex, void* aDest);
-int MachColumnDataString(void* aMachStmt, int aColumnIndex, char* aDest, int aBufSize);
-int MachColumnDataBinary(void* aMachStmt, int aColumnIndex, void* aDest, int aBufSize);
+int MachColumnDataInt16(void* aMachStmt, int aColumnIndex, short* aDest, char* aIsNull);
+int MachColumnDataInt32(void* aMachStmt, int aColumnIndex, int* aDest, char* aIsNull);
+int MachColumnDataInt64(void* aMachStmt, int aColumnIndex, long long* aDest, char* aIsNull);
+int MachColumnDataDateTime(void* aMachStmt, int aColumnIndex, long long* aDest, char* aIsNull);
+int MachColumnDataFloat(void* aMachStmt, int aColumnIndex, float* aDest, char* aIsNull);
+int MachColumnDataDouble(void* aMachStmt, int aColumnIndex, double* aDest, char* aIsNull);
+int MachColumnDataIPV4(void* aMachStmt, int aColumnIndex, void* aDest, char* aIsNull);
+int MachColumnDataIPV6(void* aMachStmt, int aColumnIndex, void* aDest, char* aIsNull);
+int MachColumnDataString(void* aMachStmt, int aColumnIndex, char* aDest, int aBufSize, char* aIsNull);
+int MachColumnDataBinary(void* aMachStmt, int aColumnIndex, void* aDest, int aBufSize, char* aIsNull);
 
 /**
  * @brief 쿼리 실행시에 바인드 변수에 바인드 값을 설정한다.
