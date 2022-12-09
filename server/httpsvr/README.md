@@ -129,22 +129,18 @@ curl -o - -X POST http://127.0.0.1:4088/db/write/sample \
 
 ```sh
 curl -o - -X POST http://127.0.0.1:4088/db/query \
-    --data-urlencode "q=select * from sample" \
-    --data-urlencode "limit=2" \
-    --data-urlencode "cursor=0"
+    --data-urlencode "q=select * from sample"
 ```
 
 or use GET method
 
 ```sh
-curl -o - http://127.0.0.1:4088/db/query?q=select%20*%20from%20sample&limit=2&cursor=0
+curl -o - http://127.0.0.1:4088/db/query?q=select%20*%20from%20sample
 ```
 
 | param      | default  | desc                                |
 | ---------- | -------- | ----------------------------------- |
 | q          |          | sql text                            |
-| limit      | 50       | result set limit (max 1,000)        |
-| cursor     | 0        | result set cursor                   |
 | timeformat | epoch    | format of datetime column           |
 |            |          | `epoch`: unix epoch in nano seconds |
 
@@ -154,7 +150,6 @@ curl -o - http://127.0.0.1:4088/db/query?q=select%20*%20from%20sample&limit=2&cu
   "reason": "2 records selected",
   "elapse": "387.663µs",
   "data": {
-    "cursor": 0,
     "colums": [
       "col01",
       "col02",

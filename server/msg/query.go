@@ -8,8 +8,6 @@ import (
 
 type QueryRequest struct {
 	SqlText    string `json:"q"`
-	Cursor     int    `json:"cursor"`
-	Limit      int    `json:"limit"`
 	Timeformat string `json:"timeformat,omitempty"`
 }
 
@@ -21,23 +19,14 @@ type QueryResponse struct {
 }
 
 type QueryData struct {
-	Cursor   int      `json:"cursor,omitempty"`
 	Columns  []string `json:"colums"`
 	Types    []string `json:"types"`
 	Recorods [][]any  `json:"records"`
 }
 
 func Query(db *mach.Database, req *QueryRequest, rsp *QueryResponse) {
-	cursor := req.Cursor
-	limit := req.Limit
 	timeformat := req.Timeformat
 
-	if limit == 0 {
-		limit = 50
-	}
-	if limit > 1000 {
-		limit = 1000
-	}
 	if len(timeformat) == 0 {
 		timeformat = "epoch"
 	}
@@ -67,7 +56,6 @@ func Query(db *mach.Database, req *QueryRequest, rsp *QueryResponse) {
 		rsp.Reason = err.Error()
 		return
 	}
-	rownum := 0
 	for {
 		rec, next, err := rows.Fetch()
 		if err != nil {
@@ -75,12 +63,7 @@ func Query(db *mach.Database, req *QueryRequest, rsp *QueryResponse) {
 			return
 		}
 		if !next {
-			cursor = 0
 			break
-		}
-		rownum++
-		if rownum-1 < cursor {
-			continue
 		}
 		// for i, n := range rec {
 		// 	if n == nil {
@@ -94,13 +77,7 @@ func Query(db *mach.Database, req *QueryRequest, rsp *QueryResponse) {
 		// 	}
 		// }
 		data.Recorods = append(data.Recorods, rec)
-
-		if (rownum - cursor) >= limit {
-			cursor = req.Cursor + (rownum - cursor)
-			break
-		}
 	}
-	data.Cursor = cursor
 
 	rsp.Success = true
 	rsp.Reason = fmt.Sprintf("%d rows selected", len(data.Recorods))

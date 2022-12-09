@@ -13,13 +13,9 @@ client.Subscribe("db/reply", 1, func(_ paho.Client, msg paho.Message) {
 - publish query to `db/query`
 
 ```go
-jsonStr := `
-    {
-        "q": "select count(*) from M$SYS_TABLES where name = 'SAMPLE'",
-        "limit": 10,
-        "cursor": 0
-    }
-`
+jsonStr := `{
+        "q": "select count(*) from M$SYS_TABLES where name = 'SAMPLE'"
+}`
 client.Publish("db/query", 1, false, []byte(jsonStr))
 ```
 

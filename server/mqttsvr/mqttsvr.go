@@ -124,6 +124,8 @@ func (svr *Server) OnMessage(evt *mqtt.EvtMessage) error {
 		}
 	}
 	if topic == "query" {
+		////////////////////////
+		// query
 		req := &msg.QueryRequest{}
 		rsp := &msg.QueryResponse{Reason: "not specified"}
 		err := json.Unmarshal(evt.Raw, req)
@@ -137,6 +139,8 @@ func (svr *Server) OnMessage(evt *mqtt.EvtMessage) error {
 		rsp.Elapse = time.Since(tick).String()
 		reply(rsp)
 	} else if strings.HasPrefix(topic, "write") {
+		////////////////////////
+		// write
 		req := &msg.WriteRequest{}
 		rsp := &msg.WriteResponse{Reason: "not specified"}
 		err := json.Unmarshal(evt.Raw, req)
@@ -160,6 +164,8 @@ func (svr *Server) OnMessage(evt *mqtt.EvtMessage) error {
 		rsp.Elapse = time.Since(tick).String()
 		reply(rsp)
 	} else if strings.HasPrefix(topic, "append/") {
+		////////////////////////
+		// append
 		table := strings.ToUpper(strings.TrimPrefix(topic, "append/"))
 		if len(table) == 0 {
 			return nil

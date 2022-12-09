@@ -3,7 +3,6 @@ package httpsvr
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,8 +15,6 @@ func (svr *Server) handleQuery(ctx *gin.Context) {
 	tick := time.Now()
 
 	var err error
-	var strCursor string
-	var strLimit string
 	var timeformat string
 	if ctx.Request.Method == http.MethodPost {
 		contentType := ctx.ContentType()
@@ -31,8 +28,6 @@ func (svr *Server) handleQuery(ctx *gin.Context) {
 			timeformat = req.Timeformat
 		} else if contentType == "application/x-www-form-urlencoded" {
 			req.SqlText = ctx.PostForm("q")
-			strCursor = ctx.PostForm("cursor")
-			strLimit = ctx.PostForm("limit")
 			timeformat = ctx.PostForm("timeformat")
 		} else {
 			rsp.Reason = fmt.Sprintf("unsupported content-type: %s", contentType)
@@ -42,8 +37,6 @@ func (svr *Server) handleQuery(ctx *gin.Context) {
 		}
 	} else if ctx.Request.Method == http.MethodGet {
 		req.SqlText = ctx.Query("q")
-		strCursor = ctx.Query("cursor")
-		strLimit = ctx.Query("limit")
 		timeformat = ctx.PostForm("timeformat")
 	}
 	if len(req.SqlText) == 0 {
@@ -51,24 +44,6 @@ func (svr *Server) handleQuery(ctx *gin.Context) {
 		rsp.Elapse = time.Since(tick).String()
 		ctx.JSON(http.StatusBadRequest, rsp)
 		return
-	}
-	if len(strCursor) > 0 {
-		req.Cursor, err = strconv.Atoi(strCursor)
-		if err != nil {
-			rsp.Reason = "invalid cursor"
-			rsp.Elapse = time.Since(tick).String()
-			ctx.JSON(http.StatusBadRequest, rsp)
-			return
-		}
-	}
-	if len(strLimit) > 0 {
-		req.Limit, err = strconv.Atoi(strLimit)
-		if err != nil {
-			rsp.Reason = "invalid limit"
-			rsp.Elapse = time.Since(tick).String()
-			ctx.JSON(http.StatusBadRequest, rsp)
-			return
-		}
 	}
 
 	if len(timeformat) == 0 {
