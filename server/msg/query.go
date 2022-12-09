@@ -19,9 +19,9 @@ type QueryResponse struct {
 }
 
 type QueryData struct {
-	Columns  []string `json:"colums"`
-	Types    []string `json:"types"`
-	Recorods [][]any  `json:"records"`
+	Columns []string `json:"colums"`
+	Types   []string `json:"types"`
+	Rows    [][]any  `json:"rows"`
 }
 
 func Query(db *mach.Database, req *QueryRequest, rsp *QueryResponse) {
@@ -45,7 +45,7 @@ func Query(db *mach.Database, req *QueryRequest, rsp *QueryResponse) {
 		return
 	}
 	data := &QueryData{}
-	data.Recorods = make([][]any, 0)
+	data.Rows = make([][]any, 0)
 	data.Columns, err = rows.ColumnNames()
 	if err != nil {
 		rsp.Reason = err.Error()
@@ -76,10 +76,10 @@ func Query(db *mach.Database, req *QueryRequest, rsp *QueryResponse) {
 		// 		my.log.Tracef("%02d>>%#v", i, n)
 		// 	}
 		// }
-		data.Recorods = append(data.Recorods, rec)
+		data.Rows = append(data.Rows, rec)
 	}
 
 	rsp.Success = true
-	rsp.Reason = fmt.Sprintf("%d rows selected", len(data.Recorods))
+	rsp.Reason = fmt.Sprintf("%d rows selected", len(data.Rows))
 	rsp.Data = data
 }

@@ -9,7 +9,7 @@ curl -o - -X POST http://127.0.0.1:4088/db/query \
 ```json
 {
   "success": true,
-  "reason": "1 records selected",
+  "reason": "1 rows selected",
   "elapse": "502.233µs",
   "data": {
     "colums": [
@@ -18,7 +18,7 @@ curl -o - -X POST http://127.0.0.1:4088/db/query \
     "types": [
       "int64"
     ],
-    "records": [
+    "rows": [
       [
         0
       ]
@@ -93,7 +93,7 @@ curl -o - -X POST http://127.0.0.1:4088/db/write/sample \
 {
   "data": {
     "columns":["name", "time", "value"],
-    "records": [
+    "rows": [
       [ "sample.tag", 1670380342000000000, 1.0001 ],
       [ "sample.tag", 1670380343000000000, 2.0002 ]
     ]
@@ -147,7 +147,7 @@ curl -o - http://127.0.0.1:4088/db/query?q=select%20*%20from%20sample
 ```json
 {
   "success": true,
-  "reason": "2 records selected",
+  "reason": "2 rows selected",
   "elapse": "387.663µs",
   "data": {
     "colums": [
@@ -162,7 +162,7 @@ curl -o - http://127.0.0.1:4088/db/query?q=select%20*%20from%20sample
       "float64",
       "string"
     ],
-    "records": [
+    "rows": [
       [
         "sample.tag",
         1670380342000000000,

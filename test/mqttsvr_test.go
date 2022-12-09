@@ -47,7 +47,7 @@ func TestMqttClient(t *testing.T) {
 		require.True(t, vSuccess.Bool())
 
 		if tableExistsQuery {
-			vCount := gjson.Get(str, "data.records.0.0")
+			vCount := gjson.Get(str, "data.rows.0.0")
 			tableExists = vCount.Int() > 0
 		}
 		wg.Done()
@@ -81,7 +81,7 @@ func TestMqttClient(t *testing.T) {
 	jsonStr = `{
 		"data": {
 			"columns":["name", "time", "value"],
-			"records": [
+			"rows": [
 				[ "sample.tag", 1670380342000000000, 1.0001 ],
 				[ "sample.tag", 1670380343000000000, 2.0002 ]
 			]

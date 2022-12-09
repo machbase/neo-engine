@@ -14,7 +14,7 @@ type WriteRequest struct {
 
 type WriteRequestData struct {
 	Columns []string `json:"columns"`
-	Records [][]any  `json:"records"`
+	Rows    [][]any  `json:"rows"`
 }
 
 type WriteResponse struct {
@@ -38,7 +38,7 @@ func Write(db *mach.Database, req *WriteRequest, rsp *WriteResponse) {
 
 	sqlText := fmt.Sprintf("insert into %s (%s) values(%s)", req.Table, columns, valuesFormat)
 	var nrows uint64
-	for i, rec := range req.Data.Records {
+	for i, rec := range req.Data.Rows {
 		_, err := db.Exec(sqlText, rec...)
 		if err != nil {
 			rsp.Reason = fmt.Sprintf("record[%d] %s", i, err.Error())

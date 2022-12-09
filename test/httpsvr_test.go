@@ -33,7 +33,7 @@ func TestHttp(t *testing.T) {
 	vSuccess := gjson.Get(str, "success")
 	require.True(t, vSuccess.Bool())
 
-	vCount := gjson.Get(str, "data.records.0.0")
+	vCount := gjson.Get(str, "data.rows.0.0")
 
 	//// drop table
 	if vCount.Int() == 1 {

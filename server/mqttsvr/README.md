@@ -24,12 +24,12 @@ client.Publish("db/query", 1, false, []byte(jsonStr))
 ```json
 {
     "success":true,
-    "reason":"1 records selected",
+    "reason":"1 rows selected",
     "elapse":"1.4332ms",
     "data":{
         "colums":["col01"],
         "types":["int64"],
-        "records":[
+        "rows":[
             [0]
         ]
     }
@@ -42,7 +42,7 @@ client.Publish("db/query", 1, false, []byte(jsonStr))
 jsonStr = `{
     "data": {
         "columns":["name", "time", "value"],
-        "records": [
+        "rows": [
             [ "sample.tag", 1670380342000000000, 1.0001 ],
             [ "sample.tag", 1670380343000000000, 2.0002 ]
         ]
