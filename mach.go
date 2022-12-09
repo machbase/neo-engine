@@ -260,46 +260,50 @@ type Appender struct {
 	FailureCount uint64
 }
 
-func (db *Appender) Close() error {
-	if db.stmt == nil {
+func (ap *Appender) Table() string {
+	return ap.tableName
+}
+
+func (ap *Appender) Close() error {
+	if ap.stmt == nil {
 		return nil
 	}
-	s, f, err := machAppendClose(db.stmt)
+	s, f, err := machAppendClose(ap.stmt)
 	if err != nil {
 		return err
 	}
-	db.SuccessCount = s
-	db.FailureCount = f
+	ap.SuccessCount = s
+	ap.FailureCount = f
 
-	if err := machFreeStmt(db.stmt); err != nil {
+	if err := machFreeStmt(ap.stmt); err != nil {
 		return err
 	}
-	db.stmt = nil
+	ap.stmt = nil
 	return nil
 }
 
-func (db *Appender) Append(cols ...any) error {
-	if db.tableType == 0 {
-		return db.appendLogTable(time.Time{}, cols)
+func (ap *Appender) Append(cols ...any) error {
+	if ap.tableType == 0 {
+		return ap.appendLogTable(time.Time{}, cols)
 	} else {
-		return db.appendTagTable(cols)
+		return ap.appendTagTable(cols)
 	}
 }
 
 // supports only Log Table
-func (db *Appender) AppendWithTimestamp(ts time.Time, cols ...any) error {
-	if db.tableType == 0 {
-		return db.appendLogTable(ts, cols)
+func (ap *Appender) AppendWithTimestamp(ts time.Time, cols ...any) error {
+	if ap.tableType == 0 {
+		return ap.appendLogTable(ts, cols)
 	} else {
-		return fmt.Errorf("%s is not a log table, use Append() instead", db.tableName)
+		return fmt.Errorf("%s is not a log table, use Append() instead", ap.tableName)
 	}
 }
 
-func (db *Appender) appendLogTable(ts time.Time, cols []any) error {
-	if db.colCount-1 != len(cols) {
-		return fmt.Errorf("value count %d, table '%s' has %d columns", len(cols), db.tableName, db.colCount-1)
+func (ap *Appender) appendLogTable(ts time.Time, cols []any) error {
+	if ap.colCount-1 != len(cols) {
+		return fmt.Errorf("value count %d, table '%s' has %d columns", len(cols), ap.tableName, ap.colCount-1)
 	}
-	vals := make([]*machAppendDataNullValue, db.colCount)
+	vals := make([]*machAppendDataNullValue, ap.colCount)
 	if ts.IsZero() {
 		vals[0] = bindValue(nil)
 	} else {
@@ -313,20 +317,20 @@ func (db *Appender) appendLogTable(ts time.Time, cols []any) error {
 			v.Free()
 		}
 	}()
-	if err := machAppendData(db.stmt, vals); err != nil {
+	if err := machAppendData(ap.stmt, vals); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (db *Appender) appendTagTable(cols []any) error {
-	if db.colCount == 0 {
-		return fmt.Errorf("table '%s' has no columns", db.tableName)
+func (ap *Appender) appendTagTable(cols []any) error {
+	if ap.colCount == 0 {
+		return fmt.Errorf("table '%s' has no columns", ap.tableName)
 	}
-	if db.colCount != len(cols) {
-		return fmt.Errorf("value count %d, table '%s' has %d columns", len(cols), db.tableName, db.colCount)
+	if ap.colCount != len(cols) {
+		return fmt.Errorf("value count %d, table '%s' has %d columns", len(cols), ap.tableName, ap.colCount)
 	}
-	vals := make([]*machAppendDataNullValue, db.colCount)
+	vals := make([]*machAppendDataNullValue, ap.colCount)
 	for i, c := range cols {
 		vals[i] = bindValue(c)
 	}
@@ -335,7 +339,7 @@ func (db *Appender) appendTagTable(cols []any) error {
 			v.Free()
 		}
 	}()
-	if err := machAppendData(db.stmt, vals); err != nil {
+	if err := machAppendData(ap.stmt, vals); err != nil {
 		return err
 	}
 	return nil

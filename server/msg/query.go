@@ -103,6 +103,6 @@ func Query(db *mach.Database, req *QueryRequest, rsp *QueryResponse) {
 	data.Cursor = cursor
 
 	rsp.Success = true
-	rsp.Reason = fmt.Sprintf("%d records selected", len(data.Recorods))
+	rsp.Reason = fmt.Sprintf("%d rows selected", len(data.Recorods))
 	rsp.Data = data
 }
