@@ -25,30 +25,43 @@ func Edition() string {
 }
 
 func Initialize(homeDir string) error {
-	return initialize0(homeDir)
+	var handle unsafe.Pointer
+	err := initialize0(homeDir, &handle)
+	if err == nil {
+		singleton.handle = handle
+	}
+	return err
+}
+
+func Finalize() {
+	finalize0(singleton.handle)
 }
 
 func DestroyDatabase() error {
-	return destroyDatabase0()
+	return destroyDatabase0(singleton.handle)
 }
 
 func CreateDatabase() error {
-	return createDatabase0()
+	return createDatabase0(singleton.handle)
 }
 
 func ExistsDatabase() bool {
-	return existsDatabase0()
+	return existsDatabase0(singleton.handle)
 }
+
+type Env struct {
+	handle unsafe.Pointer
+}
+
+var singleton = Env{}
 
 type Database struct {
 	handle unsafe.Pointer
 }
 
-var singletonHandle unsafe.Pointer
-
 func New() *Database {
 	return &Database{
-		handle: singletonHandle,
+		handle: singleton.handle,
 	}
 }
 
@@ -60,10 +73,7 @@ func (db *Database) Startup(timeout time.Duration) error {
 		os.Chdir(cwd)
 	}()
 
-	err := startup0(&db.handle, timeout)
-	if err == nil {
-		singletonHandle = db.handle
-	}
+	err := startup0(db.handle, timeout)
 	return err
 }
 
@@ -88,7 +98,7 @@ func (db *Database) Exec(sqlText string, params ...any) (int64, error) {
 	if err := machAllocStmt(db.handle, &stmt); err != nil {
 		return 0, err
 	}
-	defer machFreeStmt(stmt)
+	defer machFreeStmt(db.handle, stmt)
 	if len(params) == 0 {
 		if err := machDirectExecute(stmt, sqlText); err != nil {
 			return 0, err
@@ -113,6 +123,7 @@ func (db *Database) Exec(sqlText string, params ...any) (int64, error) {
 
 func (db *Database) Query(sqlText string, params ...any) (*Rows, error) {
 	rows := &Rows{
+		handle:  db.handle,
 		sqlText: sqlText,
 	}
 	if err := machAllocStmt(db.handle, &rows.stmt); err != nil {
@@ -145,7 +156,7 @@ func (db *Database) QueryRow(sqlText string, params ...any) *Row {
 		return row
 	}
 	defer func() {
-		row.err = machFreeStmt(stmt)
+		row.err = machFreeStmt(db.handle, stmt)
 	}()
 
 	if row.err = machPrepare(stmt, sqlText); row.err != nil {
@@ -224,6 +235,7 @@ func (db *Database) QueryRow(sqlText string, params ...any) *Row {
 
 func (db *Database) Appender(tableName string) (*Appender, error) {
 	appender := &Appender{}
+	appender.handle = db.handle
 	appender.tableName = strings.ToUpper(tableName)
 	if err := machAllocStmt(db.handle, &appender.stmt); err != nil {
 		return nil, err
@@ -252,6 +264,7 @@ func (db *Database) Appender(tableName string) (*Appender, error) {
 }
 
 type Appender struct {
+	handle       unsafe.Pointer
 	stmt         unsafe.Pointer
 	tableName    string
 	tableType    int // 0: Log Table, 1: Fixed Table, 3: Volatile Table, 4: Lookup Table, 5: KeyValue Table, 6: Tag Table
@@ -275,7 +288,7 @@ func (ap *Appender) Close() error {
 	ap.SuccessCount = s
 	ap.FailureCount = f
 
-	if err := machFreeStmt(ap.stmt); err != nil {
+	if err := machFreeStmt(ap.handle, ap.stmt); err != nil {
 		return err
 	}
 	ap.stmt = nil

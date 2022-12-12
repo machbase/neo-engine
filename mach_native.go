@@ -17,41 +17,45 @@ import (
 */
 import "C"
 
-func initialize0(homeDir string) error {
+func initialize0(homeDir string, envHandle *unsafe.Pointer) error {
 	cstr := C.CString(homeDir)
 	defer C.free(unsafe.Pointer(cstr))
-	if rt := C.MachInitialize(cstr); rt == 0 {
+	if rt := C.MachInitialize(cstr, envHandle); rt == 0 {
 		return nil
 	} else {
 		return fmt.Errorf("MachInitialize returns %d", rt)
 	}
 }
 
-func createDatabase0() error {
-	if rt := C.MachCreateDB(); rt == 0 {
+func finalize0(envHandle unsafe.Pointer) {
+	C.MachFinalize(envHandle)
+}
+
+func createDatabase0(envHandle unsafe.Pointer) error {
+	if rt := C.MachCreateDB(envHandle); rt == 0 {
 		return nil
 	} else {
 		return fmt.Errorf("MachCreateDB returns %d", rt)
 	}
 }
 
-func destroyDatabase0() error {
-	if rt := C.MachDestroyDB(); rt == 0 {
+func destroyDatabase0(envHandle unsafe.Pointer) error {
+	if rt := C.MachDestroyDB(envHandle); rt == 0 {
 		return nil
 	} else {
 		return fmt.Errorf("MachDestroyDB returns %d", rt)
 	}
 }
 
-func existsDatabase0() bool {
+func existsDatabase0(envHandle unsafe.Pointer) bool {
 	rt := C.MachIsDBCreated()
 	return rt == 1
 }
 
-func startup0(handle *unsafe.Pointer, timeout time.Duration) error {
+func startup0(envHandle unsafe.Pointer, timeout time.Duration) error {
 	timeoutSec := C.int(timeout.Seconds())
-	if rt := C.MachStartupDB(timeoutSec, handle); rt != 0 {
-		dbErr := machError0(*handle)
+	if rt := C.MachStartupDB(envHandle, timeoutSec); rt != 0 {
+		dbErr := machError0(envHandle)
 		if dbErr != nil {
 			return dbErr
 		} else {
@@ -61,11 +65,11 @@ func startup0(handle *unsafe.Pointer, timeout time.Duration) error {
 	return nil
 }
 
-func shutdown0(handle unsafe.Pointer) error {
-	if rt := C.MachShutdownDB(handle); rt == 0 {
+func shutdown0(envHandle unsafe.Pointer) error {
+	if rt := C.MachShutdownDB(envHandle); rt == 0 {
 		return nil
 	} else {
-		dbErr := machError0(handle)
+		dbErr := machError0(envHandle)
 		if dbErr != nil {
 			return dbErr
 		} else {
@@ -78,15 +82,15 @@ func machError0(handle unsafe.Pointer) error {
 	code := C.MachErrorCode(handle)
 	msg := C.MachErrorMsg(handle)
 	if code != 0 && msg != nil {
-		return fmt.Errorf("MachError %d %s", code, C.GoString(msg))
+		return fmt.Errorf("MACH-ERR %d %s", code, C.GoString(msg))
 	}
 	return nil
 }
 
-func machAllocStmt(handle unsafe.Pointer, stmt *unsafe.Pointer) error {
+func machAllocStmt(envHandle unsafe.Pointer, stmt *unsafe.Pointer) error {
 	var ptr unsafe.Pointer
-	if rt := C.MachAllocStmt(handle, &ptr); rt != 0 {
-		dbErr := machError0(handle)
+	if rt := C.MachAllocStmt(envHandle, &ptr); rt != 0 {
+		dbErr := machError0(envHandle)
 		if dbErr != nil {
 			return dbErr
 		} else {
@@ -97,8 +101,8 @@ func machAllocStmt(handle unsafe.Pointer, stmt *unsafe.Pointer) error {
 	return nil
 }
 
-func machFreeStmt(stmt unsafe.Pointer) error {
-	if rt := C.MachFreeStmt(stmt); rt != 0 {
+func machFreeStmt(envHandle unsafe.Pointer, stmt unsafe.Pointer) error {
+	if rt := C.MachFreeStmt(envHandle, stmt); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
 			return stmtErr
@@ -292,6 +296,19 @@ func machColumnCount(stmt unsafe.Pointer) (int, error) {
 	return int(count), nil
 }
 
+func machColumnName(stmt unsafe.Pointer, idx int) (string, error) {
+	var cstr = [100]C.char{}
+	if rt := C.MachColumnName(stmt, C.int(idx), &cstr[0], C.int(len(cstr))); rt != 0 {
+		stmtErr := machError0(stmt)
+		if stmtErr != nil {
+			return fmt.Sprintf("col-%d", idx), stmtErr
+		} else {
+			return fmt.Sprintf("col-%d", idx), fmt.Errorf("MachColumnName returns %d", rt)
+		}
+	}
+	return C.GoString(&cstr[0]), nil
+}
+
 func machColumnType(stmt unsafe.Pointer, idx int) (int, int, error) {
 	var typ C.int = 0
 	var siz C.int = 0
@@ -319,164 +336,186 @@ func machColumnLength(stmt unsafe.Pointer, idx int) (int, error) {
 	return int(length), nil
 }
 
-func machColumnData(stmt unsafe.Pointer, idx int, buf unsafe.Pointer, bufLen int) error {
-	if rt := C.MachColumnData(stmt, C.int(idx), buf, C.int(bufLen)); rt != 0 {
+// returns true if not null
+func machColumnData(stmt unsafe.Pointer, idx int, buf unsafe.Pointer, bufLen int) (bool, error) {
+	var isNull C.char
+	if rt := C.MachColumnData(stmt, C.int(idx), buf, C.int(bufLen), &isNull); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
-			return stmtErr
+			return false, stmtErr
 		} else {
-			return fmt.Errorf("MachColumnData idx %d returns %d", idx, rt)
+			return false, fmt.Errorf("MachColumnData idx %d returns %d", idx, rt)
 		}
 	}
-	return nil
+	return isNull == 0, nil
 }
 
-func machColumnDataInt16(stmt unsafe.Pointer, idx int) (int16, error) {
+// returns int16 and true if NOT NULL, false if NULL
+func machColumnDataInt16(stmt unsafe.Pointer, idx int) (int16, bool, error) {
 	var val C.short
-	if rt := C.MachColumnDataInt16(stmt, C.int(idx), &val); rt != 0 {
+	var isNull C.char
+	if rt := C.MachColumnDataInt16(stmt, C.int(idx), &val, &isNull); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
-			return 0, stmtErr
+			return 0, false, stmtErr
 		} else {
-			return 0, fmt.Errorf("MachColumnDataInt16 idx %d returns %d", idx, rt)
+			return 0, false, fmt.Errorf("MachColumnDataInt16 idx %d returns %d", idx, rt)
 		}
 	}
-	return int16(val), nil
+	return int16(val), isNull == 0, nil
 }
 
-func machColumnDataInt32(stmt unsafe.Pointer, idx int) (int32, error) {
+// returns int32 and true if NOT NULL, false if NULL
+func machColumnDataInt32(stmt unsafe.Pointer, idx int) (int32, bool, error) {
 	var val C.int
-	if rt := C.MachColumnDataInt32(stmt, C.int(idx), &val); rt != 0 {
+	var isNull C.char
+	if rt := C.MachColumnDataInt32(stmt, C.int(idx), &val, &isNull); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
-			return 0, stmtErr
+			return 0, false, stmtErr
 		} else {
-			return 0, fmt.Errorf("MachColumnDataInt32 idx %d returns %d", idx, rt)
+			return 0, false, fmt.Errorf("MachColumnDataInt32 idx %d returns %d", idx, rt)
 		}
 	}
-	return int32(val), nil
+	return int32(val), isNull == 0, nil
 }
 
-func machColumnDataInt64(stmt unsafe.Pointer, idx int) (int64, error) {
+// returns int64 and true if NOT NULL, false if NULL
+func machColumnDataInt64(stmt unsafe.Pointer, idx int) (int64, bool, error) {
 	var val C.longlong
-	if rt := C.MachColumnDataInt64(stmt, C.int(idx), &val); rt != 0 {
+	var isNull C.char
+	if rt := C.MachColumnDataInt64(stmt, C.int(idx), &val, &isNull); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
-			return 0, stmtErr
+			return 0, false, stmtErr
 		} else {
-			return 0, fmt.Errorf("MachColumnDataInt64 idx %d returns %d", idx, rt)
+			return 0, false, fmt.Errorf("MachColumnDataInt64 idx %d returns %d", idx, rt)
 		}
 	}
-	return int64(val), nil
+	return int64(val), isNull == 0, nil
 }
 
-func machColumnDataDateTime(stmt unsafe.Pointer, idx int) (time.Time, error) {
+// returns Time and true if NOT NULL, false if NULL
+func machColumnDataDateTime(stmt unsafe.Pointer, idx int) (time.Time, bool, error) {
 	var val C.longlong
-	if rt := C.MachColumnDataDateTime(stmt, C.int(idx), &val); rt != 0 {
+	var isNull C.char
+	if rt := C.MachColumnDataDateTime(stmt, C.int(idx), &val, &isNull); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
-			return time.Time{}, stmtErr
+			return time.Time{}, false, stmtErr
 		} else {
-			return time.Time{}, fmt.Errorf("MachColumnDataDateTime idx %d returns %d", idx, rt)
+			return time.Time{}, false, fmt.Errorf("MachColumnDataDateTime idx %d returns %d", idx, rt)
 		}
 	}
-	return time.Unix(0, int64(val)), nil
+	return time.Unix(0, int64(val)), isNull == 0, nil
 }
 
-func machColumnDataFloat32(stmt unsafe.Pointer, idx int) (float32, error) {
+// returns float32 and true if NOT NULL, false if NULL
+func machColumnDataFloat32(stmt unsafe.Pointer, idx int) (float32, bool, error) {
 	var val C.float
-	if rt := C.MachColumnDataFloat(stmt, C.int(idx), &val); rt != 0 {
+	var isNull C.char
+	if rt := C.MachColumnDataFloat(stmt, C.int(idx), &val, &isNull); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
-			return 0, stmtErr
+			return 0, false, stmtErr
 		} else {
-			return 0, fmt.Errorf("MachColumnDataFloat idx %d returns %d", idx, rt)
+			return 0, false, fmt.Errorf("MachColumnDataFloat idx %d returns %d", idx, rt)
 		}
 	}
-	return float32(val), nil
+	return float32(val), isNull == 0, nil
 }
 
-func machColumnDataFloat64(stmt unsafe.Pointer, idx int) (float64, error) {
+// returns float64 and true if NOT NULL, false if NULL
+func machColumnDataFloat64(stmt unsafe.Pointer, idx int) (float64, bool, error) {
 	var val C.double
-	if rt := C.MachColumnDataDouble(stmt, C.int(idx), &val); rt != 0 {
+	var isNull C.char
+	if rt := C.MachColumnDataDouble(stmt, C.int(idx), &val, &isNull); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
-			return 0, stmtErr
+			return 0, false, stmtErr
 		} else {
-			return 0, fmt.Errorf("MachColumnDataDouble idx %d returns %d", idx, rt)
+			return 0, false, fmt.Errorf("MachColumnDataDouble idx %d returns %d", idx, rt)
 		}
 	}
-	return float64(val), nil
+	return float64(val), isNull == 0, nil
 }
 
-func machColumnDataIPv4(stmt unsafe.Pointer, idx int) (net.IP, error) {
+// returns net.IP (v4) and true if NOT NULL, false if NULL
+func machColumnDataIPv4(stmt unsafe.Pointer, idx int) (net.IP, bool, error) {
 	var val [net.IPv4len + 1]byte
+	var isNull C.char
 	// 주의) val[0]는 IP version
-	if rt := C.MachColumnDataIPV4(stmt, C.int(idx), unsafe.Pointer(&val)); rt != 0 {
+	if rt := C.MachColumnDataIPV4(stmt, C.int(idx), unsafe.Pointer(&val), &isNull); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
-			return net.IPv6zero, stmtErr
+			return net.IPv6zero, false, stmtErr
 		} else {
-			return net.IPv4zero, fmt.Errorf("MachColumnDataIPv4 idx %d returns %d", idx, rt)
+			return net.IPv4zero, false, fmt.Errorf("MachColumnDataIPv4 idx %d returns %d", idx, rt)
 		}
 	}
-	return net.IP(val[1:]), nil
+	return net.IP(val[1:]), isNull == 0, nil
 }
 
-func machColumnDataIPv6(stmt unsafe.Pointer, idx int) (net.IP, error) {
+// returns net.IP (v6) and true if NOT NULL, false if NULL
+func machColumnDataIPv6(stmt unsafe.Pointer, idx int) (net.IP, bool, error) {
 	var val [net.IPv6len + 1]byte
+	var isNull C.char
 	// 주의) val[0]는 IP version
-	if rt := C.MachColumnDataIPV6(stmt, C.int(idx), unsafe.Pointer(&val)); rt != 0 {
+	if rt := C.MachColumnDataIPV6(stmt, C.int(idx), unsafe.Pointer(&val), &isNull); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
-			return net.IPv6zero, stmtErr
+			return net.IPv6zero, false, stmtErr
 		} else {
-			return net.IPv6zero, fmt.Errorf("MachColumnDataIPv6 idx %d returns %d", idx, rt)
+			return net.IPv6zero, false, fmt.Errorf("MachColumnDataIPv6 idx %d returns %d", idx, rt)
 		}
 	}
-	return net.IP(val[1:]), nil
+	return net.IP(val[1:]), isNull == 0, nil
 }
 
-func machColumnDataString(stmt unsafe.Pointer, idx int) (string, error) {
+// returns string and true if NOT NULL, false if NULL
+func machColumnDataString(stmt unsafe.Pointer, idx int) (string, bool, error) {
 	length, err := machColumnLength(stmt, idx)
 	if err != nil {
-		return "", errors.Wrap(err, "machColumnDataString")
+		return "", false, errors.Wrap(err, "machColumnDataString")
 	}
 	if length == 0 {
-		return "", nil
+		return "", false, nil
 	}
 	buf := make([]byte, length)
 	val := (*C.char)(unsafe.Pointer(&buf[0]))
-	if rt := C.MachColumnDataString(stmt, C.int(idx), val, C.int(length)); rt != 0 {
+	var isNull C.char
+	if rt := C.MachColumnDataString(stmt, C.int(idx), val, C.int(length), &isNull); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
-			return "", stmtErr
+			return "", false, stmtErr
 		} else {
-			return "", fmt.Errorf("MachColumnDataString idx %d returns %d", idx, rt)
+			return "", false, fmt.Errorf("MachColumnDataString idx %d returns %d", idx, rt)
 		}
 	}
-	return string(buf), nil
+	return string(buf), isNull == 0, nil
 }
 
-func machColumnDataBinary(stmt unsafe.Pointer, idx int) ([]byte, error) {
+// returns []byte and true if NOT NULL, false if NULL
+func machColumnDataBinary(stmt unsafe.Pointer, idx int) ([]byte, bool, error) {
 	length, err := machColumnLength(stmt, idx)
 	if err != nil {
-		return nil, errors.Wrap(err, "machColumnDataString")
+		return nil, false, errors.Wrap(err, "machColumnDataString")
 	}
 	if length == 0 {
-		return []byte{}, nil
+		return []byte{}, false, nil
 	}
 	buf := make([]byte, length)
+	var isNull C.char
 	val := (*C.char)(unsafe.Pointer(&buf[0]))
-	if rt := C.MachColumnDataString(stmt, C.int(idx), val, C.int(length)); rt != 0 {
+	if rt := C.MachColumnDataString(stmt, C.int(idx), val, C.int(length), &isNull); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
-			return nil, stmtErr
+			return nil, false, stmtErr
 		} else {
-			return nil, fmt.Errorf("MachColumnDataString idx %d returns %d", idx, rt)
+			return nil, false, fmt.Errorf("MachColumnDataString idx %d returns %d", idx, rt)
 		}
 	}
-	return buf, nil
+	return buf, isNull == 0, nil
 }
 
 func machAppendOpen(stmt unsafe.Pointer, tableName string) error {

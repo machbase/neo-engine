@@ -252,6 +252,12 @@ func (s *svr) Stop() {
 	if s.grpcd != nil {
 		s.grpcd.Stop()
 	}
+
+	if err := s.db.Shutdown(); err != nil {
+		s.log.Warnf("db shutdown; %s", err.Error())
+	}
+	mach.Finalize()
+
 	s.log.Infof("shutdown.")
 }
 

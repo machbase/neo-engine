@@ -65,6 +65,7 @@ func (row *Row) Scan(cols ...any) error {
 }
 
 type Rows struct {
+	handle     unsafe.Pointer
 	stmt       unsafe.Pointer
 	stmtType   int
 	sqlText    string
@@ -73,7 +74,7 @@ type Rows struct {
 
 func (rows *Rows) Close() {
 	if rows.stmt != nil {
-		machFreeStmt(rows.stmt)
+		machFreeStmt(rows.handle, rows.stmt)
 		rows.stmt = nil
 	}
 	rows.sqlText = ""
@@ -230,7 +231,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 		var isNull bool
 		switch typ {
 		case 0: // MACH_DATA_TYPE_INT16
-			if v, err := machColumnDataInt16(stmt, i); err != nil {
+			if v, _ /*nonNull*/, err := machColumnDataInt16(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
 			} else {
 				if err = valconv.Int16ToAny(v, c, &isNull); err != nil {
@@ -238,7 +239,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 				}
 			}
 		case 1: // MACH_DATA_TYPE_INT32
-			if v, err := machColumnDataInt32(stmt, i); err != nil {
+			if v, _ /*nonNull*/, err := machColumnDataInt32(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
 			} else {
 				if err = valconv.Int32ToAny(v, c, &isNull); err != nil {
@@ -246,7 +247,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 				}
 			}
 		case 2: // MACH_DATA_TYPE_INT64
-			if v, err := machColumnDataInt64(stmt, i); err != nil {
+			if v, _ /*nonNull*/, err := machColumnDataInt64(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
 			} else {
 				if err = valconv.Int64ToAny(v, c, &isNull); err != nil {
@@ -254,7 +255,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 				}
 			}
 		case 3: // MACH_DATA_TYPE_DATETIME
-			if v, err := machColumnDataDateTime(stmt, i); err != nil {
+			if v, _ /*nonNull*/, err := machColumnDataDateTime(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan datetime")
 			} else {
 				if err = valconv.DateTimeToAny(v, c); err != nil {
@@ -262,7 +263,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 				}
 			}
 		case 4: // MACH_DATA_TYPE_FLOAT
-			if v, err := machColumnDataFloat32(stmt, i); err != nil {
+			if v, _ /*nonNull*/, err := machColumnDataFloat32(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan float32")
 			} else {
 				if err = valconv.Float32ToAny(v, c); err != nil {
@@ -270,7 +271,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 				}
 			}
 		case 5: // MACH_DATA_TYPE_DOUBLE
-			if v, err := machColumnDataFloat64(stmt, i); err != nil {
+			if v, _ /*nonNull*/, err := machColumnDataFloat64(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan float32")
 			} else {
 				if err = valconv.Float64ToAny(v, c); err != nil {
@@ -278,7 +279,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 				}
 			}
 		case 6: // MACH_DATA_TYPE_IPV4
-			if v, err := machColumnDataIPv4(stmt, i); err != nil {
+			if v, _ /*nonNull*/, err := machColumnDataIPv4(stmt, i); err != nil {
 				return errors.Wrap(err, "scal IPv4")
 			} else {
 				if err = valconv.IPToAny(v, c); err != nil {
@@ -286,7 +287,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 				}
 			}
 		case 7: // MACH_DATA_TYPE_IPV6
-			if v, err := machColumnDataIPv6(stmt, i); err != nil {
+			if v, _ /*nonNull*/, err := machColumnDataIPv6(stmt, i); err != nil {
 				return errors.Wrap(err, "scal IPv4")
 			} else {
 				if err = valconv.IPToAny(v, c); err != nil {
@@ -294,7 +295,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 				}
 			}
 		case 8: // MACH_DATA_TYPE_STRING
-			if v, err := machColumnDataString(stmt, i); err != nil {
+			if v, _ /*nonNull*/, err := machColumnDataString(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan string")
 			} else {
 				if err = valconv.StringToAny(v, c, &isNull); err != nil {
@@ -302,7 +303,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 				}
 			}
 		case 9: // MACH_DATA_TYPE_BINARY
-			if v, err := machColumnDataBinary(stmt, i); err != nil {
+			if v, _ /*nonNull*/, err := machColumnDataBinary(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan binary")
 			} else {
 				if err = valconv.BytesToAny(v, c); err != nil {
