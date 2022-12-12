@@ -54,8 +54,8 @@ func TestHttp(t *testing.T) {
 	// TODO
 
 	//// lineprotocol
-	linestr := fmt.Sprintf(`%s name="lineprotocol.name",time=1670380345i,value=3.003 1670380345000000`, tableName)
-	rsp, err = client.Post(baseURL+"/metrics/write", "application/octet-stream", bytes.NewBufferString(linestr))
+	linestr := `sample.tag name="gauge",value=3.003 1670380345000000`
+	rsp, err = client.Post(baseURL+"/metrics/write?db="+tableName, "application/octet-stream", bytes.NewBufferString(linestr))
 	require.Nil(t, err)
 	require.Equal(t, http.StatusNoContent, rsp.StatusCode)
 }

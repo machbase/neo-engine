@@ -31,9 +31,11 @@ func (svr *Server) handleLineProtocol(ctx *gin.Context) {
 	}
 }
 
-func (svr *Server) handleLineWrite(c *gin.Context) {
+func (svr *Server) handleLineWrite(ctx *gin.Context) {
+	dbName := ctx.Query("db")
+
 	precision := lineprotocol.Nanosecond
-	switch c.Query("precision") {
+	switch ctx.Query("precision") {
 	case "us":
 		precision = lineprotocol.Microsecond
 	case "ms":
@@ -41,13 +43,13 @@ func (svr *Server) handleLineWrite(c *gin.Context) {
 	}
 
 	var body io.Reader
-	switch c.Request.Header.Get("Content-Encoding") {
+	switch ctx.Request.Header.Get("Content-Encoding") {
 	default:
-		body = c.Request.Body
+		body = ctx.Request.Body
 	case "gzip":
-		gz, err := gzip.NewReader(c.Request.Body)
+		gz, err := gzip.NewReader(ctx.Request.Body)
 		if err != nil {
-			c.JSON(
+			ctx.JSON(
 				http.StatusBadRequest,
 				gin.H{"error": fmt.Sprintf("invalid gzip compression: %s", err.Error())})
 			return
@@ -60,7 +62,7 @@ func (svr *Server) handleLineWrite(c *gin.Context) {
 	for dec != nil && dec.Next() {
 		m, err := dec.Measurement()
 		if err != nil {
-			c.JSON(
+			ctx.JSON(
 				http.StatusInternalServerError,
 				gin.H{"error": fmt.Sprintf("measurement error: %s", err.Error())})
 			return
@@ -72,7 +74,7 @@ func (svr *Server) handleLineWrite(c *gin.Context) {
 		for {
 			key, val, err := dec.NextTag()
 			if err != nil {
-				c.JSON(
+				ctx.JSON(
 					http.StatusInternalServerError,
 					gin.H{"error": fmt.Sprintf("tag error: %s", err.Error())})
 				return
@@ -86,7 +88,7 @@ func (svr *Server) handleLineWrite(c *gin.Context) {
 		for {
 			key, val, err := dec.NextField()
 			if err != nil {
-				c.JSON(
+				ctx.JSON(
 					http.StatusInternalServerError,
 					gin.H{"error": fmt.Sprintf("field error: %s", err.Error())})
 				return
@@ -99,46 +101,37 @@ func (svr *Server) handleLineWrite(c *gin.Context) {
 
 		ts, err := dec.Time(precision, time.Time{})
 		if err != nil {
-			c.JSON(
+			ctx.JSON(
 				http.StatusBadRequest,
 				gin.H{"error": fmt.Sprintf("time error: %s", err.Error())})
 			return
 		}
 		if ts.IsZero() {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "no timestamp"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "no timestamp"})
 			return
 		}
 
 		if err != nil {
-			c.JSON(
+			ctx.JSON(
 				http.StatusBadRequest,
 				gin.H{"error": fmt.Sprintf("unsupproted data type tags %s", err.Error())})
 			return
 		}
 		if err != nil {
-			c.JSON(
+			ctx.JSON(
 				http.StatusBadRequest,
 				gin.H{"error": fmt.Sprintf("unsupproted data type fields %s", err.Error())})
 			return
 		}
 
-		columns := make([]string, len(fields))
-		rows := make([][]any, 1)
-		rows[0] = make([]any, len(fields))
-		var i = 0
-		for k, v := range fields {
-			columns[i] = k
-			rows[0][i] = v
+		err = msg.WriteLineProtocol(svr.db, dbName, measurement, fields, tags, ts)
+		if err != nil {
+			svr.log.Warnf("lineprotocol fail: %s", err.Error())
+			ctx.JSON(
+				http.StatusBadRequest,
+				gin.H{"error": fmt.Sprintf("unsupproted data type fields %s", err.Error())})
+			return
 		}
-		writeReq := &msg.WriteRequest{
-			Table: measurement,
-			Data: &msg.WriteRequestData{
-				Columns: columns,
-				Rows:    rows,
-			},
-		}
-		writeRsp := &msg.WriteResponse{}
-		msg.Write(svr.db, writeReq, writeRsp)
 	}
-	c.JSON(http.StatusNoContent, "")
+	ctx.JSON(http.StatusNoContent, "")
 }

@@ -2,6 +2,7 @@ package mqttsvr
 
 import (
 	"bytes"
+	"strings"
 	"time"
 
 	"github.com/influxdata/line-protocol/v2/lineprotocol"
@@ -10,6 +11,7 @@ import (
 )
 
 func (svr *Server) onLineprotocol(evt *mqtt.EvtMessage, prefix string) {
+	dbName := strings.TrimPrefix(evt.Topic, prefix+"/")
 	dec := lineprotocol.NewDecoder(bytes.NewBuffer(evt.Raw))
 	if dec == nil {
 		svr.log.Warnf("lineprotocol decoder fail")
@@ -60,26 +62,9 @@ func (svr *Server) onLineprotocol(evt *mqtt.EvtMessage, prefix string) {
 			return
 		}
 
-		columns := make([]string, len(fields))
-		rows := make([][]any, 1)
-		rows[0] = make([]any, len(fields))
-		var i = 0
-		for k, v := range fields {
-			columns[i] = k
-			rows[0][i] = v
-			i++
-		}
-		writeReq := &msg.WriteRequest{
-			Table: measurement,
-			Data: &msg.WriteRequestData{
-				Columns: columns,
-				Rows:    rows,
-			},
-		}
-		writeRsp := &msg.WriteResponse{}
-		msg.Write(svr.db, writeReq, writeRsp)
-		if !writeRsp.Success {
-			svr.log.Warnf("lineprotocol fail: %s", writeRsp.Reason)
+		err = msg.WriteLineProtocol(svr.db, dbName, measurement, fields, tags, ts)
+		if err != nil {
+			svr.log.Warnf("lineprotocol fail: %s", err.Error())
 		}
 	}
 }
