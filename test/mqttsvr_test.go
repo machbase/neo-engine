@@ -58,8 +58,8 @@ func TestMqttClient(t *testing.T) {
 	wg.Add(1)
 	tableExistsQuery = true
 	client.Publish("db/query", 1, false, []byte(jsonStr))
-
 	wg.Wait()
+
 	tableExistsQuery = false
 	//// drop table
 	if tableExists {
@@ -89,13 +89,19 @@ func TestMqttClient(t *testing.T) {
 	}`
 	wg.Add(1)
 	client.Publish("db/write/sample", 1, false, []byte(jsonStr))
+	wg.Wait()
+
+	//// insert with influx lineprotocol
+	// lineprotocol doesn't require reply message
+	linestr := `sample name="lineprotocol.name",time=1670380345i,value=3.003 1670380345000000`
+	client.Publish("metrics", 1, false, []byte(linestr))
 
 	//// select
 	wg.Add(1)
 	client.Publish("db/query", 1, false, []byte(`{"q":"select * from sample"}`))
+	wg.Wait()
 
 	//// wait until receive all replied messages from server
-	wg.Wait()
 	client.Disconnect(100)
 	time.Sleep(time.Second * 1)
 }

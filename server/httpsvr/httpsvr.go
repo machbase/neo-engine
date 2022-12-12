@@ -46,9 +46,11 @@ func (svr *Server) Route(r *gin.Engine) {
 			prefix = prefix[0 : len(prefix)-1]
 		}
 
+		svr.log.Infof("Add handler '%s' -> %s", prefix, h.Handler)
+
 		switch h.Handler {
 		case "influx": // "influx line protocol"
-			r.POST(prefix+"/write", svr.handleLineProtocol)
+			r.POST(prefix+"/:oper", svr.handleLineProtocol)
 		default: // "machbase"
 			r.GET(prefix+"/query", svr.handleQuery)
 			r.POST(prefix+"/query", svr.handleQuery)

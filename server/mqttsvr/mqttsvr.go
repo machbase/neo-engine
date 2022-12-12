@@ -94,6 +94,7 @@ func (svr *Server) OnConnect(evt *mqtt.EvtConnect) (mqtt.AuthCode, *mqtt.Connect
 
 	pubTopic := []string{}
 	for _, h := range svr.conf.Handlers {
+		pubTopic = append(pubTopic, h.Prefix)
 		pubTopic = append(pubTopic, fmt.Sprintf("%s/*", h.Prefix))
 	}
 	result := &mqtt.ConnectResult{

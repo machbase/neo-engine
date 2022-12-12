@@ -67,6 +67,7 @@ func (svr *Server) onLineprotocol(evt *mqtt.EvtMessage, prefix string) {
 		for k, v := range fields {
 			columns[i] = k
 			rows[0][i] = v
+			i++
 		}
 		writeReq := &msg.WriteRequest{
 			Table: measurement,
@@ -77,5 +78,8 @@ func (svr *Server) onLineprotocol(evt *mqtt.EvtMessage, prefix string) {
 		}
 		writeRsp := &msg.WriteResponse{}
 		msg.Write(svr.db, writeReq, writeRsp)
+		if !writeRsp.Success {
+			svr.log.Warnf("lineprotocol fail: %s", writeRsp.Reason)
+		}
 	}
 }

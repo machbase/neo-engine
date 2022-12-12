@@ -1,6 +1,7 @@
 package test
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -48,4 +49,13 @@ func TestHttp(t *testing.T) {
 	rsp, err = client.Get(baseURL + "/db/query?q=" + q)
 	require.Nil(t, err)
 	require.Equal(t, 200, rsp.StatusCode)
+
+	//// insert
+	// TODO
+
+	//// lineprotocol
+	linestr := fmt.Sprintf(`%s name="lineprotocol.name",time=1670380345i,value=3.003 1670380345000000`, tableName)
+	rsp, err = client.Post(baseURL+"/metrics/write", "application/octet-stream", bytes.NewBufferString(linestr))
+	require.Nil(t, err)
+	require.Equal(t, http.StatusNoContent, rsp.StatusCode)
 }
