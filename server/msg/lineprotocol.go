@@ -14,10 +14,10 @@ import (
    | Machbase            | influxdb                                    |
    | ------------------- | ------------------------------------------- |
    | table name          | db                                          |
-   | tag name            | measurement + '.' + field name              |
-   | time                | timestamp                                   |
-   | value               | value of field name 'value', if there is no field of float type named 'value', zero(0.0) will be inserted |
-   | additional columnns | other fields than 'name' and 'value'        |
+   | tag name            | measurement (+ '.' + field named 'name', if exists) |
+   | time                | timestamp (if data contains a field named 'time', the field will be ignored) |
+   | value               | value of field named 'value', if there is no field of float type named 'value', zero(0.0) will be inserted |
+   | additional columnns | other fields than 'name', 'value' and 'time' |
 */
 
 func WriteLineProtocol(db *mach.Database, dbName string, measurement string, fields map[string]any, tags map[string]string, ts time.Time) error {
