@@ -43,11 +43,17 @@ module "github.com/machbase/dbms-mach-go/server" {
         }
         Http = {
             Listeners        = [ "tcp://127.0.0.1:4088" ]
-            Prefix           = "/db"
+            Handlers         = [
+                { Prefix: "/db",      Handler: "machbase" },
+                { Prefix: "/metrics", Handler: "influx"},
+            ]
         }
         Mqtt = {
             Listeners        = [ "tcp://127.0.0.1:4083"]
-            Prefix           = "db"
+            Handlers         = [
+                { Prefix: "db",      Handler: "machbase" },
+                { Prefix: "metrics", Handler: "influx"},
+            ]
         }
     }
 }

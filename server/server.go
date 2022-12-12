@@ -55,7 +55,7 @@ type GrpcConfig struct {
 
 type HttpConfig struct {
 	Listeners []string
-	Prefix    string
+	Handlers  []httpsvr.HandlerConfig
 }
 
 type Server interface {
@@ -84,11 +84,15 @@ func NewConfig() *Config {
 		},
 		Http: HttpConfig{
 			Listeners: []string{},
-			Prefix:    "/db",
+			Handlers: []httpsvr.HandlerConfig{
+				{Prefix: "/db", Handler: "machbase"},
+			},
 		},
 		Mqtt: mqttsvr.Config{
 			Listeners: []string{},
-			Prefix:    "db",
+			Handlers: []mqttsvr.HandlerConfig{
+				{Prefix: "db", Handler: "machbase"},
+			},
 		},
 	}
 
@@ -200,7 +204,7 @@ func (s *svr) Start() error {
 
 	// http server
 	if len(s.conf.Http.Listeners) > 0 {
-		machHttpSvr, err := httpsvr.New(&httpsvr.Config{Prefix: s.conf.Http.Prefix})
+		machHttpSvr, err := httpsvr.New(&httpsvr.Config{Handlers: s.conf.Http.Handlers})
 		if err != nil {
 			return errors.Wrap(err, "http handler")
 		}

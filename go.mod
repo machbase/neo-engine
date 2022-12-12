@@ -8,6 +8,7 @@ require (
 	github.com/gin-gonic/gin v1.8.1
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/golang/protobuf v1.5.2
+	github.com/influxdata/line-protocol/v2 v2.2.1
 	github.com/machbase/booter v0.0.0-20221130022722-18b97bc3523a
 	github.com/machbase/cemlib v0.0.0-20221126123531-f7ffc2581e47
 	github.com/orcaman/concurrent-map v1.0.0

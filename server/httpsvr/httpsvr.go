@@ -17,7 +17,12 @@ func New(conf *Config) (*Server, error) {
 }
 
 type Config struct {
-	Prefix string
+	Handlers []HandlerConfig
+}
+
+type HandlerConfig struct {
+	Prefix  string
+	Handler string
 }
 
 type Server struct {
@@ -26,22 +31,29 @@ type Server struct {
 	db   *mach.Database
 }
 
-func (my *Server) Start() error {
+func (svr *Server) Start() error {
 	return nil
 }
 
-func (my *Server) Stop() {
+func (svr *Server) Stop() {
 }
 
-func (my *Server) Route(r *gin.Engine) {
-	prefix := my.conf.Prefix
-	// remove trailing slash
-	for strings.HasSuffix(prefix, "/") {
-		prefix = prefix[0 : len(prefix)-1]
-	}
+func (svr *Server) Route(r *gin.Engine) {
+	for _, h := range svr.conf.Handlers {
+		prefix := h.Prefix
+		// remove trailing slash
+		for strings.HasSuffix(prefix, "/") {
+			prefix = prefix[0 : len(prefix)-1]
+		}
 
-	r.GET(prefix+"/query", my.handleQuery)
-	r.POST(prefix+"/query", my.handleQuery)
-	r.POST(prefix+"/write", my.handleWrite)
-	r.POST(prefix+"/write/:table", my.handleWrite)
+		switch h.Handler {
+		case "influx": // "influx line protocol"
+			r.POST(prefix+"/write", svr.handleLineProtocol)
+		default: // "machbase"
+			r.GET(prefix+"/query", svr.handleQuery)
+			r.POST(prefix+"/query", svr.handleQuery)
+			r.POST(prefix+"/write", svr.handleWrite)
+			r.POST(prefix+"/write/:table", svr.handleWrite)
+		}
+	}
 }

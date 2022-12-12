@@ -1,18 +1,14 @@
 package mqttsvr
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/machbase/cemlib/allowance"
 	"github.com/machbase/cemlib/logging"
 	"github.com/machbase/cemlib/mqtt"
 	mach "github.com/machbase/dbms-mach-go"
-	"github.com/machbase/dbms-mach-go/server/msg"
 	cmap "github.com/orcaman/concurrent-map"
-	"github.com/tidwall/gjson"
 )
 
 func New(conf *Config) *Server {
@@ -43,8 +39,10 @@ func New(conf *Config) *Server {
 			}
 		}
 	}
-	if len(conf.Prefix) > 0 {
-		conf.Prefix = strings.TrimSuffix(conf.Prefix, "/")
+	for i, h := range conf.Handlers {
+		if len(h.Prefix) > 0 {
+			conf.Handlers[i].Prefix = strings.TrimSuffix(h.Prefix, "/")
+		}
 	}
 	svr.mqttd = mqtt.NewServer(mqttdConf, svr)
 	return svr
@@ -52,8 +50,13 @@ func New(conf *Config) *Server {
 
 type Config struct {
 	Listeners []string
-	Prefix    string
+	Handlers  []HandlerConfig
 	Passwords map[string]string
+}
+
+type HandlerConfig struct {
+	Prefix  string
+	Handler string
 }
 
 type Server struct {
@@ -88,8 +91,13 @@ func (svr *Server) OnConnect(evt *mqtt.EvtConnect) (mqtt.AuthCode, *mqtt.Connect
 	if ok {
 		peer.SetLogLevel(logging.LevelDebug)
 	}
+
+	pubTopic := []string{}
+	for _, h := range svr.conf.Handlers {
+		pubTopic = append(pubTopic, fmt.Sprintf("%s/*", h.Prefix))
+	}
 	result := &mqtt.ConnectResult{
-		AllowedPublishTopicPatterns:   []string{fmt.Sprintf("%s/*", svr.conf.Prefix)},
+		AllowedPublishTopicPatterns:   pubTopic,
 		AllowedSubscribeTopicPatterns: []string{"*"},
 	}
 	return mqtt.AuthSuccess, result, nil
@@ -109,125 +117,23 @@ func (svr *Server) OnDisconnect(evt *mqtt.EvtDisconnect) {
 }
 
 func (svr *Server) OnMessage(evt *mqtt.EvtMessage) error {
-	topic := evt.Topic
-	topic = strings.TrimPrefix(topic, svr.conf.Prefix+"/")
-	tick := time.Now()
-
-	reply := func(msg any) {
-		peer, ok := svr.mqttd.GetPeer(evt.PeerId)
-		if ok {
-			buff, err := json.Marshal(msg)
-			if err != nil {
-				return
-			}
-			peer.Publish(svr.conf.Prefix+"/reply", 1, buff)
+	handler := "machbase"
+	prefix := ""
+	for _, h := range svr.conf.Handlers {
+		if strings.HasPrefix(evt.Topic, h.Prefix) {
+			prefix = h.Prefix
+			handler = h.Handler
+			break
 		}
 	}
-	if topic == "query" {
-		////////////////////////
-		// query
-		req := &msg.QueryRequest{}
-		rsp := &msg.QueryResponse{Reason: "not specified"}
-		err := json.Unmarshal(evt.Raw, req)
-		if err != nil {
-			rsp.Reason = err.Error()
-			rsp.Elapse = time.Since(tick).String()
-			reply(rsp)
-			return nil
-		}
-		msg.Query(svr.db, req, rsp)
-		rsp.Elapse = time.Since(tick).String()
-		reply(rsp)
-	} else if strings.HasPrefix(topic, "write") {
-		////////////////////////
-		// write
-		req := &msg.WriteRequest{}
-		rsp := &msg.WriteResponse{Reason: "not specified"}
-		err := json.Unmarshal(evt.Raw, req)
-		if err != nil {
-			rsp.Reason = err.Error()
-			rsp.Elapse = time.Since(tick).String()
-			reply(rsp)
-			return nil
-		}
-		if len(req.Table) == 0 {
-			req.Table = strings.TrimPrefix(topic, "write/")
-		}
 
-		if len(req.Table) == 0 {
-			rsp.Reason = "table is not specified"
-			rsp.Elapse = time.Since(tick).String()
-			reply(rsp)
-			return nil
-		}
-		msg.Write(svr.db, req, rsp)
-		rsp.Elapse = time.Since(tick).String()
-		reply(rsp)
-	} else if strings.HasPrefix(topic, "append/") {
-		////////////////////////
-		// append
-		table := strings.ToUpper(strings.TrimPrefix(topic, "append/"))
-		if len(table) == 0 {
-			return nil
-		}
-
-		var err error
-		var appenderSet []*mach.Appender
-		var appender *mach.Appender
-
-		val, exists := svr.appenders.Get(evt.PeerId)
-		if exists {
-			appenderSet = val.([]*mach.Appender)
-			for _, a := range appenderSet {
-				if a.Table() == table {
-					appender = a
-					break
-				}
-			}
-		}
-		if appender == nil {
-			appender, err = svr.db.Appender(table)
-			if err != nil {
-				svr.log.Error("fail to create appender, %s", err.Error())
-				return nil
-			}
-			if len(appenderSet) == 0 {
-				appenderSet = []*mach.Appender{}
-			}
-			appenderSet = append(appenderSet, appender)
-			svr.appenders.Set(evt.PeerId, appenderSet)
-		}
-
-		result := gjson.ParseBytes(evt.Raw)
-
-		head := result.Get("0")
-		if head.IsArray() {
-			// if payload contains multiple tuples
-			result.ForEach(func(key, value gjson.Result) bool {
-				vals := []any{}
-				value.ForEach(func(key, value gjson.Result) bool {
-					vals = append(vals, value.Value())
-					return true
-				})
-				err = appender.Append(vals...)
-				if err != nil {
-					svr.log.Warnf("append fail %s", err.Error())
-					return false
-				}
-				return true
-			})
-		} else {
-			// a single tuple
-			vals := []any{}
-			result.ForEach(func(key, value gjson.Result) bool {
-				vals = append(vals, value.Value())
-				return true
-			})
-			err = appender.Append(vals...)
-			if err != nil {
-				svr.log.Warnf("append fail %s", err.Error())
-			}
-		}
+	switch handler {
+	case "influx":
+		svr.onLineprotocol(evt, prefix)
+	case "machbase":
+		return svr.onMachbase(evt, prefix)
+	default:
+		svr.log.Warnf("unhandled message topic:'%s'", evt.Topic)
 	}
 	return nil
 }
