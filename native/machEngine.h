@@ -78,12 +78,17 @@ typedef struct MachEngineAppendParam
     MachEngineAppendParamData   mData;
 } MachEngineAppendParam;
 
+#define MACH_OPT_NONE            (0)
+#define MACH_OPT_SIG_HANDLER_OFF (1)
+
 /**
  * @brief Initialize MachEngineEnv
  * @param [in] aHomePath 설정할 Machbase Home 경로
+ * @param [in] aOpt MACH_OPT_XXXX options can be bitwise-ored)
  * @param [out] aEnvHandle to be allocated
  */
-int MachInitialize(char* aHomePath, void** aEnvHandle);
+int MachInitialize(char* aHomePath, int aOpt, void** aEnvHandle);
+
 /**
  * Finalize MachEngineEnv
  * aEnvHandle will be freed
@@ -98,7 +103,7 @@ int MachDestroyDB(void* aEnvHandle);
 /**
  * return 1 if DB is create, otherwise return 0
  */
-int MachIsDBCreated();
+int MachIsDBCreated(void* aEnvHandle);
 
 /**
  * @brief Machbase Thread 시작
@@ -111,7 +116,18 @@ int MachStartupDB(void* aEnvHandle, int aTimeoutSecond);
  * @brief Machbase Thread 종료
  * @details cm protocol send를 통해 종료
  */
-int MachShutdownDB(void* aDBHandle);
+int MachShutdownDB(void* aEnvHandle);
+
+/*
+ * DB user authentification
+ * return value is 0 or error code,
+ * 0: id and password are correct
+ * 2080: user does not exist
+ * 2081: password is not correct
+ */
+int MachUserAuth(void* aEnvHandle,
+                 char* aUserName,
+                 char* aPassword);
 
 /**
  * These functions retrieve the error code and error message after error occurs.
