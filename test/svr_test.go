@@ -38,7 +38,7 @@ module "github.com/machbase/dbms-mach-go/server" {
         }
         Grpc = {
             Listeners        = [ 
-                "unix://${VARS_WORKDIR}/machsvr.sock", 
+                "unix://${VARS_WORKDIR}/mach.sock", 
                 "tcp://127.0.0.1:4056",
             ]
             MaxRecvMsgSize   = 4

@@ -78,7 +78,7 @@ func NewConfig() *Config {
 		MachbaseHome:   ".",
 		StartupTimeout: 5 * time.Second,
 		Grpc: GrpcConfig{
-			Listeners:      []string{"unix://./machsvr.sock"},
+			Listeners:      []string{"unix://./mach.sock"},
 			MaxRecvMsgSize: 4,
 			MaxSendMsgSize: 4,
 		},
