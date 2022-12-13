@@ -148,7 +148,7 @@ func (s *svr) Start() error {
 		return errors.Wrap(err, "machbase.conf")
 	}
 
-	if err := mach.Initialize(homepath); err != nil {
+	if err := mach.Initialize(homepath, mach.OPT_SIGHANDLER_DISABLE); err != nil {
 		return errors.Wrap(err, "initialize database")
 	}
 	if !mach.ExistsDatabase() {

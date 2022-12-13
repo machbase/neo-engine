@@ -24,9 +24,16 @@ func Edition() string {
 	}
 }
 
-func Initialize(homeDir string) error {
+type InitOption int
+
+const (
+	OPT_NONE               InitOption = 0x0
+	OPT_SIGHANDLER_DISABLE InitOption = 0x1
+)
+
+func Initialize(homeDir string, opt InitOption) error {
 	var handle unsafe.Pointer
-	err := initialize0(homeDir, &handle)
+	err := initialize0(homeDir, int(opt), &handle)
 	if err == nil {
 		singleton.handle = handle
 	}

@@ -95,8 +95,10 @@ func (rows *Rows) ColumnNames() ([]string, error) {
 	}
 	names := make([]string, count)
 	for i := 0; i < count; i++ {
-		// TODO native api가 구현되면 실제 구현으로 변경...
-		names[i] = fmt.Sprintf("col%02d", i+1)
+		names[i], err = machColumnName(rows.stmt, i)
+		if err != nil {
+			names[i] = fmt.Sprintf("col%02d", i)
+		}
 	}
 	return names, nil
 }

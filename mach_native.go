@@ -17,10 +17,10 @@ import (
 */
 import "C"
 
-func initialize0(homeDir string, envHandle *unsafe.Pointer) error {
+func initialize0(homeDir string, flag int, envHandle *unsafe.Pointer) error {
 	cstr := C.CString(homeDir)
 	defer C.free(unsafe.Pointer(cstr))
-	if rt := C.MachInitialize(cstr, envHandle); rt == 0 {
+	if rt := C.MachInitialize(cstr, C.int(flag), envHandle); rt == 0 {
 		return nil
 	} else {
 		return fmt.Errorf("MachInitialize returns %d", rt)
@@ -48,7 +48,7 @@ func destroyDatabase0(envHandle unsafe.Pointer) error {
 }
 
 func existsDatabase0(envHandle unsafe.Pointer) bool {
-	rt := C.MachIsDBCreated()
+	rt := C.MachIsDBCreated(envHandle)
 	return rt == 1
 }
 

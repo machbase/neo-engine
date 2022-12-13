@@ -20,7 +20,7 @@ func main() {
 		panic(err)
 	}
 	homePath := filepath.Join(filepath.Dir(exePath), "machbase")
-	mach.Initialize(homePath)
+	mach.Initialize(homePath, mach.OPT_NONE)
 
 	if mach.ExistsDatabase() {
 		mach.DestroyDatabase()
