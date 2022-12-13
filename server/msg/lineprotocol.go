@@ -3,7 +3,6 @@ package msg
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	mach "github.com/machbase/dbms-mach-go"
@@ -14,47 +13,53 @@ import (
    | Machbase            | influxdb                                    |
    | ------------------- | ------------------------------------------- |
    | table name          | db                                          |
-   | tag name            | measurement (+ '.' + field named 'name', if exists) |
-   | time                | timestamp (if data contains a field named 'time', the field will be ignored) |
-   | value               | value of field named 'value', if there is no field of float type named 'value', zero(0.0) will be inserted |
-   | additional columnns | other fields than 'name', 'value' and 'time' |
+   | tag name            | measurement + '.' + field name              |
+   | time                | timestamp                                   |
+   | value               | value of the field (if it is not a number type, will be ignored and not inserted) |
 */
 
 func WriteLineProtocol(db *mach.Database, dbName string, measurement string, fields map[string]any, tags map[string]string, ts time.Time) error {
 	columns := make([]string, 0)
-	row := make([]any, 0)
+	rows := make([][]any, 0)
 
-	columns = append(columns, "name", "value", "time")
-	if v, ok := fields["name"]; ok {
-		row = append(row, fmt.Sprintf("%s.%s", measurement, v))
-	} else {
-		row = append(row, measurement)
-	}
-	if v, ok := fields["value"]; ok {
-		row = append(row, v)
-	} else {
-		row = append(row, float32(0))
-	}
-	row = append(row, ts)
+	columns = append(columns, "name", "time", "value")
 
 	for k, v := range fields {
-		switch strings.ToLower(k) {
-		case "name", "value", "time":
+		name := fmt.Sprintf("%s.%s", measurement, k)
+		value := float64(0)
+		timestamp := ts
+
+		switch val := v.(type) {
+		case float32:
+			value = float64(val)
+		case float64:
+			value = val
+		case int:
+			value = float64(val)
+		case int32:
+			value = float64(val)
+		case int64:
+			value = float64(val)
+		default:
+			// fmt.Printf("unsupproted value type '%T' of field '%s'\n", val, k)
 			continue
 		}
-		columns = append(columns, k)
-		row = append(row, v)
+		rows = append(rows, []any{name, timestamp, value})
 	}
 
+	if len(rows) == 0 {
+		// fields의 value가 string 일 경우 입력할 값이 없을 수 있다.
+		return nil
+	}
 	writeReq := &WriteRequest{
 		Table: dbName,
 		Data: &WriteRequestData{
 			Columns: columns,
-			Rows:    [][]any{row},
+			Rows:    rows,
 		},
 	}
 	writeRsp := &WriteResponse{}
-	// fmt.Printf("REQ ==> %s %s %+v\n", writeReq.Table, measurement, writeReq.Data)
+	// fmt.Printf("REQ ==> %s %+v\n", writeReq.Table, writeReq.Data)
 	Write(db, writeReq, writeRsp)
 	// fmt.Printf("RSP ==> %#v\n", writeRsp)
 	if writeRsp.Success {

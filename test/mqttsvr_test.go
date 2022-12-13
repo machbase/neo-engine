@@ -93,8 +93,8 @@ func TestMqttClient(t *testing.T) {
 
 	//// insert with influx lineprotocol
 	// lineprotocol doesn't require reply message
-	linestr := `sample.tag name="guage",value=3.003 1670380345000000`
-	client.Publish("metrics/sample", 1, false, []byte(linestr))
+	// linestr := `sample.tag name="guage",value=3.003 1670380345000000`
+	client.Publish("metrics/sample", 1, false, []byte(lineProtocolData))
 
 	//// select
 	wg.Add(1)
