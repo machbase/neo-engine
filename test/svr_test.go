@@ -1,10 +1,13 @@
 package test
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/machbase/booter"
 	_ "github.com/machbase/cemlib/logging"
+	mach "github.com/machbase/dbms-mach-go"
 	_ "github.com/machbase/dbms-mach-go/server"
 )
 
@@ -59,6 +62,8 @@ module "github.com/machbase/dbms-mach-go/server" {
 }
 `)
 
+var benchmarkTableName = strings.ToUpper("samplebench")
+
 func TestMain(m *testing.M) {
 	builder := booter.NewBuilder()
 	b, err := builder.BuildWithContent(serverConf)
@@ -69,6 +74,51 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
+
+	/// preparing benchmark table
+	db := mach.New()
+	var count int
+
+	checkTableSql := fmt.Sprintf("select count(*) from M$SYS_TABLES where name = '%s'", benchmarkTableName)
+	row := db.QueryRow(checkTableSql)
+	err = row.Scan(&count)
+	if err != nil {
+		panic(err)
+	}
+
+	if count == 1 {
+		dropTableSql := fmt.Sprintf("drop table %s", benchmarkTableName)
+		_, err = db.Exec(dropTableSql)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	creTableSql := fmt.Sprintf(db.SqlTidy(`
+            create tag table %s (
+                name     varchar(200) primary key,
+                time     datetime basetime,
+                value    double summarized,
+                id       varchar(80),
+                jsondata json
+        )`), benchmarkTableName)
+	_, err = db.Exec(creTableSql)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = db.Exec(fmt.Sprintf("CREATE INDEX %s_id_idx ON %s (id)", benchmarkTableName, benchmarkTableName))
+	if err != nil {
+		panic(err)
+	}
+
+	row = db.QueryRow("select count(*) from " + benchmarkTableName)
+	err = row.Scan(&count)
+	if err != nil {
+		panic(err)
+	}
+	/// end of preparing benchmark table
+
 	m.Run()
 	b.Shutdown()
 }
