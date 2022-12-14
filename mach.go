@@ -92,6 +92,10 @@ func (db *Database) Error() error {
 	return machError0(db.handle)
 }
 
+func (db *Database) UserAuth(username, password string) (bool, error) {
+	return machUserAuth(db.handle, username, password)
+}
+
 func (db *Database) SqlTidy(sqlText string) string {
 	lines := strings.Split(sqlText, "\n")
 	for i, ln := range lines {

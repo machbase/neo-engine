@@ -87,6 +87,31 @@ func machError0(handle unsafe.Pointer) error {
 	return nil
 }
 
+// 0: id and password are correct
+// 2080: user does not exist
+// 2081: password is not correct
+// int MachUserAuth(void* aEnvHandle, char* aUserName, char* aPassword);
+func machUserAuth(envHandle unsafe.Pointer, username string, password string) (bool, error) {
+	cusername := C.CString(username)
+	cpassword := C.CString(password)
+	defer func() {
+		C.free(unsafe.Pointer(cusername))
+		C.free(unsafe.Pointer(cpassword))
+	}()
+
+	rt := C.MachUserAuth(envHandle, cusername, cpassword)
+	switch rt {
+	case 0:
+		return true, nil
+	case 2080:
+		return false, nil
+	case 2081:
+		return false, nil
+	default:
+		return false, fmt.Errorf("MachUserAuth returns %d", rt)
+	}
+}
+
 func machAllocStmt(envHandle unsafe.Pointer, stmt *unsafe.Pointer) error {
 	var ptr unsafe.Pointer
 	if rt := C.MachAllocStmt(envHandle, &ptr); rt != 0 {
