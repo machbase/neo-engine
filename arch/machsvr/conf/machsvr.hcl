@@ -32,6 +32,7 @@ module "github.com/machbase/dbms-mach-go/server" {
     config {
         MachbaseHome     = "${execDir()}/machbase"
         Machbase         = {
+            HANDLE_LIMIT     = 2048
         }
         Grpc = {
             Listeners        = [ "unix://${execDir()}/mach.sock", "tcp://${VARS_GRPC_LISTEN_HOST}:${VARS_GRPC_LISTEN_PORT}" ]
@@ -40,11 +41,17 @@ module "github.com/machbase/dbms-mach-go/server" {
         }
         Http = {
             Listeners        = [ "tcp://${VARS_HTTP_LISTEN_HOST}:${VARS_HTTP_LISTEN_PORT}" ]
-            Prefix           = "/db"
+            Handlers         = [
+                { Prefix: "/db",      Handler: "machbase" },
+                { Prefix: "/metrics", Handler: "influx" },
+            ]
         }
         Mqtt = {
             Listeners        = [ "tcp://${VARS_MQTT_LISTEN_HOST}:${VARS_MQTT_LISTEN_PORT}"]
-            Prefix           = "db"
+            Handlers         = [
+                { Prefix: "db",       Handler: "machbase" },
+                { Prefix: "metrics",  Handler: "influx" },
+            ]
         }
     }
 }
