@@ -20,6 +20,7 @@ import (
 	"github.com/machbase/dbms-mach-go/server/httpsvr"
 	"github.com/machbase/dbms-mach-go/server/mqttsvr"
 	"github.com/machbase/dbms-mach-go/server/rpcsvr"
+	"github.com/machbase/dbms-mach-go/server/shell"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -42,6 +43,7 @@ type Config struct {
 	MachbasePreset MachbasePreset
 	StartupTimeout time.Duration
 	Machbase       MachbaseConfig
+	Shell          shell.Config
 	Grpc           GrpcConfig
 	Http           HttpConfig
 	Mqtt           mqttsvr.Config
@@ -69,6 +71,7 @@ type svr struct {
 	grpcd *grpc.Server
 	httpd *http.Server
 	mqttd *mqttsvr.Server
+	shsvr *shell.Server
 }
 
 const TagTableName = "tagdata"
@@ -93,6 +96,10 @@ func NewConfig() *Config {
 			Handlers: []mqttsvr.HandlerConfig{
 				{Prefix: "db", Handler: "machbase"},
 			},
+		},
+		Shell: shell.Config{
+			Listeners:   []string{},
+			IdleTimeout: 2 * time.Minute,
 		},
 	}
 
@@ -239,6 +246,14 @@ func (s *svr) Start() error {
 		}
 	}
 
+	// shell server
+	if len(s.conf.Shell.Listeners) > 0 {
+		s.shsvr = shell.New(&s.conf.Shell)
+		err := s.shsvr.Start()
+		if err != nil {
+			return errors.Wrap(err, "shell server")
+		}
+	}
 	return nil
 }
 

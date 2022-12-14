@@ -1,9 +1,15 @@
+define DEF {
+    LISTEN_HOST       = flag("--listen-host", "127.0.0.1")
+}
+
 define VARS {
-    GRPC_LISTEN_HOST = flag("--grpc-listen-host", "127.0.0.1")
+    SHELL_LISTEN_HOST = flag("--shell-listen-host", DEF_LISTEN_HOST)
+    SHELL_LISTEN_PORT = flag("--shell-listen-port", "4022")
+    GRPC_LISTEN_HOST = flag("--grpc-listen-host", DEF_LISTEN_HOST)
     GRPC_LISTEN_PORT = flag("--grpc-listen-port", "4056")
-    HTTP_LISTEN_HOST = flag("--http-listen-host", "127.0.0.1")
+    HTTP_LISTEN_HOST = flag("--http-listen-host", DEF_LISTEN_HOST)
     HTTP_LISTEN_PORT = flag("--http-listen-port", "4088")
-    MQTT_LISTEN_HOST = flag("--mqtt-listen-host", "127.0.0.1")
+    MQTT_LISTEN_HOST = flag("--mqtt-listen-host", DEF_LISTEN_HOST)
     MQTT_LISTEN_PORT = flag("--mqtt-listen-port", "4083")
 }
 
@@ -34,8 +40,14 @@ module "github.com/machbase/dbms-mach-go/server" {
         Machbase         = {
             HANDLE_LIMIT     = 2048
         }
+        Shell = {
+            Listeners        = [ "tcp://${VARS_SHELL_LISTEN_HOST}:${VARS_SHELL_LISTEN_PORT}" ]
+        }
         Grpc = {
-            Listeners        = [ "unix://${execDir()}/mach.sock", "tcp://${VARS_GRPC_LISTEN_HOST}:${VARS_GRPC_LISTEN_PORT}" ]
+            Listeners        = [ 
+                "unix://${execDir()}/mach.sock",
+                "tcp://${VARS_GRPC_LISTEN_HOST}:${VARS_GRPC_LISTEN_PORT}",
+            ]
             MaxRecvMsgSize   = 4
             MaxSendMsgSize   = 4
         }
