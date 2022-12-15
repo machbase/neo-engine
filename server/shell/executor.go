@@ -6,6 +6,63 @@ import (
 	"time"
 )
 
+type ResultChunk struct {
+	heading bool
+	width   []int
+	cols    []string
+	rows    [][]string
+}
+
+func (sess *Session) display(chunk *ResultChunk) *ResultChunk {
+	if len(chunk.width) == 0 {
+		chunk.width = make([]int, len(chunk.cols))
+		// 각 컬럼의 폭을 계산한다.
+		for c := range chunk.cols {
+			// 컬럼 명의 길이를 최소 폭으로 한다.
+			max := len(chunk.cols[c])
+			// 각 rows를 순회하며 해당 column 값의 폭 중에서 가장 긴 값을 찾는다.
+			for r := range chunk.rows {
+				v := chunk.rows[r][c]
+				if len(v) > max {
+					max = len(v)
+				}
+			}
+			chunk.width[c] = max
+		}
+		for c := range chunk.cols {
+			f := fmt.Sprintf("%%-%ds", chunk.width[c])
+			chunk.cols[c] = fmt.Sprintf(f, chunk.cols[c])
+		}
+	}
+
+	if chunk.heading {
+		line := strings.Join(chunk.cols, " | ")
+		if len(line) > sess.window.Width {
+			line = line[0 : sess.window.Width-4]
+			line = line + "..."
+		}
+		sess.WriteStr(line + "\r\n")
+	}
+	for r, row := range chunk.rows {
+		for c := range chunk.cols {
+			f := fmt.Sprintf("%%-%ds", chunk.width[c])
+			chunk.rows[r][c] = fmt.Sprintf(f, row[c])
+		}
+		line := strings.Join(row, "   ")
+		if len(line) > sess.window.Width {
+			line = line[0 : sess.window.Width-4]
+			line = line + "..."
+		}
+		sess.WriteStr(line + "\r\n")
+	}
+
+	return &ResultChunk{
+		heading: chunk.heading,
+		width:   chunk.width,
+		cols:    chunk.cols,
+	}
+}
+
 func (sess *Session) executor(line string) {
 	line = strings.TrimSpace(line)
 	if line == "" {
@@ -25,12 +82,19 @@ func (sess *Session) executor(line string) {
 	}
 	defer rows.Close()
 
-	colNames, err := rows.ColumnNames()
+	chunk := &ResultChunk{}
+	chunk.heading = true
+
+	chunk.cols, err = rows.ColumnNames()
 	if err != nil {
 		sess.WriteStr(err.Error() + "\r\n")
 		return
 	}
-	sess.WriteStr(strings.Join(colNames, " | ") + "\r\n")
+	nrows := 0
+	height := sess.window.Height - 1
+	if chunk.heading {
+		height--
+	}
 	for {
 		rec, next, err := rows.Fetch()
 		if err != nil {
@@ -38,27 +102,54 @@ func (sess *Session) executor(line string) {
 			return
 		}
 		if !next {
+			if len(chunk.rows) > 0 {
+				sess.display(chunk)
+			}
 			return
 		}
+		nrows++
 		cols := make([]string, len(rec))
 		for i, r := range rec {
 			if r == nil {
-				cols[i] = fmt.Sprintf("%-10s", "NULL")
+				cols[i] = "NULL"
 				continue
 			}
 			switch v := r.(type) {
 			case *string:
-				cols[i] = fmt.Sprintf("%-10s", *v)
+				cols[i] = *v
 			case *time.Time:
-				cols[i] = fmt.Sprintf("%-26s", v.Format("2006-01-02 15:04:05.000000"))
+				cols[i] = v.Format("2006-01-02 15:04:05.000000")
 			case *float64:
-				cols[i] = fmt.Sprintf("%.5f", *v)
+				cols[i] = fmt.Sprintf("%f", *v)
+			case *int:
+				cols[i] = fmt.Sprintf("%d", *v)
+			case *int32:
+				cols[i] = fmt.Sprintf("%d", *v)
 			case *int64:
-				cols[i] = fmt.Sprintf("%10d", *v)
+				cols[i] = fmt.Sprintf("%d", *v)
 			default:
-				cols[i] = fmt.Sprintf("%-10T", r)
+				cols[i] = fmt.Sprintf("%T", r)
 			}
 		}
-		sess.WriteStr(strings.Join(cols, " ") + "\r\n")
+		chunk.rows = append(chunk.rows, cols)
+
+		if nrows%height == 0 {
+			chunk = sess.display(chunk)
+			sess.WriteStr(":")
+			sess.Flush()
+			c := [3]byte{}
+			n, err := sess.ss.Read(c[:])
+			// ':' prompt를 삭제한다.
+			sess.EraseLine()
+			sess.CursorBackward(1)
+
+			if n > 0 && err == nil {
+				switch c[0] {
+				case 'q', 'Q':
+					return
+				default:
+				}
+			}
+		}
 	}
 }
