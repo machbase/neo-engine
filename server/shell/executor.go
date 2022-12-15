@@ -105,6 +105,13 @@ func (sess *Session) executor(line string) {
 			if len(chunk.rows) > 0 {
 				sess.display(chunk)
 			}
+			if nrows == 0 {
+				sess.WriteStr("no row selected\r\n")
+			} else if nrows == 1 {
+				sess.WriteStr("one row selected\r\n")
+			} else {
+				sess.WriteStr(fmt.Sprintf("%d rows selected\r\n", nrows))
+			}
 			return
 		}
 		nrows++

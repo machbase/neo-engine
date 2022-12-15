@@ -172,7 +172,7 @@ func (sess *Session) Run() {
 		sess.completer,
 		prompt.OptionParser(prompt.ConsoleParser(sess)),
 		prompt.OptionWriter(prompt.ConsoleWriter(sess)),
-		prompt.OptionPrefix("machsql "),
+		prompt.OptionPrefix("machsql> "),
 		prompt.OptionLivePrefix(sess.changeLivePrefix),
 		prompt.OptionTitle("MACHSQL"),
 		prompt.OptionPrefixTextColor(prompt.Yellow),
