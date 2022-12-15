@@ -150,15 +150,15 @@ func (s *svr) Start() error {
 	if err := mkDirIfNotExists(filepath.Join(homepath, "trc")); err != nil {
 		return errors.Wrap(err, "machbase trc")
 	}
-	execpath, err := os.Executable()
-	if err != nil {
-		return errors.Wrap(err, "can not decide executable path")
-	}
-	execdir, err := filepath.Abs(filepath.Dir(execpath))
-	if err != nil {
-		return errors.Wrap(err, "can not decide executable dir")
-	}
-	s.certdir = filepath.Join(execdir, "cert")
+	// execpath, err := os.Executable()
+	// if err != nil {
+	// 	return errors.Wrap(err, "can not decide executable path")
+	// }
+	// execdir, err := filepath.Abs(filepath.Dir(execpath))
+	// if err != nil {
+	// 	return errors.Wrap(err, "can not decide executable dir")
+	// }
+	s.certdir = filepath.Join(homepath, "cert")
 	if err := mkDirIfNotExists(s.certdir); err != nil {
 		return errors.Wrap(err, "machbase cert")
 	}

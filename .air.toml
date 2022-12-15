@@ -5,8 +5,6 @@ tmp_dir = "tmp"
 [build]
   args_bin = [
     "machsvr",
-    "--pname", "machsvr",
-    "--config-dir", "./arch/machsvr/conf",
   ]
   bin = "./tmp/machsvr"
   cmd = "make -f Makefile machsvr"
