@@ -31,7 +31,11 @@ const (
 	OPT_SIGHANDLER_DISABLE InitOption = 0x1
 )
 
-func Initialize(homeDir string, opt InitOption) error {
+func Initialize(homeDir string) error {
+	return InitializeOption(homeDir, OPT_SIGHANDLER_DISABLE)
+}
+
+func InitializeOption(homeDir string, opt InitOption) error {
 	var handle unsafe.Pointer
 	err := initialize0(homeDir, int(opt), &handle)
 	if err == nil {

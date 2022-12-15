@@ -20,7 +20,7 @@
               "--proto_path=./proto"
           ]
       },
-          "files.exclude": {
+      "files.exclude": {
           "vendor": true
       },
       "editor.tabSize": 4,

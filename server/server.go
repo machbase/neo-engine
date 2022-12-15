@@ -72,6 +72,8 @@ type svr struct {
 	httpd *http.Server
 	mqttd *mqttsvr.Server
 	shsvr *shell.Server
+
+	certdir string
 }
 
 const TagTableName = "tagdata"
@@ -135,18 +137,33 @@ func (s *svr) Start() error {
 		return errors.Wrap(err, "machbase path")
 	}
 
-	if err := mkdirIfNotExists(homepath); err != nil {
+	if err := mkDirIfNotExists(homepath); err != nil {
 		return errors.Wrap(err, "machbase")
 	}
 
-	if err := mkdirIfNotExists(filepath.Join(homepath, "conf")); err != nil {
+	if err := mkDirIfNotExists(filepath.Join(homepath, "conf")); err != nil {
 		return errors.Wrap(err, "machbase conf")
 	}
-	if err := mkdirIfNotExists(filepath.Join(homepath, "dbs")); err != nil {
+	if err := mkDirIfNotExists(filepath.Join(homepath, "dbs")); err != nil {
 		return errors.Wrap(err, "machbase dbs")
 	}
-	if err := mkdirIfNotExists(filepath.Join(homepath, "trc")); err != nil {
+	if err := mkDirIfNotExists(filepath.Join(homepath, "trc")); err != nil {
 		return errors.Wrap(err, "machbase trc")
+	}
+	execpath, err := os.Executable()
+	if err != nil {
+		return errors.Wrap(err, "can not decide executable path")
+	}
+	execdir, err := filepath.Abs(filepath.Dir(execpath))
+	if err != nil {
+		return errors.Wrap(err, "can not decide executable dir")
+	}
+	s.certdir = filepath.Join(execdir, "cert")
+	if err := mkDirIfNotExists(s.certdir); err != nil {
+		return errors.Wrap(err, "machbase cert")
+	}
+	if err := s.mkKeysIfNotExists(); err != nil {
+		return errors.Wrap(err, "machbase keys")
 	}
 
 	s.log.Infof("apply machbase '%s' preset", s.conf.MachbasePreset)
@@ -155,7 +172,7 @@ func (s *svr) Start() error {
 		return errors.Wrap(err, "machbase.conf")
 	}
 
-	if err := mach.Initialize(homepath, mach.OPT_SIGHANDLER_DISABLE); err != nil {
+	if err := mach.Initialize(homepath); err != nil {
 		return errors.Wrap(err, "initialize database")
 	}
 	if !mach.ExistsDatabase() {
@@ -246,8 +263,9 @@ func (s *svr) Start() error {
 		}
 	}
 
-	// shell server
+	// ssh shell server
 	if len(s.conf.Shell.Listeners) > 0 {
+		s.conf.Shell.ServerKeyPath = s.ServerPrivateKeyPath()
 		s.shsvr = shell.New(&s.conf.Shell)
 		err := s.shsvr.Start()
 		if err != nil {
@@ -280,7 +298,55 @@ func (s *svr) Stop() {
 	s.log.Infof("shutdown.")
 }
 
-func mkdirIfNotExists(path string) error {
+func (s *svr) ServerPrivateKeyPath() string {
+	return filepath.Join(s.certdir, "machbase_key.pem")
+}
+
+func (s *svr) ServerPublicKeyPath() string {
+	return filepath.Join(s.certdir, "machbase_pub.pem")
+}
+
+func (s *svr) mkKeysIfNotExists() error {
+	priPath := s.ServerPrivateKeyPath()
+	pubPath := s.ServerPublicKeyPath()
+	needGen := false
+
+	if _, err := os.Stat(priPath); err != nil {
+		needGen = true
+	}
+	if _, err := os.Stat(pubPath); err != nil {
+		needGen = true
+	}
+	if !needGen {
+		return nil
+	}
+
+	ec := NewEllipticCurveP521()
+	pri, pub, err := ec.GenerateKeys()
+	if err != nil {
+		return err
+	}
+
+	priPem, err := ec.EncodePrivate(pri)
+	if err != nil {
+		return errors.Wrap(err, "private key encoder")
+	}
+
+	pubPem, err := ec.EncodePublic(pub)
+	if err != nil {
+		return errors.Wrap(err, "public key encoder")
+	}
+
+	if err := os.WriteFile(priPath, []byte(priPem), 0600); err != nil {
+		return errors.Wrap(err, "private key writer")
+	}
+	if err := os.WriteFile(pubPath, []byte(pubPem), 0644); err != nil {
+		return errors.Wrap(err, "public key writer")
+	}
+	return nil
+}
+
+func mkDirIfNotExists(path string) error {
 	_, err := os.Stat(path)
 	if err != nil && os.IsNotExist(err) {
 		if err := os.Mkdir(path, 0755); err != nil {

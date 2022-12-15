@@ -11,7 +11,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/influxdata/line-protocol/v2 v2.2.1
 	github.com/machbase/booter v0.0.0-20221130022722-18b97bc3523a
-	github.com/machbase/cemlib v0.0.0-20221126123531-f7ffc2581e47
+	github.com/machbase/cemlib v0.0.0-20221215011519-04abb7ad4c80
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.0
