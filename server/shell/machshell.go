@@ -3,8 +3,10 @@ package shell
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/c-bata/go-prompt"
 	"github.com/gliderlabs/ssh"
 	"github.com/machbase/cemlib/logging"
 	"github.com/machbase/cemlib/ssh/sshd"
@@ -75,33 +77,158 @@ func (svr *Server) shellProvider(user string) *sshd.Shell {
 }
 
 func (svr *Server) motdProvider(user string) string {
-	return fmt.Sprintf(`Greeting, %s
-machsvr %v
-`, user, mach.VersionString())
+	return fmt.Sprintf("Greeting, %s\r\nmachsvr %v\r\n", user, mach.VersionString())
 }
 
 func (svr *Server) passwordProvider(ctx ssh.Context, password string) bool {
-	svr.log.Infof("shell login %s", ctx.User())
 	return true
 }
 
 func (svr *Server) sessionHandler(ss ssh.Session) {
-	svr.log.Tracef("%#v", ss)
-	pty, ptyCh, ok := ss.Pty()
-	if !ok {
-		ss.Write([]byte("ERR unable to get PTY\r\n"))
+	svr.log.Infof("shell login %s", ss.User())
+	sess := Session{
+		ss:  ss,
+		log: logging.GetLog(fmt.Sprintf("machsql-%s", ss.User())),
+		db:  mach.New(),
+	}
+
+	if cmds := ss.Command(); len(cmds) > 0 {
+		sess.Printf("Commands: %+v\r\n", cmds)
 		return
 	}
-	ss.Write([]byte(svr.motdProvider(ss.User()) + "\r\n"))
+	sess.quitCh = make(chan bool, 1)
 
-	svr.log.Tracef("PTY %+v WIN %+v", pty.Term, pty.Window)
-	for w := range ptyCh {
-		svr.log.Tracef("WIN %+v", w)
+	pty, ptyCh, ok := ss.Pty()
+	if !ok {
+		sess.Println("ERR unable to get PTY")
+		return
 	}
+	sess.window = pty.Window
 
-	if len(ss.Command()) > 0 {
-		//svr.commandHandler(ss)
-	} else {
-		//svr.shellHandler(ss)
+	wg := sync.WaitGroup{}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		sess.ListenWindow(ptyCh)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		sess.Run()
+	}()
+
+	wg.Wait()
+	svr.log.Infof("shell exit %s", ss.User())
+}
+
+type Session struct {
+	ss     ssh.Session
+	window ssh.Window
+	closed bool
+	log    logging.Log
+	quitCh chan bool
+
+	db *mach.Database
+
+	LivePrefix string
+	IsEnable   bool
+
+	PosixWriter
+}
+
+func (sess *Session) Close() {
+	if sess.closed {
+		return
 	}
+	sess.closed = true
+	sess.quitCh <- true
+}
+
+func (sess *Session) ListenWindow(ptyCh <-chan ssh.Window) {
+	defer sess.log.Trace("finish listener")
+	for !sess.closed {
+		select {
+		case <-sess.quitCh:
+			sess.log.Trace("Quit.")
+			sess.Close()
+			return
+		case <-sess.ss.Context().Done():
+			sess.log.Trace("Closed.")
+			sess.Close()
+			return
+		case w := <-ptyCh:
+			sess.window = w
+			sess.log.Tracef("WIN %+v", sess.window)
+		}
+	}
+}
+
+func (sess *Session) Run() {
+	defer sess.log.Trace("finish runner")
+	p := prompt.New(
+		sess.executor,
+		sess.completer,
+		prompt.OptionParser(prompt.ConsoleParser(sess)),
+		prompt.OptionWriter(prompt.ConsoleWriter(sess)),
+		prompt.OptionPrefix("machsql "),
+		prompt.OptionLivePrefix(sess.changeLivePrefix),
+		prompt.OptionTitle("MACHSQL"),
+		prompt.OptionPrefixTextColor(prompt.Yellow),
+		prompt.OptionPreviewSuggestionTextColor(prompt.Blue),
+		prompt.OptionSelectedSuggestionBGColor(prompt.LightGray),
+		prompt.OptionSuggestionBGColor(prompt.DarkGray),
+	)
+
+	p.Run()
+}
+
+func (sess *Session) Printf(format string, args ...any) {
+	str := fmt.Sprintf(format, args...)
+	sess.ss.Write([]byte(str + "\r\n"))
+}
+
+func (sess *Session) Println(strs ...string) {
+	str := strings.Join(strs, " ")
+	sess.ss.Write([]byte(str + "\r\n"))
+}
+
+// //////////////
+// prompt handler
+
+func (sess *Session) changeLivePrefix() (string, bool) {
+	return sess.LivePrefix, sess.IsEnable
+}
+
+// implements prompt.ConsoleParser
+func (sess *Session) Setup() error {
+	return nil
+}
+
+func (sess *Session) TearDown() error {
+	return nil
+}
+
+func (sess *Session) GetWinSize() *prompt.WinSize {
+	return &prompt.WinSize{Row: uint16(sess.window.Height), Col: uint16(sess.window.Width)}
+}
+
+func (sess *Session) Read() ([]byte, error) {
+	if sess.closed {
+		return []byte{byte(prompt.ControlD)}, nil
+	}
+	buff := make([]byte, 1024)
+	n, err := sess.ss.Read(buff)
+	if err != nil {
+		return []byte{}, err
+	}
+	return buff[:n], nil
+}
+
+// / implements prompt.ConsoleWriter
+func (sess *Session) Flush() error {
+	sess.ss.Write(sess.PosixWriter.buffer)
+	sess.PosixWriter.buffer = []byte{}
+	return nil
 }
