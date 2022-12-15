@@ -30,8 +30,7 @@ func (sess *Session) display(chunk *ResultChunk) *ResultChunk {
 			chunk.width[c] = max
 		}
 		for c := range chunk.cols {
-			f := fmt.Sprintf("%%-%ds", chunk.width[c])
-			chunk.cols[c] = fmt.Sprintf(f, chunk.cols[c])
+			chunk.cols[c] = fmt.Sprintf("%-*s", chunk.width[c], chunk.cols[c])
 		}
 	}
 
@@ -45,8 +44,7 @@ func (sess *Session) display(chunk *ResultChunk) *ResultChunk {
 	}
 	for r, row := range chunk.rows {
 		for c := range chunk.cols {
-			f := fmt.Sprintf("%%-%ds", chunk.width[c])
-			chunk.rows[r][c] = fmt.Sprintf(f, row[c])
+			chunk.rows[r][c] = fmt.Sprintf("%-*s", chunk.width[c], row[c])
 		}
 		line := strings.Join(row, "   ")
 		if len(line) > sess.window.Width {
