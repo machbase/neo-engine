@@ -39,23 +39,28 @@ func (row *Row) Scan(cols ...any) error {
 		var isNull bool
 		switch v := row.values[i].(type) {
 		case *int16:
-			valconv.Int16ToAny(*v, cols[i], &isNull)
+			row.err = valconv.Int16ToAny(*v, cols[i], &isNull)
 		case *int32:
-			valconv.Int32ToAny(*v, cols[i], &isNull)
+			row.err = valconv.Int32ToAny(*v, cols[i], &isNull)
 		case *int64:
-			valconv.Int64ToAny(*v, cols[i], &isNull)
+			row.err = valconv.Int64ToAny(*v, cols[i], &isNull)
 		case *time.Time:
-			valconv.DateTimeToAny(*v, cols[i])
+			row.err = valconv.DateTimeToAny(*v, cols[i])
 		case *float32:
-			valconv.Float32ToAny(*v, cols[i])
+			row.err = valconv.Float32ToAny(*v, cols[i])
 		case *float64:
-			valconv.Float64ToAny(*v, cols[i])
+			row.err = valconv.Float64ToAny(*v, cols[i])
 		case *net.IP:
-			valconv.IPToAny(*v, cols[i])
+			row.err = valconv.IPToAny(*v, cols[i])
 		case *string:
-			valconv.StringToAny(*v, cols[i], &isNull)
+			row.err = valconv.StringToAny(*v, cols[i], &isNull)
 		case []byte:
-			valconv.BytesToAny(v, cols[i])
+			row.err = valconv.BytesToAny(v, cols[i])
+		default:
+			return fmt.Errorf("column %d can not assign to %T", i, v)
+		}
+		if row.err != nil {
+			return row.err
 		}
 		if isNull {
 			cols[i] = nil
