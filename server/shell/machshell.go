@@ -176,9 +176,11 @@ func (sess *Session) Run() {
 		prompt.OptionLivePrefix(sess.changeLivePrefix),
 		prompt.OptionTitle("MACHSQL"),
 		prompt.OptionPrefixTextColor(prompt.Yellow),
-		prompt.OptionPreviewSuggestionTextColor(prompt.Blue),
-		prompt.OptionSelectedSuggestionBGColor(prompt.LightGray),
-		prompt.OptionSuggestionBGColor(prompt.DarkGray),
+		prompt.OptionPreviewSuggestionTextColor(prompt.DarkGray),
+		prompt.OptionSelectedSuggestionTextColor(prompt.White),
+		prompt.OptionSelectedSuggestionBGColor(prompt.Blue),
+		prompt.OptionSuggestionBGColor(prompt.LightGray),
+		prompt.OptionSuggestionTextColor(prompt.DarkGray),
 	)
 
 	p.Run()
@@ -186,12 +188,12 @@ func (sess *Session) Run() {
 
 func (sess *Session) Printf(format string, args ...any) {
 	str := fmt.Sprintf(format, args...)
-	sess.ss.Write([]byte(str + "\r\n"))
+	sess.WriteStr(str + "\r\n")
 }
 
 func (sess *Session) Println(strs ...string) {
 	str := strings.Join(strs, " ")
-	sess.ss.Write([]byte(str + "\r\n"))
+	sess.WriteStr(str + "\r\n")
 }
 
 // //////////////

@@ -276,6 +276,9 @@ func (s *svr) Start() error {
 }
 
 func (s *svr) Stop() {
+	if s.shsvr != nil {
+		s.shsvr.Stop()
+	}
 	if s.mqttd != nil {
 		s.mqttd.Stop()
 	}

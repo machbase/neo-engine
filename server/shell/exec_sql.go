@@ -16,6 +16,15 @@ func (sess *Session) exec_sql(line string) {
 	}
 	defer rows.Close()
 
+	if !rows.IsFetchable() {
+		nrows, err := rows.AffectedRows()
+		if err != nil {
+			sess.log.Errorf("fail to get affected rows %s", err.Error())
+			return
+		}
+		sess.Println(rows.ResultString(nrows))
+		return
+	}
 	chunk := &ResultChunk{}
 	chunk.heading = true
 
@@ -32,20 +41,14 @@ func (sess *Session) exec_sql(line string) {
 	for {
 		rec, next, err := rows.Fetch()
 		if err != nil {
-			sess.WriteStr(err.Error() + "\r\n")
+			sess.Println(err.Error() + "\r\n")
 			return
 		}
 		if !next {
 			if len(chunk.rows) > 0 {
 				sess.display(chunk)
 			}
-			if nrows == 0 {
-				sess.WriteStr("no row selected\r\n")
-			} else if nrows == 1 {
-				sess.WriteStr("one row selected\r\n")
-			} else {
-				sess.WriteStr(fmt.Sprintf("%d rows selected\r\n", nrows))
-			}
+			sess.Println(rows.ResultString(int64(nrows)))
 			return
 		}
 		nrows++

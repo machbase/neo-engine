@@ -84,6 +84,43 @@ func (rows *Rows) IsFetchable() bool {
 	return isFetchableStmtType(rows.stmtType)
 }
 
+func (rows *Rows) ResultString(nrows int64) string {
+	var verb = ""
+
+	if rows.stmtType >= 1 && rows.stmtType <= 255 {
+		return "DDL executed"
+	} else if rows.stmtType >= 256 && rows.stmtType <= 511 {
+		// "ALTER SYSTEM"
+		return "system altered"
+	} else if rows.stmtType == 512 {
+		verb = "selected"
+	} else if rows.stmtType == 513 {
+		verb = "inserted"
+	} else if rows.stmtType == 514 || rows.stmtType == 515 {
+		verb = "deleted"
+	} else if rows.stmtType == 516 {
+		verb = "inserted and selected"
+	} else if rows.stmtType == 517 {
+		verb = "updated"
+	} else {
+		return "unknown"
+	}
+	if nrows == 0 {
+		return fmt.Sprintf("no row %s", verb)
+	} else if nrows == 1 {
+		return fmt.Sprintf("1 row %s", verb)
+	} else {
+		return fmt.Sprintf("%d rows %s", nrows, verb)
+	}
+}
+
+func (rows *Rows) AffectedRows() (int64, error) {
+	if rows.IsFetchable() {
+		return 0, nil
+	}
+	return machEffectRows(rows.stmt)
+}
+
 func (rows *Rows) SetTimeFormat(format string) {
 	rows.timeFormat = format
 }

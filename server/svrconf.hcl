@@ -47,6 +47,7 @@ module "github.com/machbase/dbms-mach-go/server" {
         }
         Shell = {
             Listeners        = [ "tcp://${VARS_SHELL_LISTEN_HOST}:${VARS_SHELL_LISTEN_PORT}" ]
+            IdleTimeout      = "5m"
         }
         Grpc = {
             Listeners        = [ 
