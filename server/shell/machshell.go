@@ -14,25 +14,31 @@ import (
 	"github.com/pkg/errors"
 )
 
+type Server interface {
+	GetConfig() string
+}
+
 type Config struct {
 	Listeners     []string
 	IdleTimeout   time.Duration
 	ServerKeyPath string
 }
 
-type Server struct {
+type MachShell struct {
 	conf  *Config
 	log   logging.Log
 	sshds []sshd.Server
+
+	Server Server // injection point
 }
 
-func New(conf *Config) *Server {
-	return &Server{
+func New(conf *Config) *MachShell {
+	return &MachShell{
 		conf: conf,
 	}
 }
 
-func (svr *Server) Start() error {
+func (svr *MachShell) Start() error {
 	svr.log = logging.GetLog("machshell")
 	svr.sshds = make([]sshd.Server, 0)
 
@@ -64,32 +70,33 @@ func (svr *Server) Start() error {
 	return nil
 }
 
-func (svr *Server) Stop() {
+func (svr *MachShell) Stop() {
 	for _, s := range svr.sshds {
 		s.Stop()
 	}
 }
 
-func (svr *Server) shellProvider(user string) *sshd.Shell {
+func (svr *MachShell) shellProvider(user string) *sshd.Shell {
 	return &sshd.Shell{
 		Cmd: "/bin/bash",
 	}
 }
 
-func (svr *Server) motdProvider(user string) string {
+func (svr *MachShell) motdProvider(user string) string {
 	return fmt.Sprintf("Greeting, %s\r\nmachsvr %v\r\n", user, mach.VersionString())
 }
 
-func (svr *Server) passwordProvider(ctx ssh.Context, password string) bool {
+func (svr *MachShell) passwordProvider(ctx ssh.Context, password string) bool {
 	return true
 }
 
-func (svr *Server) sessionHandler(ss ssh.Session) {
+func (svr *MachShell) sessionHandler(ss ssh.Session) {
 	svr.log.Infof("shell login %s", ss.User())
 	sess := Session{
-		ss:  ss,
-		log: logging.GetLog(fmt.Sprintf("machsql-%s", ss.User())),
-		db:  mach.New(),
+		ss:     ss,
+		log:    logging.GetLog(fmt.Sprintf("machsql-%s", ss.User())),
+		db:     mach.New(),
+		server: svr.Server,
 	}
 
 	if cmds := ss.Command(); len(cmds) > 0 {
@@ -130,7 +137,8 @@ type Session struct {
 	log    logging.Log
 	quitCh chan bool
 
-	db *mach.Database
+	db     *mach.Database
+	server Server
 
 	LivePrefix string
 	IsEnable   bool

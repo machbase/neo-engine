@@ -71,7 +71,7 @@ type svr struct {
 	grpcd *grpc.Server
 	httpd *http.Server
 	mqttd *mqttsvr.Server
-	shsvr *shell.Server
+	shsvr *shell.MachShell
 
 	certdir string
 }
@@ -267,6 +267,7 @@ func (s *svr) Start() error {
 	if len(s.conf.Shell.Listeners) > 0 {
 		s.conf.Shell.ServerKeyPath = s.ServerPrivateKeyPath()
 		s.shsvr = shell.New(&s.conf.Shell)
+		s.shsvr.Server = s
 		err := s.shsvr.Start()
 		if err != nil {
 			return errors.Wrap(err, "shell server")
