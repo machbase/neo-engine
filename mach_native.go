@@ -334,7 +334,7 @@ func machColumnName(stmt unsafe.Pointer, idx int) (string, error) {
 	return C.GoString(&cstr[0]), nil
 }
 
-func machColumnType(stmt unsafe.Pointer, idx int) (int, int, error) {
+func machColumnType(stmt unsafe.Pointer, idx int) (ColumnType, ColumnSize, error) {
 	var typ C.int = 0
 	var siz C.int = 0
 	if rt := C.MachColumnType(stmt, C.int(idx), &typ, &siz); rt != 0 {
@@ -345,7 +345,7 @@ func machColumnType(stmt unsafe.Pointer, idx int) (int, int, error) {
 			return 0, 0, fmt.Errorf("MachColumnType idx %d returns %d", idx, rt)
 		}
 	}
-	return int(typ), int(siz), nil
+	return ColumnType(typ), ColumnSize(siz), nil
 }
 
 func machColumnLength(stmt unsafe.Pointer, idx int) (int, error) {

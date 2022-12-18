@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 	"unsafe"
+
+	"github.com/pkg/errors"
 )
 
 func LinkInfo() string {
@@ -260,20 +263,26 @@ func (db *Database) Appender(tableName string) (*Appender, error) {
 	}
 
 	row := db.QueryRow("select type from M$SYS_TABLES where name = ?", appender.tableName)
-	if err := row.Scan(&appender.tableType); err != nil {
+	var typ int32 = -1
+	if err := row.Scan(&typ); err != nil {
 		return nil, err
 	}
+	appender.tableType = TableType(typ)
 
 	var err error
 	appender.colCount, err = machColumnCount(appender.stmt)
 	if err != nil {
 		return nil, err
 	}
+	appender.colTypes = make([]ColumnType, appender.colCount)
+	appender.colSizes = make([]ColumnSize, appender.colCount)
 	for i := 0; i < appender.colCount; i++ {
-		/*typ, siz*/ _, _, err := machColumnType(appender.stmt, i)
+		typ, siz, err := machColumnType(appender.stmt, i)
 		if err != nil {
 			return nil, err
 		}
+		appender.colTypes[i] = typ
+		appender.colSizes[i] = siz
 	}
 	return appender, nil
 }
@@ -282,8 +291,10 @@ type Appender struct {
 	handle       unsafe.Pointer
 	stmt         unsafe.Pointer
 	tableName    string
-	tableType    int // 0: Log Table, 1: Fixed Table, 3: Volatile Table, 4: Lookup Table, 5: KeyValue Table, 6: Tag Table
+	tableType    TableType
 	colCount     int
+	colTypes     []ColumnType
+	colSizes     []ColumnSize
 	SuccessCount uint64
 	FailureCount uint64
 }
@@ -310,11 +321,43 @@ func (ap *Appender) Close() error {
 	return nil
 }
 
+func (ap *Appender) matchColumnTypes(cols []any) ([]any, error) {
+	// TODO JSON encoding으로 전달받은 데이터를 append에 적용하려면
+	// float, int 형이 모두 number로 표현되는 json의 한계로 인해
+	// 반드시 table schema를 먼저 확인해서 적절한 type으로 변경하는 과정이
+	// 필요하다.
+	if ap.tableType == TagTableType {
+		var ok = false
+		var err error
+		// tag name
+		if cols[0], ok = cols[0].(string); !ok {
+			return cols, errors.New("first value of tuple should be tag name")
+		}
+		// time
+		switch v := cols[1].(type) {
+		case float32:
+			cols[1] = int64(v)
+		case float64:
+			cols[1] = int64(v)
+		case string:
+			cols[1], err = strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				return cols, errors.Wrap(err, "time conversion")
+			}
+		}
+	}
+	return cols, nil
+}
+
 func (ap *Appender) Append(cols ...any) error {
-	if ap.tableType == 0 {
-		return ap.appendLogTable(time.Time{}, cols)
-	} else {
+	cols, err := ap.matchColumnTypes(cols)
+	if err != nil {
+		return err
+	}
+	if ap.tableType == TagTableType {
 		return ap.appendTagTable(cols)
+	} else {
+		return ap.appendLogTable(time.Time{}, cols)
 	}
 }
 
@@ -329,7 +372,7 @@ func (ap *Appender) AppendWithTimestamp(ts time.Time, cols ...any) error {
 
 func (ap *Appender) appendLogTable(ts time.Time, cols []any) error {
 	if ap.colCount-1 != len(cols) {
-		return fmt.Errorf("value count %d, table '%s' has %d columns", len(cols), ap.tableName, ap.colCount-1)
+		return fmt.Errorf("value count %d, table '%s' (type %s) has %d columns", len(cols), ap.tableName, ap.tableType, ap.colCount-1)
 	}
 	vals := make([]*machAppendDataNullValue, ap.colCount)
 	if ts.IsZero() {

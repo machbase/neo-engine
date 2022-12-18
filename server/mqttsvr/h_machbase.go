@@ -91,7 +91,7 @@ func (svr *Server) onMachbase(evt *mqtt.EvtMessage, prefix string) error {
 		if appender == nil {
 			appender, err = svr.db.Appender(table)
 			if err != nil {
-				svr.log.Error("fail to create appender, %s", err.Error())
+				svr.log.Errorf("fail to create appender, %s", err.Error())
 				return nil
 			}
 			if len(appenderSet) == 0 {
