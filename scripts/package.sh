@@ -66,13 +66,13 @@ for D in $DOCS; do
     cp $D packages/$bdir
 done
 
-# Copy template directory
-if [ ! -d packages/$bdir/test ]; then
-    mkdir packages/$bdir/test
-fi
-for D in $TESTD; do
-    cp -r $D packages/$bdir/test
-done
+# Copy test directory
+# if [ ! -d packages/$bdir/test ]; then
+#     mkdir packages/$bdir/test
+# fi
+# for D in $TESTD; do
+#     cp -r $D packages/$bdir/test
+# done
 
 # Compress the package.
 cd packages
