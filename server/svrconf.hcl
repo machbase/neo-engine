@@ -1,10 +1,10 @@
 
 define DEF {
     LISTEN_HOST       = flag("--host", "127.0.0.1")
-    SHELL_PORT        = flag("--shell-port", "4055")
-    GRPC_PORT         = flag("--grpc-port", "4056")
-    MQTT_PORT         = flag("--mqtt-port", "4057")
-    HTTP_PORT         = flag("--http-port", "4058")
+    SHELL_PORT        = flag("--shell-port", "5652")
+    MQTT_PORT         = flag("--mqtt-port", "5653")
+    HTTP_PORT         = flag("--http-port", "5654")
+    GRPC_PORT         = flag("--grpc-port", "5655")
 }
 
 define VARS {
@@ -51,7 +51,7 @@ module "github.com/machbase/dbms-mach-go/server" {
         }
         Grpc = {
             Listeners        = [ 
-                "unix://${execDir()}/mach.sock",
+                "unix://${execDir()}/mach-grpc.sock",
                 "tcp://${VARS_GRPC_LISTEN_HOST}:${VARS_GRPC_LISTEN_PORT}",
             ]
             MaxRecvMsgSize   = 4
