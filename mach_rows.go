@@ -164,11 +164,11 @@ func (rows *Rows) ColumnTypes() ([]string, error) {
 		case 2: // MACH_DATA_TYPE_INT64
 			types[i] = "int64"
 		case 3: // MACH_DATA_TYPE_DATETIME
-			types[i] = "time"
+			types[i] = "datetime"
 		case 4: // MACH_DATA_TYPE_FLOAT
-			types[i] = "float32"
+			types[i] = "float"
 		case 5: // MACH_DATA_TYPE_DOUBLE
-			types[i] = "float64"
+			types[i] = "double"
 		case 6: // MACH_DATA_TYPE_IPV4
 			types[i] = "ipv4"
 		case 7: // MACH_DATA_TYPE_IPV6

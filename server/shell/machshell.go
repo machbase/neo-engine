@@ -118,12 +118,14 @@ func (svr *MachShell) sessionHandler(ss ssh.Session) {
 	go func() {
 		defer wg.Done()
 		sess.ListenWindow(ptyCh)
+		sess.Close()
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		sess.Run()
+		sess.Close()
 	}()
 
 	wg.Wait()
