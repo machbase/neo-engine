@@ -5,7 +5,7 @@ package mach
 type TableType int
 
 const (
-	LogTableType      TableType = 0
+	LogTableType      TableType = iota + 0
 	FixedTableType              = 1
 	VolatileTableType           = 3
 	LookupTableType             = 4
@@ -35,7 +35,7 @@ func (t TableType) String() string {
 type ColumnType int
 
 const (
-	Int16ColumnType   ColumnType = 0
+	Int16ColumnType   ColumnType = iota + 0
 	Int32ColumnType              = 1
 	Int64ColumnType              = 2
 	TimeColumnType               = 3

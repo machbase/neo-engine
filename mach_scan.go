@@ -1,4 +1,4 @@
-package valconv
+package mach
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func Int16ToAny(v int16, c any, isNull *bool) error {
+func ScanInt16(v int16, c any, isNull *bool) error {
 	if v == math.MinInt16 {
 		*isNull = true
 		return nil
@@ -30,7 +30,7 @@ func Int16ToAny(v int16, c any, isNull *bool) error {
 	return nil
 }
 
-func Int32ToAny(v int32, c any, isNull *bool) error {
+func ScanInt32(v int32, c any, isNull *bool) error {
 	if v == math.MinInt32 {
 		*isNull = true
 		return nil
@@ -52,7 +52,7 @@ func Int32ToAny(v int32, c any, isNull *bool) error {
 	return nil
 }
 
-func Int64ToAny(v int64, c any, isNull *bool) error {
+func ScanInt64(v int64, c any, isNull *bool) error {
 	if v == math.MinInt64 {
 		*isNull = true
 		return nil
@@ -77,7 +77,7 @@ func Int64ToAny(v int64, c any, isNull *bool) error {
 	return nil
 }
 
-func DateTimeToAny(v time.Time, c any) error {
+func ScanDateTime(v time.Time, c any) error {
 	switch cv := c.(type) {
 	case *int64:
 		*cv = v.UnixNano()
@@ -91,7 +91,7 @@ func DateTimeToAny(v time.Time, c any) error {
 	return nil
 }
 
-func Float32ToAny(v float32, c any) error {
+func ScanFloat32(v float32, c any) error {
 	switch cv := c.(type) {
 	case *float32:
 		*cv = v
@@ -105,7 +105,7 @@ func Float32ToAny(v float32, c any) error {
 	return nil
 }
 
-func Float64ToAny(v float64, c any) error {
+func ScanFloat64(v float64, c any) error {
 	switch cv := c.(type) {
 	case *float32:
 		*cv = float32(v)
@@ -119,7 +119,7 @@ func Float64ToAny(v float64, c any) error {
 	return nil
 }
 
-func StringToAny(v string, c any, isNull *bool) error {
+func ScanString(v string, c any, isNull *bool) error {
 	if len(v) == 0 {
 		*isNull = true
 		return nil
@@ -133,7 +133,7 @@ func StringToAny(v string, c any, isNull *bool) error {
 	return nil
 }
 
-func BytesToAny(v []byte, c any) error {
+func ScanBytes(v []byte, c any) error {
 	switch cv := c.(type) {
 	case *[]uint8:
 		*cv = v
@@ -145,7 +145,7 @@ func BytesToAny(v []byte, c any) error {
 	return nil
 }
 
-func IPToAny(v net.IP, c any) error {
+func ScanIP(v net.IP, c any) error {
 	switch cv := c.(type) {
 	case *net.IP:
 		*cv = v
