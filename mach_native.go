@@ -6,7 +6,7 @@ import (
 	"time"
 	"unsafe"
 
-	_ "github.com/machbase/dbms-mach-go/native"
+	_ "github.com/machbase/neo-engine/native"
 	"github.com/pkg/errors"
 )
 

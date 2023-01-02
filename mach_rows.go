@@ -7,7 +7,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/machbase/dbms-mach-go/valconv"
+	"github.com/machbase/neo-engine/valconv"
 	"github.com/pkg/errors"
 )
 
