@@ -78,6 +78,15 @@ typedef struct MachEngineAppendParam
     MachEngineAppendParamData   mData;
 } MachEngineAppendParam;
 
+#define MACH_ENGINE_COLUMN_NAME_MAX_LENGTH 100
+typedef struct MachEngineColumnInfo
+{
+    char    mColumnName[MACH_ENGINE_COLUMN_NAME_MAX_LENGTH+1];  /* 컬럼 이름 */
+    int     mColumnType;                                        /* 컬럼 타입 */
+    int     mColumnSize;                                        /* 컬럼 크기 */
+    int     mColumnLength;                                      /* Ferch된 Record의 컬럼 크기 */
+} MachEngineColumnInfo;
+
 #define MACH_OPT_NONE            (0)
 #define MACH_OPT_SIG_HANDLER_OFF (1)
 
@@ -108,9 +117,8 @@ int MachIsDBCreated(void* aEnvHandle);
 /**
  * @brief Machbase Thread 시작
  * @details Machbase Thread가 Startup 완료될 때 까지 기다린다
- * @param [in] aTimeoutSecond timeout 시간 (단위 :초)
  */
-int MachStartupDB(void* aEnvHandle, int aTimeoutSecond);
+int MachStartupDB(void* aEnvHandle);
 
 /**
  * @brief Machbase Thread 종료
@@ -212,10 +220,12 @@ int MachColumnCount(void* aMachStmt, int* aColumnCount);
  * @param [out] aType column type
  * @param [out] aSize column size 
  * @param [out] aColumnLength 컬럼의 데이터 크기
+ * @param [out] aColumnInfo 컬럼 정보 구조체
  */
-int MachColumnName(void* aMachStmt, int aColumnIndex, char* aColumnName, int aBufSize);
-int MachColumnType(void* aMachStmt, int aColumnIndex, int* aType, int* aSize);
+int MachColumnName(void* aMachStmt, int aColumnIndex, char* aColumnName, int aColumnNameBufSize);
+int MachColumnType(void* aMachStmt, int aColumnIndex, int* aColumnType, int* aColumnSize);
 int MachColumnLength(void* aMachStmt, int aColumnIndex, int* aColumnLength);
+int MachColumnInfo(void* aMachStmt, int aColumnIndex, MachEngineColumnInfo* aColumnInfo);
 
 /**
  * @brief Fetch row로 부터 각 컬럼의 결과를 가지고 온다.
@@ -273,6 +283,12 @@ int MachAppendClose(void* aMachStmt,
  * @param [in] aAppendParamArr Append 할 데이터 값
  */
 int MachAppendData(void* aMachStmt, MachEngineAppendParam* aAppendParamArr);
+
+/**
+ * @brief 쿼리 explain
+ * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt 
+ */
+int MachExplain(void* aMachStmt, char* aBuffer, int aBufSize);
 
 #endif
 
