@@ -79,7 +79,7 @@ func New() *Database {
 	}
 }
 
-func (db *Database) Startup(timeout time.Duration) error {
+func (db *Database) Startup() error {
 	// machbase startup 과정에서 현재 디렉터리를 HOME으로 변경하는데,
 	// application의 Working directory를 유지하기 위해 chdir()을 호출한다.
 	cwd, _ := os.Getwd()
@@ -87,7 +87,7 @@ func (db *Database) Startup(timeout time.Duration) error {
 		os.Chdir(cwd)
 	}()
 
-	err := startup0(db.handle, timeout)
+	err := startup0(db.handle)
 	return err
 }
 

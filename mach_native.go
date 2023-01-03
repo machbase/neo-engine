@@ -52,9 +52,8 @@ func existsDatabase0(envHandle unsafe.Pointer) bool {
 	return rt == 1
 }
 
-func startup0(envHandle unsafe.Pointer, timeout time.Duration) error {
-	timeoutSec := C.int(timeout.Seconds())
-	if rt := C.MachStartupDB(envHandle, timeoutSec); rt != 0 {
+func startup0(envHandle unsafe.Pointer) error {
+	if rt := C.MachStartupDB(envHandle); rt != 0 {
 		dbErr := machError0(envHandle)
 		if dbErr != nil {
 			return dbErr

@@ -71,7 +71,7 @@ func TestMain(m *testing.M) {
 	if db == nil {
 		panic(err)
 	}
-	err = db.Startup(10 * time.Second)
+	err = db.Startup()
 	if err != nil {
 		panic(err)
 	}
@@ -181,7 +181,7 @@ func TestAppend(t *testing.T) {
 	rows, err := db.Query(db.SqlTidy(`
 		select
 			short, ushort, integer, uinteger, long, ulong, float, double, 
-			ipv4,
+			ipv4, ipv6,
 			varchar, text, json, binary, blob, clob, datetime, datetime_now
 		from
 			log`))
@@ -213,7 +213,7 @@ func TestAppend(t *testing.T) {
 
 		err := rows.Scan(
 			&_int16, &_uint16, &_int32, &_uint32, &_int64, &_uint64, &_float, &_double,
-			&_ipv4, /*&_ipv6,*/
+			&_ipv4, &_ipv6,
 			&_varchar, &_text, &_json, &_bin, &_blob, &_clob, &_datetime, &_datetime_now)
 		if err != nil {
 			fmt.Printf("error: %s\n", err.Error())
