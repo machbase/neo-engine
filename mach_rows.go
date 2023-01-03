@@ -38,11 +38,11 @@ func (row *Row) Scan(cols ...any) error {
 		var isNull bool
 		switch v := row.values[i].(type) {
 		case *int16:
-			row.err = ScanInt16(*v, cols[i], &isNull)
+			row.err = ScanInt16(*v, cols[i])
 		case *int32:
-			row.err = ScanInt32(*v, cols[i], &isNull)
+			row.err = ScanInt32(*v, cols[i])
 		case *int64:
-			row.err = ScanInt64(*v, cols[i], &isNull)
+			row.err = ScanInt64(*v, cols[i])
 		case *time.Time:
 			row.err = ScanDateTime(*v, cols[i])
 		case *float32:
@@ -52,7 +52,7 @@ func (row *Row) Scan(cols ...any) error {
 		case *net.IP:
 			row.err = ScanIP(*v, cols[i])
 		case *string:
-			row.err = ScanString(*v, cols[i], &isNull)
+			row.err = ScanString(*v, cols[i])
 		case []byte:
 			row.err = ScanBytes(v, cols[i])
 		default:
@@ -271,93 +271,109 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 		if err != nil {
 			return errors.Wrap(err, "Scan")
 		}
-		var isNull bool
 		switch typ {
 		case 0: // MACH_DATA_TYPE_INT16
-			if v, _ /*nonNull*/, err := machColumnDataInt16(stmt, i); err != nil {
+			if v, nonNull, err := machColumnDataInt16(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
-			} else {
-				if err = ScanInt16(v, c, &isNull); err != nil {
+			} else if nonNull {
+				if err = ScanInt16(v, c); err != nil {
 					return err
 				}
+			} else {
+				cols[i] = nil
 			}
 		case 1: // MACH_DATA_TYPE_INT32
-			if v, _ /*nonNull*/, err := machColumnDataInt32(stmt, i); err != nil {
+			if v, nonNull, err := machColumnDataInt32(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
-			} else {
-				if err = ScanInt32(v, c, &isNull); err != nil {
+			} else if nonNull {
+				if err = ScanInt32(v, c); err != nil {
 					return err
 				}
+			} else {
+				cols[i] = nil
 			}
 		case 2: // MACH_DATA_TYPE_INT64
-			if v, _ /*nonNull*/, err := machColumnDataInt64(stmt, i); err != nil {
+			if v, nonNull, err := machColumnDataInt64(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan int16")
-			} else {
-				if err = ScanInt64(v, c, &isNull); err != nil {
+			} else if nonNull {
+				if err = ScanInt64(v, c); err != nil {
 					return err
 				}
+			} else {
+				cols[i] = nil
 			}
 		case 3: // MACH_DATA_TYPE_DATETIME
-			if v, _ /*nonNull*/, err := machColumnDataDateTime(stmt, i); err != nil {
+			if v, nonNull, err := machColumnDataDateTime(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan datetime")
-			} else {
+			} else if nonNull {
 				if err = ScanDateTime(v, c); err != nil {
 					return err
 				}
+			} else {
+				cols[i] = nil
 			}
 		case 4: // MACH_DATA_TYPE_FLOAT
-			if v, _ /*nonNull*/, err := machColumnDataFloat32(stmt, i); err != nil {
+			if v, nonNull, err := machColumnDataFloat32(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan float32")
-			} else {
+			} else if nonNull {
 				if err = ScanFloat32(v, c); err != nil {
 					return err
 				}
+			} else {
+				cols[i] = nil
 			}
 		case 5: // MACH_DATA_TYPE_DOUBLE
-			if v, _ /*nonNull*/, err := machColumnDataFloat64(stmt, i); err != nil {
+			if v, nonNull, err := machColumnDataFloat64(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan float32")
-			} else {
+			} else if nonNull {
 				if err = ScanFloat64(v, c); err != nil {
 					return err
 				}
+			} else {
+				cols[i] = nil
 			}
 		case 6: // MACH_DATA_TYPE_IPV4
-			if v, _ /*nonNull*/, err := machColumnDataIPv4(stmt, i); err != nil {
+			if v, nonNull, err := machColumnDataIPv4(stmt, i); err != nil {
 				return errors.Wrap(err, "scal IPv4")
-			} else {
+			} else if nonNull {
 				if err = ScanIP(v, c); err != nil {
 					return err
 				}
+			} else {
+				cols[i] = nil
 			}
 		case 7: // MACH_DATA_TYPE_IPV6
-			if v, _ /*nonNull*/, err := machColumnDataIPv6(stmt, i); err != nil {
+			if v, nonNull, err := machColumnDataIPv6(stmt, i); err != nil {
 				return errors.Wrap(err, "scal IPv4")
-			} else {
+			} else if nonNull {
 				if err = ScanIP(v, c); err != nil {
 					return err
 				}
+			} else {
+				cols[i] = nil
 			}
 		case 8: // MACH_DATA_TYPE_STRING
-			if v, _ /*nonNull*/, err := machColumnDataString(stmt, i); err != nil {
+			if v, nonNull, err := machColumnDataString(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan string")
-			} else {
-				if err = ScanString(v, c, &isNull); err != nil {
+			} else if nonNull {
+				if err = ScanString(v, c); err != nil {
 					return err
 				}
+			} else {
+				cols[i] = nil
 			}
 		case 9: // MACH_DATA_TYPE_BINARY
-			if v, _ /*nonNull*/, err := machColumnDataBinary(stmt, i); err != nil {
+			if v, nonNull, err := machColumnDataBinary(stmt, i); err != nil {
 				return errors.Wrap(err, "Scan binary")
-			} else {
+			} else if nonNull {
 				if err = ScanBytes(v, c); err != nil {
 					return err
 				}
+			} else {
+				cols[i] = nil
 			}
 		default:
 			return fmt.Errorf("MachGetColumnData unsupported type %T", c)
-		}
-		if isNull {
-			cols[i] = nil
 		}
 	}
 	return nil
