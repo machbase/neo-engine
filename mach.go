@@ -111,6 +111,18 @@ func (db *Database) SqlTidy(sqlText string) string {
 	return strings.TrimSpace(strings.Join(lines, " "))
 }
 
+func (db *Database) Explain(sqlText string) (string, error) {
+	var stmt unsafe.Pointer
+	if err := machAllocStmt(db.handle, &stmt); err != nil {
+		return "", err
+	}
+	defer machFreeStmt(db.handle, stmt)
+	if err := machPrepare(stmt, sqlText); err != nil {
+		return "", err
+	}
+	return machExplain(stmt)
+}
+
 func (db *Database) Exec(sqlText string, params ...any) (int64, error) {
 	var stmt unsafe.Pointer
 	if err := machAllocStmt(db.handle, &stmt); err != nil {
