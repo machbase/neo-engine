@@ -12,7 +12,7 @@ import (
 
 /*
 #cgo CFLAGS: -I${SRCDIR}/native
-#include "machEngine.h"
+#include <machEngine.h>
 #include <stdlib.h>
 */
 import "C"
