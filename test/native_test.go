@@ -11,6 +11,7 @@ import (
 
 	mach "github.com/machbase/neo-engine"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 )
 
 var db *mach.Database
@@ -93,6 +94,47 @@ func TestMain(m *testing.M) {
 	m.Run()
 
 	db.Shutdown()
+}
+
+func TestColumns(t *testing.T) {
+	rows, err := db.Query("select * from log")
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+	cols, err := rows.Columns()
+	if err != nil {
+		panic(err)
+	}
+
+	type ColumnsData struct {
+		name string
+		typ  string
+	}
+
+	data := []ColumnsData{
+		{"SHORT", "int16"},
+		{"USHORT", "int16"},
+		{"INTEGER", "int32"},
+		{"UINTEGER", "int32"},
+		{"LONG", "int64"},
+		{"ULONG", "int64"},
+		{"FLOAT", "float32"},
+		{"DOUBLE", "float64"},
+		{"IPV4", "ipv4"},
+		{"IPV6", "ipv6"},
+		{"VARCHAR", "string"},
+		{"TEXT", "string"},
+		{"JSON", "string"},
+		{"BINARY", "binary"},
+		{"BLOB", "binary"},
+		{"CLOB", "binary"},
+		{"DATETIME", "datetime"},
+		{"DATETIME_NOW", "datetime"},
+	}
+	for i, cd := range data {
+		require.Equal(t, cd.name, cols[i].Name)
+	}
 }
 
 func TestExec(t *testing.T) {

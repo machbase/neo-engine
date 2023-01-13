@@ -333,6 +333,30 @@ func machColumnCount(stmt unsafe.Pointer) (int, error) {
 	return int(count), nil
 }
 
+func machColumnInfo(stmt unsafe.Pointer, idx int) (*Column, error) {
+	var nfo C.MachEngineColumnInfo
+	if rt := C.MachColumnInfo(stmt, C.int(idx), &nfo); rt != 0 {
+		stmtErr := machError0(stmt)
+		if stmtErr != nil {
+			return nil, stmtErr
+		} else {
+			return nil, fmt.Errorf("MachColumnInfo returns %d", rt)
+		}
+	}
+
+	typ, err := ColumnTypeString(ColumnType(nfo.mColumnType))
+	if err != nil {
+		return nil, fmt.Errorf("MachColumnInfo %s", err.Error())
+	}
+
+	return &Column{
+		Name: C.GoString(&nfo.mColumnName[0]),
+		Type: typ,
+		Size: int(nfo.mColumnSize),
+		Len:  int(nfo.mColumnLength),
+	}, nil
+}
+
 func machColumnName(stmt unsafe.Pointer, idx int) (string, error) {
 	var cstr = [100]C.char{}
 	if rt := C.MachColumnName(stmt, C.int(idx), &cstr[0], C.int(len(cstr))); rt != 0 {

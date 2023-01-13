@@ -129,58 +129,20 @@ func (rows *Rows) SetTimeFormat(format string) {
 	rows.timeFormat = format
 }
 
-func (rows *Rows) ColumnNames() ([]string, error) {
+func (rows *Rows) Columns() (Columns, error) {
 	count, err := machColumnCount(rows.stmt)
 	if err != nil {
 		return nil, err
 	}
-	names := make([]string, count)
+	cols := make([]*Column, count)
 	for i := 0; i < count; i++ {
-		names[i], err = machColumnName(rows.stmt, i)
-		if err != nil {
-			names[i] = fmt.Sprintf("col%02d", i)
-		}
-	}
-	return names, nil
-}
-
-func (rows *Rows) ColumnTypes() ([]string, error) {
-	count, err := machColumnCount(rows.stmt)
-	if err != nil {
-		return nil, err
-	}
-	types := make([]string, count)
-	for i := 0; i < count; i++ {
-		typ, _, err := machColumnType(rows.stmt, i)
+		col, err := machColumnInfo(rows.stmt, i)
 		if err != nil {
 			return nil, errors.Wrap(err, "ColumnTypes")
 		}
-		switch typ {
-		case 0: // MACH_DATA_TYPE_INT16
-			types[i] = "int16"
-		case 1: // MACH_DATA_TYPE_INT32
-			types[i] = "int32"
-		case 2: // MACH_DATA_TYPE_INT64
-			types[i] = "int64"
-		case 3: // MACH_DATA_TYPE_DATETIME
-			types[i] = "datetime"
-		case 4: // MACH_DATA_TYPE_FLOAT
-			types[i] = "float"
-		case 5: // MACH_DATA_TYPE_DOUBLE
-			types[i] = "double"
-		case 6: // MACH_DATA_TYPE_IPV4
-			types[i] = "ipv4"
-		case 7: // MACH_DATA_TYPE_IPV6
-			types[i] = "ipv6"
-		case 8: // MACH_DATA_TYPE_STRING
-			types[i] = "string"
-		case 9: // MACH_DATA_TYPE_BINARY
-			types[i] = "binary"
-		default:
-			return nil, fmt.Errorf("Fetch unsupported type %T", typ)
-		}
+		cols[i] = col
 	}
-	return types, nil
+	return cols, nil
 }
 
 // internal use only from machrpcserver
