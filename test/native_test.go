@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -52,6 +53,12 @@ func TestMain(m *testing.M) {
 		panic("invalid machbase.conf")
 	}
 
+	if strings.Contains(mach.LibMachLinkInfo, "fog") {
+		tmp := string(machbase_conf)
+		tmp = strings.Replace(tmp, "TAG_CACHE_MAX_MEMORY_SIZE = 33554432", "TAG_CACHE_MAX_MEMORY_SIZE = 536870912", 1)
+		machbase_conf = []byte(tmp)
+	}
+
 	confpath := filepath.Join(homepath, "conf", "machbase.conf")
 	if err = os.WriteFile(confpath, machbase_conf, 0644); err != nil {
 		panic(errors.Wrap(err, "machbase.conf"))
@@ -86,6 +93,16 @@ func TestMain(m *testing.M) {
 			short short, ushort ushort, integer integer, uinteger uinteger, long long, ulong ulong, float float, double double, 
 			ipv4 ipv4, ipv6 ipv6, varchar varchar(20), text text, json json, binary binary, blob blob, clob clob, 
 			datetime datetime, datetime_now datetime
+		)`))
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = db.Exec(db.SqlTidy(
+		`create tag table tag(
+			name varchar(100) primary key, 
+			time datetime basetime, 
+			value double 
 		)`))
 	if err != nil {
 		panic(err)
@@ -167,7 +184,37 @@ func TestExec(t *testing.T) {
 	}
 }
 
-func TestAppend(t *testing.T) {
+func TestAppendTag(t *testing.T) {
+	t.Log("---- append tag")
+	appender, err := db.Appender("tag")
+	if err != nil {
+		panic(err)
+	}
+	defer appender.Close()
+	for i := 0; i < 100; i++ {
+		err = appender.Append(
+			fmt.Sprintf("name-%d", i),
+			time.Now(),
+			1.001*float64(i+1),
+		)
+		if err != nil {
+			panic(err)
+		}
+	}
+	r := db.QueryRow("select count(*) from tag")
+	if r.Err() != nil {
+		panic(r.Err())
+	}
+	var count int
+	err = r.Scan(&count)
+	if err != nil {
+		panic(err)
+	}
+	require.Equal(t, 100, count)
+	t.Log("---- append tag done")
+}
+
+func TestAppendLog(t *testing.T) {
 
 	t.Log("---- insert done")
 	appender, err := db.Appender("log")

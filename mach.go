@@ -264,7 +264,11 @@ func (db *Database) QueryRow(sqlText string, params ...any) *Row {
 }
 
 func (db *Database) Appender(tableName string) (*Appender, error) {
-	row := db.QueryRow("select type from M$SYS_TABLES where name = ?", tableName)
+	appender := &Appender{}
+	appender.handle = db.handle
+	appender.tableName = strings.ToUpper(tableName)
+
+	row := db.QueryRow("select type from M$SYS_TABLES where name = ?", appender.tableName)
 	var typ int32 = -1
 	if err := row.Scan(&typ); err != nil {
 		return nil, err
@@ -272,11 +276,8 @@ func (db *Database) Appender(tableName string) (*Appender, error) {
 	if typ < 0 || typ > 6 {
 		return nil, fmt.Errorf("table '%s' not found", tableName)
 	}
-
-	appender := &Appender{}
-	appender.handle = db.handle
 	appender.tableType = TableType(typ)
-	appender.tableName = strings.ToUpper(tableName)
+
 	if err := machAllocStmt(db.handle, &appender.stmt); err != nil {
 		return nil, err
 	}
@@ -387,7 +388,7 @@ func (ap *Appender) AppendWithTimestamp(ts time.Time, cols ...any) error {
 
 func (ap *Appender) appendLogTable(ts time.Time, cols []any) error {
 	if ap.colCount-1 != len(cols) {
-		return fmt.Errorf("value count %d, table '%s' (type %s) has %d columns", len(cols), ap.tableName, ap.tableType, ap.colCount-1)
+		return fmt.Errorf("value count %d, log table '%s' (type %s) has %d columns", len(cols), ap.tableName, ap.tableType, ap.colCount-1)
 	}
 	vals := make([]*machAppendDataNullValue, ap.colCount)
 	if ts.IsZero() {
@@ -414,7 +415,7 @@ func (ap *Appender) appendTagTable(cols []any) error {
 		return fmt.Errorf("table '%s' has no columns", ap.tableName)
 	}
 	if ap.colCount != len(cols) {
-		return fmt.Errorf("value count %d, table '%s' has %d columns", len(cols), ap.tableName, ap.colCount)
+		return fmt.Errorf("value count %d, tag table '%s' has %d columns", len(cols), ap.tableName, ap.colCount)
 	}
 	vals := make([]*machAppendDataNullValue, ap.colCount)
 	for i, c := range cols {
