@@ -100,9 +100,16 @@ func TestMain(m *testing.M) {
 
 	_, err = db.Exec(db.SqlTidy(
 		`create tag table tag(
-			name varchar(100) primary key, 
-			time datetime basetime, 
-			value double 
+			name            varchar(100) primary key, 
+			time            datetime basetime, 
+			value           double,
+			type            varchar(40),
+			ivalue          long,
+			svalue          varchar(400),
+			id              varchar(80), 
+			pname           varchar(80),
+			sampling_period long,
+			payload         json
 		)`))
 	if err != nil {
 		panic(err)
@@ -193,10 +200,16 @@ func TestAppendTag(t *testing.T) {
 	defer appender.Close()
 	for i := 0; i < 100; i++ {
 		err = appender.Append(
-			fmt.Sprintf("name-%d", i),
+			fmt.Sprintf("name-%02d", i),
 			time.Now(),
 			1.001*float64(i+1),
-		)
+			"float64",
+			nil,
+			nil,
+			"some-id-string",
+			"pname",
+			0,
+			nil)
 		if err != nil {
 			panic(err)
 		}
