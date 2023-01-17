@@ -264,8 +264,18 @@ func (db *Database) QueryRow(sqlText string, params ...any) *Row {
 }
 
 func (db *Database) Appender(tableName string) (*Appender, error) {
+	row := db.QueryRow("select type from M$SYS_TABLES where name = ?", tableName)
+	var typ int32 = -1
+	if err := row.Scan(&typ); err != nil {
+		return nil, err
+	}
+	if typ < 0 || typ > 6 {
+		return nil, fmt.Errorf("table '%s' not found", tableName)
+	}
+
 	appender := &Appender{}
 	appender.handle = db.handle
+	appender.tableType = TableType(typ)
 	appender.tableName = strings.ToUpper(tableName)
 	if err := machAllocStmt(db.handle, &appender.stmt); err != nil {
 		return nil, err
@@ -273,13 +283,6 @@ func (db *Database) Appender(tableName string) (*Appender, error) {
 	if err := machAppendOpen(appender.stmt, tableName); err != nil {
 		return nil, err
 	}
-
-	row := db.QueryRow("select type from M$SYS_TABLES where name = ?", appender.tableName)
-	var typ int32 = -1
-	if err := row.Scan(&typ); err != nil {
-		return nil, err
-	}
-	appender.tableType = TableType(typ)
 
 	var err error
 	appender.colCount, err = machColumnCount(appender.stmt)
