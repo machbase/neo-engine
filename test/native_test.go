@@ -229,14 +229,14 @@ func TestAppendTag(t *testing.T) {
 
 func TestAppendLog(t *testing.T) {
 
-	t.Log("---- insert done")
+	t.Log("---- append log")
 	appender, err := db.Appender("log")
 	if err != nil {
 		panic(err)
 	}
 	defer appender.Close()
 
-	for i := 3; i < 10; i++ {
+	for i := 3; i < 100; i++ {
 		err = appender.Append(
 			int16(i),         // short
 			uint16(i*10),     // ushort
@@ -264,22 +264,20 @@ func TestAppendLog(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	t.Log("---- append done")
+	t.Log("---- append log done")
 
 	row := db.QueryRow("select count(*) from m$sys_tables  where name = ?", "LOG")
 	if row.Err() != nil {
-		t.Logf("ERR-query: %s\n", row.Err().Error())
+		panic(err)
 	} else {
 		var count int
 		err = row.Scan(&count)
 		if err != nil {
 			t.Logf("ERR-scan: %s\n", err.Error())
-		} else {
-			t.Logf("============> table 'log' exists=%v\n", count)
 		}
+		require.Equal(t, 1, count)
 	}
 
-	t.Log("---- before select")
 	rows, err := db.Query(db.SqlTidy(`
 		select
 			short, ushort, integer, uinteger, long, ulong, float, double, 
@@ -288,8 +286,7 @@ func TestAppendLog(t *testing.T) {
 		from
 			log`))
 	if err != nil {
-		t.Logf("Error: %s\n", err.Error())
-		os.Exit(1)
+		panic(err)
 	}
 	defer rows.Close()
 
@@ -321,11 +318,11 @@ func TestAppendLog(t *testing.T) {
 			fmt.Printf("error: %s\n", err.Error())
 			panic(err)
 		}
-		t.Logf("1st ----> %d %d %d %d %d %d %f %f %v %v %s %s %s %v %d %v\n",
-			_int16, _uint16, _int32, _uint32, _int64, _uint64, _float, _double,
-			_ipv4, _ipv6,
-			_varchar, _text, _json, string(_bin),
-			_datetime, _datetime_now)
+		// t.Logf("----> %d %d %d %d %d %d %f %f %v %v %s %s %s %v %d %v\n",
+		// 	_int16, _uint16, _int32, _uint32, _int64, _uint64, _float, _double,
+		// 	_ipv4, _ipv6,
+		// 	_varchar, _text, _json, string(_bin),
+		// 	_datetime, _datetime_now)
 	}
 	rows.Close()
 
@@ -334,10 +331,11 @@ func TestAppendLog(t *testing.T) {
 			short, ushort, integer, uinteger, long, ulong, float, double, varchar, text, json, 
 			datetime, datetime_now 
 		from 
-			log where short = ? and varchar = ?`), 0, "varchar_1")
+			log where short = ? and varchar = ?`), 3, "varchar_append-3")
 	if err != nil {
 		t.Logf("error:%s\n", err.Error())
 	}
+	passCount := 0
 	for rows.Next() {
 		var _int16 int16
 		var _uint16 int16
@@ -361,22 +359,16 @@ func TestAppendLog(t *testing.T) {
 			fmt.Printf("error: %s\n", err.Error())
 			break
 		}
-		t.Logf("2nd ----> %d %d %d %d %d %d %f %f %s %s %s %d %d\n",
-			_int16, _uint16, _int32, _uint32, _int64, _uint64, _float, _double,
-			_varchar, _text, _json,
-			_datetime, _datetime_now)
+		// t.Logf("2nd ----> %d %d %d %d %d %d %f %f %s %s %s %d %d\n",
+		// 	_int16, _uint16, _int32, _uint32, _int64, _uint64, _float, _double,
+		// 	_varchar, _text, _json,
+		// 	_datetime, _datetime_now)
+
+		passCount++
 	}
 	rows.Close()
 
-	// // signal handler
-	// fmt.Printf("\npress ^C to quit.\n")
-	// quitChan := make(chan os.Signal)
-	// signal.Notify(quitChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-
-	// // wait signal
-	// <-quitChan
-
-	t.Log("-------------------------------")
+	require.Equal(t, 1, passCount)
 }
 
 var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
