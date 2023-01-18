@@ -78,6 +78,8 @@ func bindValue(c any) *machAppendDataNullValue {
 		*(*uint16)(unsafe.Pointer(&nv.Value[0])) = cv
 	case int:
 		*(*int)(unsafe.Pointer(&nv.Value[0])) = cv
+	case uint:
+		*(*uint)(unsafe.Pointer(&nv.Value[0])) = cv
 	case int32:
 		*(*int32)(unsafe.Pointer(&nv.Value[0])) = cv
 	case uint32:
@@ -115,6 +117,13 @@ func bindValue(c any) *machAppendDataNullValue {
 		*(**C.char)(unsafe.Pointer(&nv.Value[bits.UintSize/8])) = (*C.char)(unsafe.Pointer(&cv[0]))
 	case time.Time:
 		*(*int64)(unsafe.Pointer(&nv.Value[0])) = cv.UnixNano()
+	default:
+		// should not happen!
+		fmt.Printf("ERROR =========> unsupported type: %T\n", cv)
+		str := fmt.Sprintf("%v", cv)
+		nv.cstr = C.CString(str)
+		*(*uint)(unsafe.Pointer(&nv.Value[0])) = uint(len(str))
+		*(**C.char)(unsafe.Pointer(&nv.Value[bits.UintSize/8])) = nv.cstr
 	}
 
 	return nv
