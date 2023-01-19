@@ -11,28 +11,41 @@ type Column struct {
 
 type Columns []*Column
 
+const (
+	ColumnTypeNameInt16    = "int16"
+	ColumnTypeNameInt32    = "int32"
+	ColumnTypeNameInt64    = "int64"
+	ColumnTypeNameDatetime = "datetime"
+	ColumnTypeNameFloat    = "float"
+	ColumnTypeNameDouble   = "double"
+	ColumnTypeNameIPv4     = "ipv4"
+	ColumnTypeNameIPv6     = "ipv6"
+	ColumnTypeNameString   = "string"
+	ColumnTypeNameBinary   = "binary"
+)
+
 func ColumnTypeString(typ ColumnType) (string, error) {
 	switch typ {
 	case 0: // MACH_DATA_TYPE_INT16
-		return "int16", nil
+		return ColumnTypeNameInt16, nil
 	case 1: // MACH_DATA_TYPE_INT32
-		return "int32", nil
+		return ColumnTypeNameInt32, nil
 	case 2: // MACH_DATA_TYPE_INT64
-		return "int64", nil
+		return ColumnTypeNameInt64, nil
 	case 3: // MACH_DATA_TYPE_DATETIME
-		return "datetime", nil
+		return ColumnTypeNameDatetime, nil
 	case 4: // MACH_DATA_TYPE_FLOAT
-		return "float", nil
+		return ColumnTypeNameFloat, nil
 	case 5: // MACH_DATA_TYPE_DOUBLE
-		return "double", nil
+		return ColumnTypeNameDouble, nil
 	case 6: // MACH_DATA_TYPE_IPV4
-		return "ipv4", nil
+		return ColumnTypeNameIPv4, nil
 	case 7: // MACH_DATA_TYPE_IPV6
-		return "ipv6", nil
+		return ColumnTypeNameIPv6, nil
 	case 8: // MACH_DATA_TYPE_STRING
-		return "string", nil
+		return ColumnTypeNameString, nil
 	case 9: // MACH_DATA_TYPE_BINARY
-		return "binary", nil
+		return ColumnTypeNameBinary, nil
 	default:
 		return "", fmt.Errorf("unknown type %T", typ)
 	}
