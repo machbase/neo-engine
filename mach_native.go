@@ -14,6 +14,7 @@ import (
 #cgo CFLAGS: -I${SRCDIR}/native
 #include <machEngine.h>
 #include <stdlib.h>
+#include <string.h>
 */
 import "C"
 
@@ -607,31 +608,64 @@ func machAppendClose(stmt unsafe.Pointer) (uint64, uint64, error) {
 	return uint64(successCount), uint64(failureCount), nil
 }
 
-type machAppendDataValue [32]byte
-
-type machAppendDataNullValue struct {
-	IsValid bool
-	Value   machAppendDataValue
-	cstr    *C.char
-}
-
-func (v *machAppendDataNullValue) Free() {
-	if v.cstr != nil {
-		C.free(unsafe.Pointer(v.cstr))
-		v.cstr = nil
-	}
-}
-
-func machAppendData(stmt unsafe.Pointer, valueArr []*machAppendDataNullValue) error {
-	values := make([]C.MachEngineAppendParam, len(valueArr))
-	for i, v := range valueArr {
-		isNull := 0 // NOT NULL
-		if !v.IsValid {
-			isNull = 1 // NULL
+func machAppendData(stmt unsafe.Pointer, vals []any) error {
+	values := make([]C.MachEngineAppendParam, len(vals))
+	for i, v := range vals {
+		if v == nil {
+			values[i].mIsNull = C.int(1)
+			continue
 		}
-		values[i] = C.MachEngineAppendParam{
-			mIsNull: C.int(isNull),
-			mData:   C.MachEngineAppendParamData(v.Value),
+		switch typed := v.(type) {
+		case int16:
+			*(*C.short)(unsafe.Pointer(&values[i].mData[0])) = C.short(typed)
+		case uint16:
+			*(*C.short)(unsafe.Pointer(&values[i].mData[0])) = C.short(typed)
+		case int:
+			*(*C.int)(unsafe.Pointer(&values[i].mData[0])) = C.int(typed)
+		case uint:
+			*(*C.uint)(unsafe.Pointer(&values[i].mData[0])) = C.uint(typed)
+		case int32:
+			*(*C.int)(unsafe.Pointer(&values[i].mData[0])) = C.int(typed)
+		case uint32:
+			*(*C.uint)(unsafe.Pointer(&values[i].mData[0])) = C.uint(typed)
+		case int64:
+			*(*C.longlong)(unsafe.Pointer(&values[i].mData[0])) = C.longlong(typed)
+		case uint64:
+			*(*C.longlong)(unsafe.Pointer(&values[i].mData[0])) = C.longlong(typed)
+		case float32:
+			*(*C.float)(unsafe.Pointer(&values[i].mData[0])) = C.float(typed)
+		case float64:
+			*(*C.double)(unsafe.Pointer(&values[i].mData[0])) = C.double(typed)
+		case string:
+			cstr := C.CString(typed)
+			defer C.free(unsafe.Pointer(cstr))
+			cstrlen := C.strlen(cstr)
+			str := (*C.MachEngineAppendVarStruct)(unsafe.Pointer(&values[i].mData[0]))
+			str.mLength = C.uint(cstrlen)
+			str.mData = unsafe.Pointer(cstr)
+		case []byte:
+			str := (*C.MachEngineAppendVarStruct)(unsafe.Pointer(&values[i].mData[0]))
+			str.mLength = C.uint(len(typed))
+			str.mData = unsafe.Pointer(&typed[0])
+		case time.Time:
+			str := (*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&values[i].mData[0]))
+			str.mTime = C.longlong(typed.UnixNano())
+		case net.IP:
+			str := (*C.MachEngineAppendIPStruct)(unsafe.Pointer(&values[i].mData[0]))
+			if ipv4 := typed.To4(); ipv4 != nil { // ip v4
+				str.mLength = C.uchar(4)
+				for i := 0; i < net.IPv4len; i++ {
+					str.mAddr[i] = C.uchar(ipv4[i])
+				}
+			} else { // ip v6
+				str.mLength = C.uchar(6)
+				for i := 0; i < net.IPv6len; i++ {
+					str.mAddr[i] = C.uchar(typed[i])
+				}
+			}
+		default:
+			// should not happen!
+			return fmt.Errorf("MachAppendData unsupported type: %T", typed)
 		}
 	}
 

@@ -198,7 +198,8 @@ func TestAppendTag(t *testing.T) {
 		panic(err)
 	}
 	defer appender.Close()
-	for i := 0; i < 100; i++ {
+	expectCount := 10000
+	for i := 0; i < expectCount; i++ {
 		err = appender.Append(
 			fmt.Sprintf("name-%02d", i),
 			time.Now(),
@@ -223,7 +224,7 @@ func TestAppendTag(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	require.Equal(t, 100, count)
+	require.Equal(t, expectCount, count)
 	t.Log("---- append tag done")
 }
 

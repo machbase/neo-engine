@@ -358,21 +358,8 @@ func (ap *Appender) appendLogTable(ts time.Time, cols []any) error {
 	if ap.colCount-1 != len(cols) {
 		return fmt.Errorf("value count %d, log table '%s' (type %s) has %d columns", len(cols), ap.tableName, ap.tableType, ap.colCount-1)
 	}
-	vals := make([]*machAppendDataNullValue, ap.colCount)
-	if ts.IsZero() {
-		vals[0] = bindValue(nil)
-	} else {
-		vals[0] = bindValue(ts)
-	}
-	for i, c := range cols {
-		vals[i+1] = bindValue(c)
-	}
-	defer func() {
-		for _, v := range vals {
-			v.Free()
-		}
-	}()
-	if err := machAppendData(ap.stmt, vals); err != nil {
+	colsWithTime := append([]any{ts}, cols...)
+	if err := machAppendData(ap.stmt, colsWithTime); err != nil {
 		return err
 	}
 	return nil
@@ -385,16 +372,7 @@ func (ap *Appender) appendTagTable(cols []any) error {
 	if ap.colCount != len(cols) {
 		return fmt.Errorf("value count %d, tag table '%s' has %d columns", len(cols), ap.tableName, ap.colCount)
 	}
-	vals := make([]*machAppendDataNullValue, ap.colCount)
-	for i, c := range cols {
-		vals[i] = bindValue(c)
-	}
-	defer func() {
-		for _, v := range vals {
-			v.Free()
-		}
-	}()
-	if err := machAppendData(ap.stmt, vals); err != nil {
+	if err := machAppendData(ap.stmt, cols); err != nil {
 		return err
 	}
 	return nil
