@@ -341,6 +341,15 @@ func TestAppendTag(t *testing.T) {
 }
 
 func TestAppendLog(t *testing.T) {
+	pr := db.QueryRow("select count(*) from log")
+	if pr.Err() != nil {
+		panic(pr.Err())
+	}
+	var existingCount int
+	err := pr.Scan(&existingCount)
+	if err != nil {
+		panic(err)
+	}
 
 	t.Log("---- append log")
 	appender, err := db.Appender("log")
@@ -394,7 +403,7 @@ func TestAppendLog(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	require.Equal(t, expectCount, count)
+	require.Equal(t, expectCount+existingCount, count)
 
 	t.Log("---- append log done")
 
