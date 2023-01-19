@@ -1,4 +1,4 @@
-package mach_test
+package test
 
 import (
 	"fmt"
@@ -90,9 +90,15 @@ func TestMain(m *testing.M) {
 	}
 	_, err = db.Exec(db.SqlTidy(
 		`create log table log(
-			short short, ushort ushort, integer integer, uinteger uinteger, long long, ulong ulong, float float, double double, 
-			ipv4 ipv4, ipv6 ipv6, varchar varchar(20), text text, json json, binary binary, blob blob, clob clob, 
-			datetime datetime, datetime_now datetime
+			short short, ushort ushort, 
+			integer integer, uinteger uinteger, 
+			long long, ulong ulong, 
+			float float, double double, 
+			ipv4 ipv4, ipv6 ipv6, 
+			varchar varchar(20), text text, json json, 
+			binary binary, blob blob, clob clob, 
+			datetime datetime, 
+			datetime_now datetime
 		)`))
 	if err != nil {
 		panic(err)
@@ -110,6 +116,17 @@ func TestMain(m *testing.M) {
 			pname           varchar(80),
 			sampling_period long,
 			payload         json
+		)`))
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = db.Exec(db.SqlTidy(
+		`create tag table simple_tag(
+			name            varchar(100) primary key, 
+			time            datetime basetime, 
+			value           double,
+			type            varchar(40)
 		)`))
 	if err != nil {
 		panic(err)
@@ -191,13 +208,14 @@ func TestExec(t *testing.T) {
 	}
 }
 
-func TestAppendTag(t *testing.T) {
-	t.Log("---- append tag")
-	appender, err := db.Appender("tag")
+func TestAppendSimpleTag(t *testing.T) {
+	t.Log("---- append simple_tag")
+	appender, err := db.Appender("simple_tag")
 	if err != nil {
 		panic(err)
 	}
 	defer appender.Close()
+
 	expectCount := 10000
 	for i := 0; i < expectCount; i++ {
 		err = appender.Append(
@@ -205,16 +223,110 @@ func TestAppendTag(t *testing.T) {
 			time.Now(),
 			1.001*float64(i+1),
 			"float64",
-			nil,
-			nil,
-			"some-id-string",
-			"pname",
-			0,
-			nil)
+		)
 		if err != nil {
 			panic(err)
 		}
 	}
+	rows, err := db.Query("select name, time, value, type from simple_tag order by time")
+	if err != nil {
+		panic(err)
+	}
+
+	for i := 0; rows.Next(); i++ {
+		var name string
+		var ts time.Time
+		var val float64
+		var typ string
+
+		err := rows.Scan(&name, &ts, &val, &typ)
+		if err != nil {
+			panic(err)
+		}
+		require.Equal(t, fmt.Sprintf("name-%02d", i), name)
+		require.Equal(t, "float64", typ)
+	}
+	rows.Close()
+
+	r := db.QueryRow("select count(*) from simple_tag")
+	if r.Err() != nil {
+		panic(r.Err())
+	}
+	var count int
+	err = r.Scan(&count)
+	if err != nil {
+		panic(err)
+	}
+	require.Equal(t, expectCount, count)
+	t.Log("---- append simple_tag done")
+}
+
+func TestAppendTag(t *testing.T) {
+	t.Log("---- append tag")
+	appender, err := db.Appender("tag")
+	if err != nil {
+		panic(err)
+	}
+	defer appender.Close()
+
+	// create tag table tag(
+	// 	name            varchar(100) primary key,
+	// 	time            datetime basetime,
+	// 	value           double,
+	// 	type            varchar(40),
+	// 	ivalue          long,
+	// 	svalue          varchar(400),
+	// 	id              varchar(80),
+	// 	pname           varchar(80),
+	// 	sampling_period long,
+	// 	payload         json
+	// )
+	expectCount := 10000
+	for i := 0; i < expectCount; i++ {
+		err = appender.Append(
+			fmt.Sprintf("name-%02d", i),
+			time.Now(),
+			1.001*float64(i+1),
+			"float64",
+			int64(i),
+			fmt.Sprintf("svalue-%d", i),
+			"some-id-string",
+			"pname",
+			int64(0),
+			`{"t":"json"}`)
+		if err != nil {
+			panic(err)
+		}
+	}
+	rows, err := db.Query("select name, time, value, type, ivalue, pname, payload from tag order by time")
+	if err != nil {
+		panic(err)
+	}
+
+	for i := 0; rows.Next(); i++ {
+		var name string
+		var ts time.Time
+		var val float64
+		var typ string
+		var ival int64
+		// var sval string
+		// var id string
+		var pname string
+		// var period int64
+		var payload string
+
+		err := rows.Scan(&name, &ts, &val, &typ, &ival, &pname, &payload)
+		if err != nil {
+			panic(err)
+		}
+		require.Equal(t, fmt.Sprintf("name-%02d", i), name)
+		require.Equal(t, int64(i), ival)
+		require.Equal(t, "pname", pname)
+		require.Equal(t, `{"t":"json"}`, payload)
+		// fmt.Println(name, ts, val, typ, pname, payload)
+	}
+	rows.Close()
+
 	r := db.QueryRow("select count(*) from tag")
 	if r.Err() != nil {
 		panic(r.Err())
@@ -237,8 +349,15 @@ func TestAppendLog(t *testing.T) {
 	}
 	defer appender.Close()
 
-	for i := 3; i < 100; i++ {
-		err = appender.Append(
+	expectCount := 10000
+
+	for i := 0; i < expectCount; i++ {
+		ip4 := net.ParseIP(fmt.Sprintf("192.168.0.%d", i%255))
+		ip6 := net.ParseIP(fmt.Sprintf("12:FF:FF:FF:CC:EE:FF:%02X", i))
+		varchar := fmt.Sprintf("varchar_append-%d", i)
+
+		err = appender.AppendWithTimestamp(
+			time.Now(),
 			int16(i),         // short
 			uint16(i*10),     // ushort
 			int(i*100),       // int
@@ -247,9 +366,9 @@ func TestAppendLog(t *testing.T) {
 			uint64(i*100000), // ulong
 			float32(i),       // float
 			float64(i),       // double
-			net.ParseIP(fmt.Sprintf("192.168.0.%d", i)),              // IPv4
-			net.ParseIP(fmt.Sprintf("12:FF:FF:FF:CC:EE:FF:%02X", i)), // IPv6
-			fmt.Sprintf("varchar_append-%d", i),
+			ip4,              // IPv4
+			ip6,              // IPv6
+			varchar,
 			fmt.Sprintf("text_append-%d-%s.", i, randomVarchar()),
 			fmt.Sprintf("{\"json\":%d}", i),
 			[]byte(fmt.Sprintf("binary_append_%02d", i)),
@@ -265,6 +384,18 @@ func TestAppendLog(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+
+	r := db.QueryRow("select count(*) from log")
+	if r.Err() != nil {
+		panic(r.Err())
+	}
+	var count int
+	err = r.Scan(&count)
+	if err != nil {
+		panic(err)
+	}
+	require.Equal(t, expectCount, count)
+
 	t.Log("---- append log done")
 
 	row := db.QueryRow("select count(*) from m$sys_tables  where name = ?", "LOG")

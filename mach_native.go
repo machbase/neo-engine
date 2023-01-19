@@ -629,7 +629,7 @@ func machAppendData(stmt unsafe.Pointer, cols []*Column, vals []any) error {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
 			case uint16:
-				*(*C.ushort)(unsafe.Pointer(&values[i].mData[0])) = C.ushort(v)
+				*(*C.short)(unsafe.Pointer(&values[i].mData[0])) = C.short(v)
 			case int16:
 				*(*C.short)(unsafe.Pointer(&values[i].mData[0])) = C.short(v)
 			}
@@ -644,11 +644,11 @@ func machAppendData(stmt unsafe.Pointer, cols []*Column, vals []any) error {
 			case int32:
 				*(*C.int)(unsafe.Pointer(&values[i].mData[0])) = C.int(v)
 			case uint32:
-				*(*C.uint)(unsafe.Pointer(&values[i].mData[0])) = C.uint(v)
+				*(*C.int)(unsafe.Pointer(&values[i].mData[0])) = C.int(v)
 			case int:
 				*(*C.int)(unsafe.Pointer(&values[i].mData[0])) = C.int(v)
 			case uint:
-				*(*C.uint)(unsafe.Pointer(&values[i].mData[0])) = C.uint(v)
+				*(*C.int)(unsafe.Pointer(&values[i].mData[0])) = C.int(v)
 			}
 		case ColumnTypeNameInt64:
 			switch v := val.(type) {
@@ -669,7 +669,7 @@ func machAppendData(stmt unsafe.Pointer, cols []*Column, vals []any) error {
 			case int64:
 				*(*C.longlong)(unsafe.Pointer(&values[i].mData[0])) = C.longlong(v)
 			case uint64:
-				*(*C.ulonglong)(unsafe.Pointer(&values[i].mData[0])) = C.ulonglong(v)
+				*(*C.longlong)(unsafe.Pointer(&values[i].mData[0])) = C.longlong(v)
 			}
 		case ColumnTypeNameFloat:
 			switch v := val.(type) {
@@ -740,9 +740,8 @@ func machAppendData(stmt unsafe.Pointer, cols []*Column, vals []any) error {
 				cstr := C.CString(v)
 				defer C.free(unsafe.Pointer(cstr))
 				cstrlen := C.strlen(cstr)
-				str := (*C.MachEngineAppendVarStruct)(unsafe.Pointer(&values[i].mData[0]))
-				str.mLength = C.uint(cstrlen)
-				str.mData = unsafe.Pointer(cstr)
+				(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&values[i].mData[0])).mLength = C.uint(cstrlen)
+				(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&values[i].mData[0])).mData = unsafe.Pointer(cstr)
 			}
 		case ColumnTypeNameBinary:
 			switch v := val.(type) {
@@ -752,13 +751,11 @@ func machAppendData(stmt unsafe.Pointer, cols []*Column, vals []any) error {
 				cstr := C.CString(v)
 				defer C.free(unsafe.Pointer(cstr))
 				cstrlen := C.strlen(cstr)
-				str := (*C.MachEngineAppendVarStruct)(unsafe.Pointer(&values[i].mData[0]))
-				str.mLength = C.uint(cstrlen)
-				str.mData = unsafe.Pointer(cstr)
+				(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&values[i].mData[0])).mLength = C.uint(cstrlen)
+				(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&values[i].mData[0])).mData = unsafe.Pointer(cstr)
 			case []byte:
-				str := (*C.MachEngineAppendVarStruct)(unsafe.Pointer(&values[i].mData[0]))
-				str.mLength = C.uint(len(v))
-				str.mData = unsafe.Pointer(&v[0])
+				(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&values[i].mData[0])).mLength = C.uint(len(v))
+				(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&values[i].mData[0])).mData = unsafe.Pointer(&v[0])
 			}
 		}
 	}
