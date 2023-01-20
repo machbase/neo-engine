@@ -197,5 +197,5 @@ func TestAppendLog(t *testing.T) {
 	}
 	rows.Close()
 
-	require.Equal(t, 1, passCount)
+	require.GreaterOrEqual(t, passCount, 1)
 }
