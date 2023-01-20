@@ -27,7 +27,7 @@ func createLogTable() {
 	}
 }
 
-func TestAppendZLog(t *testing.T) {
+func TestAppendLog(t *testing.T) {
 	pr := db.QueryRow("select count(*) from log")
 	if pr.Err() != nil {
 		panic(pr.Err())
