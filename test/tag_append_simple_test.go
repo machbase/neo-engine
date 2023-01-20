@@ -20,24 +20,31 @@ func createSimpleTagTable() {
 	}
 }
 
-func TestAppendSimpleTag(t *testing.T) {
+func TestAppendTagSimple(t *testing.T) {
 	t.Log("---- append simple_tag")
 	appender, err := db.Appender("simple_tag")
 	if err != nil {
 		panic(err)
 	}
-	defer appender.Close()
 
 	expectCount := 10000
+	ts := time.Now()
 	for i := 0; i < expectCount; i++ {
 		err = appender.Append(
 			fmt.Sprintf("name-%d", i%10),
-			time.Now(),
+			ts.Add(time.Duration(i)),
 			1.001*float64(i+1))
 		if err != nil {
 			panic(err)
 		}
 	}
+	sc, fc, err := appender.Close()
+	if err != nil {
+		panic(err)
+	}
+	require.Equal(t, uint64(expectCount), sc)
+	require.Equal(t, uint64(0), fc)
+
 	rows, err := db.Query("select name, time, value from simple_tag order by time")
 	if err != nil {
 		panic(err)

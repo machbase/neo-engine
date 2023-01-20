@@ -27,7 +27,7 @@ func createLogTable() {
 	}
 }
 
-func TestAppendLog(t *testing.T) {
+func TestAppendZLog(t *testing.T) {
 	pr := db.QueryRow("select count(*) from log")
 	if pr.Err() != nil {
 		panic(pr.Err())
@@ -43,13 +43,12 @@ func TestAppendLog(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	defer appender.Close()
 
 	expectCount := 10000
 
 	for i := 0; i < expectCount; i++ {
 		ip4 := net.ParseIP(fmt.Sprintf("192.168.0.%d", i%255))
-		ip6 := net.ParseIP(fmt.Sprintf("12:FF:FF:FF:CC:EE:FF:%02X", i))
+		ip6 := net.ParseIP(fmt.Sprintf("12:FF:FF:FF:CC:EE:FF:%02X", i%255))
 		varchar := fmt.Sprintf("varchar_append-%d", i)
 
 		err = appender.AppendWithTimestamp(
@@ -76,10 +75,12 @@ func TestAppendLog(t *testing.T) {
 			panic(err)
 		}
 	}
-	err = appender.Close()
+	sc, fc, err := appender.Close()
 	if err != nil {
 		panic(err)
 	}
+	require.Equal(t, uint64(expectCount), sc)
+	require.Equal(t, uint64(0), fc)
 
 	r := db.QueryRow("select count(*) from log")
 	if r.Err() != nil {

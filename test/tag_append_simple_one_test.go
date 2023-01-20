@@ -21,19 +21,19 @@ func createSimpleOneTagTable() {
 	}
 }
 
-func TestAppendSimpleOneTag(t *testing.T) {
+func TestAppendTagSimpleOne(t *testing.T) {
 	t.Log("---- append simple_one_tag")
 	appender, err := db.Appender("simple_one_tag")
 	if err != nil {
 		panic(err)
 	}
-	defer appender.Close()
 
-	expectCount := 20000
+	expectCount := 10000
+	ts := time.Now()
 	for i := 0; i < expectCount; i++ {
-		err = appender.Append(
+		err = appender.AppendWithTimestamp(
+			ts.Add(time.Duration(i)),
 			fmt.Sprintf("name-%d", i%10),
-			time.Now(),
 			1.001*float64(i+1),
 			fmt.Sprintf("strvalue-%d", i),
 		)
@@ -41,6 +41,13 @@ func TestAppendSimpleOneTag(t *testing.T) {
 			panic(err)
 		}
 	}
+	sc, fc, err := appender.Close()
+	if err != nil {
+		panic(err)
+	}
+	require.Equal(t, uint64(expectCount), sc)
+	require.Equal(t, uint64(0), fc)
+
 	rows, err := db.Query("select name, time, value, svalue from simple_one_tag order by time")
 	if err != nil {
 		panic(err)

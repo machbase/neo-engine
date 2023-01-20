@@ -10,6 +10,14 @@ import (
 	"unsafe"
 )
 
+/*
+#cgo CFLAGS: -I${SRCDIR}/native
+#include <machEngine.h>
+#include <stdlib.h>
+#include <string.h>
+*/
+import "C"
+
 func LinkInfo() string {
 	return LibMachLinkInfo
 }
@@ -298,64 +306,222 @@ func (db *Database) Appender(tableName string) (*Appender, error) {
 }
 
 type Appender struct {
-	handle       unsafe.Pointer
-	stmt         unsafe.Pointer
-	tableName    string
-	tableType    TableType
-	columns      []*Column
-	SuccessCount uint64
-	FailureCount uint64
+	handle    unsafe.Pointer
+	stmt      unsafe.Pointer
+	tableName string
+	tableType TableType
+	columns   []*Column
 }
 
 func (ap *Appender) Table() string {
 	return ap.tableName
 }
 
-func (ap *Appender) Close() error {
+func (ap *Appender) Close() (uint64, uint64, error) {
 	if ap.stmt == nil {
-		return nil
+		return 0, 0, nil
 	}
 	s, f, err := machAppendClose(ap.stmt)
 	if err != nil {
-		return err
+		return s, f, err
 	}
-	ap.SuccessCount = s
-	ap.FailureCount = f
 
 	if err := machFreeStmt(ap.handle, ap.stmt); err != nil {
-		return err
+		return s, f, err
 	}
 	ap.stmt = nil
-	return nil
+	return s, f, nil
 }
 
 func (ap *Appender) Append(values ...any) error {
 	if ap.tableType == TagTableType {
 		return ap.appendTable0(values)
-	} else {
+	} else if ap.tableType == LogTableType {
 		colsWithTime := append([]any{time.Time{}}, values...)
 		return ap.appendTable0(colsWithTime)
+	} else {
+		return fmt.Errorf("%s is not appendable table", ap.tableName)
 	}
 }
 
-// supports only Log Table
 func (ap *Appender) AppendWithTimestamp(ts time.Time, cols ...any) error {
-	if ap.tableType == 0 {
+	if ap.tableType == LogTableType {
 		colsWithTime := append([]any{ts}, cols...)
+		return ap.appendTable0(colsWithTime)
+	} else if ap.tableType == TagTableType {
+		colsWithTime := append([]any{cols[0], ts}, cols[1:]...)
 		return ap.appendTable0(colsWithTime)
 	} else {
 		return fmt.Errorf("%s is not a log table, use Append() instead", ap.tableName)
 	}
 }
 
-func (ap *Appender) appendTable0(cols []any) error {
+func (ap *Appender) appendTable0(vals []any) error {
 	if len(ap.columns) == 0 {
 		return fmt.Errorf("table '%s' has no columns", ap.tableName)
 	}
-	if len(ap.columns) != len(cols) {
-		return fmt.Errorf("value count %d, table '%s' requres %d columns for appeding", len(cols), ap.tableName, len(ap.columns))
+	if len(ap.columns) != len(vals) {
+		return fmt.Errorf("value count %d, table '%s' requres %d columns for appeding", len(vals), ap.tableName, len(ap.columns))
 	}
-	if err := machAppendData(ap.stmt, ap.columns, cols); err != nil {
+
+	buffer := make([]C.MachEngineAppendParam, len(ap.columns))
+
+	for i, val := range vals {
+		if val == nil {
+			buffer[i].mIsNull = C.int(1)
+			continue
+		}
+		c := ap.columns[i]
+		switch c.Type {
+		default:
+			return fmt.Errorf("machAppendData unknown column type '%s'", c.Type)
+		case ColumnTypeNameInt16:
+			switch v := val.(type) {
+			default:
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case uint16:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
+			case int16:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
+			}
+		case ColumnTypeNameInt32:
+			switch v := val.(type) {
+			default:
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case int16:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case uint16:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case int32:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case uint32:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case int:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case uint:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			}
+		case ColumnTypeNameInt64:
+			switch v := val.(type) {
+			default:
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case int16:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case uint16:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case int32:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case uint32:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case int:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case uint:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case int64:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case uint64:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			}
+		case ColumnTypeNameFloat:
+			switch v := val.(type) {
+			default:
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case float32:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
+			}
+		case ColumnTypeNameDouble:
+			switch v := val.(type) {
+			default:
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case float32:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			case float64:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			}
+		case ColumnTypeNameDatetime:
+			switch v := val.(type) {
+			default:
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case time.Time:
+				str := (*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0]))
+				str.mTime = C.longlong(v.UnixNano())
+			case int:
+				str := (*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0]))
+				str.mTime = C.longlong(v)
+			case int32:
+				str := (*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0]))
+				str.mTime = C.longlong(v)
+			case int64:
+				str := (*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0]))
+				str.mTime = C.longlong(v)
+			}
+		case ColumnTypeNameIPv4:
+			str := (*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0]))
+			ip, ok := val.(net.IP)
+			if !ok {
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
+			}
+			if ipv4 := ip.To4(); ipv4 == nil {
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
+			} else {
+				str.mLength = C.uchar(net.IPv4len)
+				for i := 0; i < net.IPv4len; i++ {
+					str.mAddr[i] = C.uchar(ipv4[i])
+				}
+			}
+		case ColumnTypeNameIPv6:
+			str := (*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0]))
+			ip, ok := val.(net.IP)
+			if !ok {
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
+			}
+			if ipv6 := ip.To16(); ipv6 == nil {
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
+			} else {
+				str.mLength = C.uchar(net.IPv6len)
+				for i := 0; i < net.IPv6len; i++ {
+					str.mAddr[i] = C.uchar(ipv6[i])
+				}
+			}
+		case ColumnTypeNameString:
+			switch v := val.(type) {
+			default:
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case string:
+				if len(v) == 0 {
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(0)
+				} else {
+					cstr := C.CString(v)
+					defer C.free(unsafe.Pointer(cstr))
+					cstrlen := C.strlen(cstr)
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(cstrlen)
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mData = unsafe.Pointer(cstr)
+				}
+			}
+		case ColumnTypeNameBinary:
+			switch v := val.(type) {
+			default:
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case string:
+				if len(v) == 0 {
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(0)
+				} else {
+					cstr := C.CString(v)
+					defer C.free(unsafe.Pointer(cstr))
+					cstrlen := C.strlen(cstr)
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(cstrlen)
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mData = unsafe.Pointer(cstr)
+				}
+			case []byte:
+				(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(len(v))
+				if len(v) > 0 {
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mData = unsafe.Pointer(&v[0])
+				}
+			}
+		}
+	}
+
+	if err := machAppendData(ap.stmt, buffer); err != nil {
 		return err
 	}
 	return nil

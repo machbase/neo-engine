@@ -2,18 +2,12 @@ package mach
 
 import (
 	"fmt"
-	"math"
 	"net"
 	"strconv"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 func ScanInt16(v int16, c any) error {
-	if v == math.MinInt16 {
-		return errors.New("scan NULL INT16")
-	}
 	switch cv := c.(type) {
 	case *int:
 		*cv = int(v)
@@ -32,9 +26,6 @@ func ScanInt16(v int16, c any) error {
 }
 
 func ScanInt32(v int32, c any) error {
-	if v == math.MinInt32 {
-		return errors.New("scan NULL INT32")
-	}
 	switch cv := c.(type) {
 	case *int:
 		*cv = int(v)
@@ -53,9 +44,6 @@ func ScanInt32(v int32, c any) error {
 }
 
 func ScanInt64(v int64, c any) error {
-	if v == math.MinInt64 {
-		return errors.New("scan NULL INT64")
-	}
 	switch cv := c.(type) {
 	case *int:
 		*cv = int(v)
@@ -118,9 +106,6 @@ func ScanFloat64(v float64, c any) error {
 }
 
 func ScanString(v string, c any) error {
-	if len(v) == 0 {
-		return errors.New("scan NULL STRING")
-	}
 	switch cv := c.(type) {
 	case *string:
 		*cv = v
