@@ -44,6 +44,7 @@ func TestAppendTagComplex(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+	t.Logf("---- %v", appender.String())
 
 	expectCount := 100000
 	ts := time.Now()

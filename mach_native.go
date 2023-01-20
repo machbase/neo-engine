@@ -608,8 +608,8 @@ func machAppendClose(stmt unsafe.Pointer) (uint64, uint64, error) {
 	return uint64(successCount), uint64(failureCount), nil
 }
 
-func machAppendData(stmt unsafe.Pointer, values []C.MachEngineAppendParam) error {
-	if rt := C.MachAppendData(stmt, &values[0]); rt != 0 {
+func machAppendData(stmt unsafe.Pointer, values *C.MachEngineAppendParam) error {
+	if rt := C.MachAppendData(stmt, values); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
 			return stmtErr

@@ -311,16 +311,14 @@ type Appender struct {
 	tableName string
 	tableType TableType
 	columns   []*Column
-}
-
-func (ap *Appender) Table() string {
-	return ap.tableName
+	closed    bool
 }
 
 func (ap *Appender) Close() (uint64, uint64, error) {
-	if ap.stmt == nil {
+	if ap.closed {
 		return 0, 0, nil
 	}
+	ap.closed = true
 	s, f, err := machAppendClose(ap.stmt)
 	if err != nil {
 		return s, f, err
@@ -329,8 +327,15 @@ func (ap *Appender) Close() (uint64, uint64, error) {
 	if err := machFreeStmt(ap.handle, ap.stmt); err != nil {
 		return s, f, err
 	}
-	ap.stmt = nil
 	return s, f, nil
+}
+
+func (ap *Appender) String() string {
+	return fmt.Sprintf("appender %s %v", ap.tableName, ap.stmt)
+}
+
+func (ap *Appender) Table() string {
+	return ap.tableName
 }
 
 func (ap *Appender) Append(values ...any) error {
@@ -439,24 +444,21 @@ func (ap *Appender) appendTable0(vals []any) error {
 				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
 			}
 		case ColumnTypeNameDatetime:
+			(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mDateStr = nil
+			(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mFormatStr = nil
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
 			case time.Time:
-				str := (*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0]))
-				str.mTime = C.longlong(v.UnixNano())
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(v.UnixNano())
 			case int:
-				str := (*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0]))
-				str.mTime = C.longlong(v)
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(v)
 			case int32:
-				str := (*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0]))
-				str.mTime = C.longlong(v)
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(v)
 			case int64:
-				str := (*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0]))
-				str.mTime = C.longlong(v)
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(v)
 			}
 		case ColumnTypeNameIPv4:
-			str := (*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0]))
 			ip, ok := val.(net.IP)
 			if !ok {
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
@@ -464,13 +466,13 @@ func (ap *Appender) appendTable0(vals []any) error {
 			if ipv4 := ip.To4(); ipv4 == nil {
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
 			} else {
-				str.mLength = C.uchar(net.IPv4len)
+				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uchar(net.IPv4len)
+				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddrString = nil
 				for i := 0; i < net.IPv4len; i++ {
-					str.mAddr[i] = C.uchar(ipv4[i])
+					(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddr[i] = C.uchar(ipv4[i])
 				}
 			}
 		case ColumnTypeNameIPv6:
-			str := (*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0]))
 			ip, ok := val.(net.IP)
 			if !ok {
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
@@ -478,9 +480,10 @@ func (ap *Appender) appendTable0(vals []any) error {
 			if ipv6 := ip.To16(); ipv6 == nil {
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
 			} else {
-				str.mLength = C.uchar(net.IPv6len)
+				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uchar(net.IPv6len)
+				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddrString = nil
 				for i := 0; i < net.IPv6len; i++ {
-					str.mAddr[i] = C.uchar(ipv6[i])
+					(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddr[i] = C.uchar(ipv6[i])
 				}
 			}
 		case ColumnTypeNameString:
@@ -521,7 +524,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 		}
 	}
 
-	if err := machAppendData(ap.stmt, buffer); err != nil {
+	if err := machAppendData(ap.stmt, &buffer[0]); err != nil {
 		return err
 	}
 	return nil

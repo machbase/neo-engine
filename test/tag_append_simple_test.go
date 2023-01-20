@@ -38,6 +38,7 @@ func TestAppendTagSimple(t *testing.T) {
 		panic(err)
 	}
 
+	t.Logf("     %s", appender.String())
 	expectCount := 10000
 	ts := time.Now()
 	for i := 0; i < expectCount; i++ {
