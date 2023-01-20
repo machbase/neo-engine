@@ -28,7 +28,7 @@ func createTagTable() {
 }
 
 func TestAppendTagComplex(t *testing.T) {
-	t.Log("---- append tag")
+	t.Logf("---- append complex_tag [%d]", goid())
 
 	pr := db.QueryRow("select count(*) from complex_tag")
 	if pr.Err() != nil {
@@ -117,5 +117,5 @@ func TestAppendTagComplex(t *testing.T) {
 		panic(err)
 	}
 	require.Equal(t, expectCount, count)
-	t.Log("---- append tag done")
+	t.Log("---- append complex_tag done")
 }

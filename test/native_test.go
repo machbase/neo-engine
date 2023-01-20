@@ -6,6 +6,8 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -91,7 +93,6 @@ func TestMain(m *testing.M) {
 	createLogTable()
 	createTagTable()
 	createSimpleTagTable()
-	createSimpleOneTagTable()
 
 	m.Run()
 
@@ -200,6 +201,17 @@ func mkDirIfNotExists(path string) error {
 		return err
 	}
 	return nil
+}
+
+func goid() int {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
+	id, err := strconv.Atoi(idField)
+	if err != nil {
+		panic(fmt.Sprintf("cannot get goroutine id: %v", err))
+	}
+	return id
 }
 
 var machbase_conf = []byte(`
