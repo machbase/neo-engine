@@ -22,6 +22,16 @@ func createSimpleOneTagTable() {
 }
 
 func TestAppendTagSimpleOne(t *testing.T) {
+	pr := db.QueryRow("select count(*) from simple_one_tag")
+	if pr.Err() != nil {
+		panic(pr.Err())
+	}
+	var existingCount int
+	err := pr.Scan(&existingCount)
+	if err != nil {
+		panic(err)
+	}
+
 	t.Log("---- append simple_one_tag")
 	appender, err := db.Appender("simple_one_tag")
 	if err != nil {
@@ -48,7 +58,15 @@ func TestAppendTagSimpleOne(t *testing.T) {
 	require.Equal(t, uint64(expectCount), sc)
 	require.Equal(t, uint64(0), fc)
 
-	rows, err := db.Query("select name, time, value, svalue from simple_one_tag order by time")
+	rows, err := db.Query(`
+		select
+			name, time, value, svalue
+		from
+			simple_one_tag
+		where
+			time >= ?
+		order by time`, ts)
+
 	if err != nil {
 		panic(err)
 	}
@@ -68,7 +86,7 @@ func TestAppendTagSimpleOne(t *testing.T) {
 	}
 	rows.Close()
 
-	r := db.QueryRow("select count(*) from simple_one_tag")
+	r := db.QueryRow("select count(*) from simple_one_tag where time >= ?", ts)
 	if r.Err() != nil {
 		panic(r.Err())
 	}
