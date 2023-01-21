@@ -14,6 +14,8 @@ type Row struct {
 	ok     bool
 	err    error
 	values []any
+
+	affectedRows int64
 }
 
 func (row *Row) Err() error {
@@ -22,6 +24,10 @@ func (row *Row) Err() error {
 
 func (row *Row) Values() []any {
 	return row.values
+}
+
+func (row *Row) AffectedRows() int64 {
+	return row.affectedRows
 }
 
 func (row *Row) Scan(cols ...any) error {

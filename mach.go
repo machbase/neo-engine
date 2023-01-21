@@ -216,6 +216,12 @@ func (db *Database) QueryRow(sqlText string, params ...any) *Row {
 
 	// select 가 아니면 fetch를 진행하지 않는다.
 	if !isFetchableStmtType(typ) {
+		affectedRows, err := machEffectRows(stmt)
+		if err != nil {
+			row.err = err
+			return row
+		}
+		row.affectedRows = affectedRows
 		return row
 	}
 
