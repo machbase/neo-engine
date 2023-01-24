@@ -128,37 +128,48 @@ func (db *Database) Explain(sqlText string) (string, error) {
 	return machExplain(stmt)
 }
 
-func (db *Database) Exec(sqlText string, params ...any) Result {
+func (db *Database) Exec(sqlText string, params ...any) *Result {
+	var result = &Result{}
+
 	var stmt unsafe.Pointer
 	if err := machAllocStmt(db.handle, &stmt); err != nil {
-		return Result{Err: err}
+		result.err = err
+		return result
 	}
 	defer machFreeStmt(db.handle, stmt)
 	if len(params) == 0 {
 		if err := machDirectExecute(stmt, sqlText); err != nil {
-			return Result{Err: err}
+			result.err = err
+			return result
 		}
 	} else {
 		err := machPrepare(stmt, sqlText)
 		if err != nil {
-			return Result{Err: err}
+			result.err = err
+			return result
 		}
 		for i, p := range params {
 			if err := bind(stmt, i, p); err != nil {
-				return Result{Err: err}
+				result.err = err
+				return result
 			}
 		}
 		err = machExecute(stmt)
 		if err != nil {
-			return Result{Err: err}
+			result.err = err
+			return result
 		}
 	}
 	affectedRows, err := machEffectRows(stmt)
 	if err != nil {
-		return Result{Err: err}
+		result.err = err
+		return result
 	}
 	stmtType, err := machStmtType(stmt)
-	return Result{AffectedRows: affectedRows, StmtType: stmtType, Err: err}
+	result.affectedRows = affectedRows
+	result.stmtType = stmtType
+	result.err = err
+	return result
 }
 
 func (db *Database) Query(sqlText string, params ...any) (*Rows, error) {
@@ -211,16 +222,17 @@ func (db *Database) QueryRow(sqlText string, params ...any) *Row {
 		return row
 	}
 
-	typ, err := machStmtType(stmt)
-	if err != nil {
+	if typ, err := machStmtType(stmt); err != nil {
 		row.err = err
 		return row
+	} else {
+		row.stmtType = typ
 	}
 
 	row.ok = true
 
 	// select 가 아니면 fetch를 진행하지 않는다.
-	if !typ.isFetchableStmtType() {
+	if !row.stmtType.IsSelect() {
 		affectedRows, err := machEffectRows(stmt)
 		if err != nil {
 			row.err = err

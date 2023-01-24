@@ -8,23 +8,50 @@ import (
 	"unsafe"
 
 	"github.com/pkg/errors"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 type Result struct {
-	Err          error
-	AffectedRows int64
-	StmtType     StmtType
+	err          error
+	affectedRows int64
+	stmtType     StmtType
 }
 
-func (r *Result) Error() string {
-	if r.Err != nil {
-		return r.Err.Error()
-	}
-	return ""
+func (r *Result) AffectedRows() int64 {
+	return r.affectedRows
+}
+
+func (r *Result) Err() error {
+	return r.err
 }
 
 func (r *Result) Message() string {
-	return ""
+	if r.err != nil {
+		return r.err.Error()
+	}
+
+	rows := "no row"
+	if r.affectedRows == 1 {
+		rows = "a row"
+	} else if r.affectedRows > 1 {
+		p := message.NewPrinter(language.English)
+		rows = p.Sprintf("%d rows", r.AffectedRows)
+	}
+	if r.stmtType.IsSelect() {
+		return rows + " selected."
+	} else if r.stmtType.IsInsert() {
+		return rows + " inserted."
+	} else if r.stmtType.IsUpdate() {
+		return rows + " updated."
+	} else if r.stmtType.IsDelete() {
+		return rows + " deleted."
+	} else if r.stmtType.IsAlterSystem() {
+		return "system altered."
+	} else if r.stmtType.IsDDL() {
+		return "ok."
+	}
+	return fmt.Sprintf("ok.(%d)", r.stmtType)
 }
 
 type Row struct {
@@ -33,6 +60,7 @@ type Row struct {
 	values []any
 
 	affectedRows int64
+	stmtType     StmtType
 }
 
 func (row *Row) Err() error {
@@ -45,6 +73,34 @@ func (row *Row) Values() []any {
 
 func (row *Row) AffectedRows() int64 {
 	return row.affectedRows
+}
+
+func (r *Row) Message() string {
+	if r.err != nil {
+		return r.err.Error()
+	}
+
+	rows := "no row"
+	if r.affectedRows == 1 {
+		rows = "a row"
+	} else if r.affectedRows > 1 {
+		p := message.NewPrinter(language.English)
+		rows = p.Sprintf("%d rows", r.AffectedRows)
+	}
+	if r.stmtType.IsSelect() {
+		return rows + " selected."
+	} else if r.stmtType.IsInsert() {
+		return rows + " inserted."
+	} else if r.stmtType.IsUpdate() {
+		return rows + " updated."
+	} else if r.stmtType.IsDelete() {
+		return rows + " deleted."
+	} else if r.stmtType.IsAlterSystem() {
+		return "system altered."
+	} else if r.stmtType.IsDDL() {
+		return "ok."
+	}
+	return fmt.Sprintf("ok.(%d)", r.stmtType)
 }
 
 func (row *Row) Scan(cols ...any) error {
@@ -108,36 +164,37 @@ func (rows *Rows) Close() {
 }
 
 func (rows *Rows) IsFetchable() bool {
-	return rows.stmtType.isFetchableStmtType()
+	return rows.stmtType.IsSelect()
 }
 
 func (rows *Rows) ResultString(nrows int64) string {
 	var verb = ""
 
 	if rows.stmtType >= 1 && rows.stmtType <= 255 {
-		return "DDL executed"
+		return "executed."
 	} else if rows.stmtType >= 256 && rows.stmtType <= 511 {
 		// "ALTER SYSTEM"
-		return "system altered"
+		return "system altered."
 	} else if rows.stmtType == 512 {
-		verb = "selected"
+		verb = "selected."
 	} else if rows.stmtType == 513 {
-		verb = "inserted"
+		verb = "inserted."
 	} else if rows.stmtType == 514 || rows.stmtType == 515 {
-		verb = "deleted"
+		verb = "deleted."
 	} else if rows.stmtType == 516 {
-		verb = "inserted and selected"
+		verb = "inserted and selected."
 	} else if rows.stmtType == 517 {
-		verb = "updated"
+		verb = "updated."
 	} else {
-		return "unknown"
+		return "unknown."
 	}
 	if nrows == 0 {
 		return fmt.Sprintf("no row %s", verb)
 	} else if nrows == 1 {
-		return fmt.Sprintf("1 row %s", verb)
+		return fmt.Sprintf("a row %s", verb)
 	} else {
-		return fmt.Sprintf("%d rows %s", nrows, verb)
+		p := message.NewPrinter(language.English)
+		return p.Sprintf("%d rows %s", nrows, verb)
 	}
 }
 

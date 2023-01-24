@@ -49,15 +49,35 @@ const (
 
 type ColumnSize int
 
+// * DDL: 1-255
+// * ALTER SYSTEM: 256-511
+// * SELECT: 512
+// * INSERT: 513
+// * DELETE: 514-515
+// * INSERT_SELECT: 516
+// * UPDATE: 517
 type StmtType int
 
-func (typ StmtType) isFetchableStmtType() bool {
-	//  * DDL: 1-255
-	//  * ALTER SYSTEM: 256-511
-	//  * SELECT: 512
-	//  * INSERT: 513
-	//  * DELETE: 514-515
-	//  * INSERT_SELECT: 516
-	//  * UPDATE: 517
-	return typ == 512 || typ == 516
+func (typ StmtType) IsSelect() bool {
+	return typ == 512
+}
+
+func (typ StmtType) IsDDL() bool {
+	return typ >= 1 && typ <= 255
+}
+
+func (typ StmtType) IsAlterSystem() bool {
+	return typ >= 256 && typ <= 511
+}
+
+func (typ StmtType) IsInsert() bool {
+	return typ == 513 || typ == 516
+}
+
+func (typ StmtType) IsDelete() bool {
+	return typ >= 514 && typ <= 515
+}
+
+func (typ StmtType) IsUpdate() bool {
+	return typ == 517
 }
