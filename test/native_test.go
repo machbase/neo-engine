@@ -86,9 +86,9 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	_, err = db.Exec("alter system set trace_log_level=1023")
-	if err != nil {
-		panic(err)
+	result := db.Exec("alter system set trace_log_level=1023")
+	if result.Err != nil {
+		panic(result.Err)
 	}
 	createLogTable()
 	createTagTable()
@@ -141,32 +141,31 @@ func TestColumns(t *testing.T) {
 }
 
 func TestExec(t *testing.T) {
-	var err error
-	_, err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+	result := db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		0, 1, 2, 3, 4, 5, 6.6, 7.77,
 		net.ParseIP("127.0.0.1"), net.ParseIP("AB:CC:CC:CC:CC:CC:CC:FF"),
 		fmt.Sprintf("varchar_1_%s.", randomVarchar()),
 		"text_1", "{\"json\":1}", []byte("binary_00"), "blob_01", "clob_01", 1, time.Now())
-	if err != nil {
-		panic(err)
+	if result.Err != nil {
+		panic(result.Err)
 	}
 
-	_, err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+	result = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		1, 1, 2, 3, 4, 5, 6.6, 7.77,
 		net.ParseIP("127.0.0.2"), net.ParseIP("AB:CC:CC:CC:CC:CC:CC:DD"),
 		fmt.Sprintf("varchar_2_%s.", randomVarchar()),
 		"text_2", "{\"json\":1}", []byte("binary_01"), "blob_01", "clob_01", 1, time.Now())
-	if err != nil {
-		panic(err)
+	if result.Err != nil {
+		panic(result.Err)
 	}
 
-	_, err = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+	result = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		2, 1, 2, 3, 4, 5, 6.6, 7.77,
 		net.ParseIP("127.0.0.3"), net.ParseIP("AB:CC:CC:CC:CC:CC:CC:AA"),
 		fmt.Sprintf("varchar_3_%s.", randomVarchar()),
 		"text_3", "{\"json\":2}", []byte("binary_02"), "blob_01", "clob_01", 1, time.Now())
-	if err != nil {
-		panic(err)
+	if result.Err != nil {
+		panic(result)
 	}
 }
 

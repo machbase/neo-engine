@@ -48,3 +48,16 @@ const (
 )
 
 type ColumnSize int
+
+type StmtType int
+
+func (typ StmtType) isFetchableStmtType() bool {
+	//  * DDL: 1-255
+	//  * ALTER SYSTEM: 256-511
+	//  * SELECT: 512
+	//  * INSERT: 513
+	//  * DELETE: 514-515
+	//  * INSERT_SELECT: 516
+	//  * UPDATE: 517
+	return typ == 512 || typ == 516
+}

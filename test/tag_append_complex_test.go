@@ -9,7 +9,7 @@ import (
 )
 
 func createTagTable() {
-	_, err := db.Exec(db.SqlTidy(
+	result := db.Exec(db.SqlTidy(
 		`create tag table complex_tag(
 			name            varchar(100) primary key, 
 			time            datetime basetime, 
@@ -22,8 +22,8 @@ func createTagTable() {
 			sampling_period long,
 			payload         json
 		)`))
-	if err != nil {
-		panic(err)
+	if result.Err != nil {
+		panic(result.Err)
 	}
 }
 

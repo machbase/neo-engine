@@ -10,7 +10,7 @@ import (
 )
 
 func createLogTable() {
-	_, err := db.Exec(db.SqlTidy(
+	result := db.Exec(db.SqlTidy(
 		`create log table log(
 			short short, ushort ushort, 
 			integer integer, uinteger uinteger, 
@@ -22,8 +22,8 @@ func createLogTable() {
 			datetime datetime, 
 			datetime_now datetime
 		)`))
-	if err != nil {
-		panic(err)
+	if result.Err != nil {
+		panic(result.Err)
 	}
 }
 

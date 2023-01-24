@@ -9,14 +9,14 @@ import (
 )
 
 func createSimpleTagTable() {
-	_, err := db.Exec(db.SqlTidy(
+	result := db.Exec(db.SqlTidy(
 		`create tag table simple_tag(
 			name            varchar(100) primary key, 
 			time            datetime basetime, 
 			value           double
 		)`))
-	if err != nil {
-		panic(err)
+	if result.Err != nil {
+		panic(result.Err)
 	}
 }
 

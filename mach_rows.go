@@ -10,6 +10,23 @@ import (
 	"github.com/pkg/errors"
 )
 
+type Result struct {
+	Err          error
+	AffectedRows int64
+	StmtType     StmtType
+}
+
+func (r *Result) Error() string {
+	if r.Err != nil {
+		return r.Err.Error()
+	}
+	return ""
+}
+
+func (r *Result) Message() string {
+	return ""
+}
+
 type Row struct {
 	ok     bool
 	err    error
@@ -77,7 +94,7 @@ func (row *Row) Scan(cols ...any) error {
 type Rows struct {
 	handle     unsafe.Pointer
 	stmt       unsafe.Pointer
-	stmtType   int
+	stmtType   StmtType
 	sqlText    string
 	timeFormat string
 }
@@ -91,7 +108,7 @@ func (rows *Rows) Close() {
 }
 
 func (rows *Rows) IsFetchable() bool {
-	return isFetchableStmtType(rows.stmtType)
+	return rows.stmtType.isFetchableStmtType()
 }
 
 func (rows *Rows) ResultString(nrows int64) string {

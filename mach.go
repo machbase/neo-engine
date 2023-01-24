@@ -128,32 +128,37 @@ func (db *Database) Explain(sqlText string) (string, error) {
 	return machExplain(stmt)
 }
 
-func (db *Database) Exec(sqlText string, params ...any) (int64, error) {
+func (db *Database) Exec(sqlText string, params ...any) Result {
 	var stmt unsafe.Pointer
 	if err := machAllocStmt(db.handle, &stmt); err != nil {
-		return 0, err
+		return Result{Err: err}
 	}
 	defer machFreeStmt(db.handle, stmt)
 	if len(params) == 0 {
 		if err := machDirectExecute(stmt, sqlText); err != nil {
-			return 0, err
+			return Result{Err: err}
 		}
 	} else {
 		err := machPrepare(stmt, sqlText)
 		if err != nil {
-			return 0, err
+			return Result{Err: err}
 		}
 		for i, p := range params {
 			if err := bind(stmt, i, p); err != nil {
-				return 0, err
+				return Result{Err: err}
 			}
 		}
 		err = machExecute(stmt)
 		if err != nil {
-			return 0, err
+			return Result{Err: err}
 		}
 	}
-	return machEffectRows(stmt)
+	affectedRows, err := machEffectRows(stmt)
+	if err != nil {
+		return Result{Err: err}
+	}
+	stmtType, err := machStmtType(stmt)
+	return Result{AffectedRows: affectedRows, StmtType: stmtType, Err: err}
 }
 
 func (db *Database) Query(sqlText string, params ...any) (*Rows, error) {
@@ -215,7 +220,7 @@ func (db *Database) QueryRow(sqlText string, params ...any) *Row {
 	row.ok = true
 
 	// select 가 아니면 fetch를 진행하지 않는다.
-	if !isFetchableStmtType(typ) {
+	if !typ.isFetchableStmtType() {
 		affectedRows, err := machEffectRows(stmt)
 		if err != nil {
 			row.err = err

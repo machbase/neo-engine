@@ -203,7 +203,7 @@ func machDirectExecute(stmt unsafe.Pointer, sqlText string) error {
 	return nil
 }
 
-func machStmtType(stmt unsafe.Pointer) (int, error) {
+func machStmtType(stmt unsafe.Pointer) (StmtType, error) {
 	var typ C.int
 	if rt := C.MachStmtType(stmt, &typ); rt != 0 {
 		stmtErr := machError0(stmt)
@@ -213,11 +213,7 @@ func machStmtType(stmt unsafe.Pointer) (int, error) {
 			return 0, fmt.Errorf("MachStmtType returns %d", rt)
 		}
 	}
-	return int(typ), nil
-}
-
-func isFetchableStmtType(typ int) bool {
-	return typ == 512 || typ == 516
+	return StmtType(typ), nil
 }
 
 func machEffectRows(stmt unsafe.Pointer) (int64, error) {
