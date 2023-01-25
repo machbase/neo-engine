@@ -22,8 +22,8 @@ func createTagTable() {
 			sampling_period long,
 			payload         json
 		)`))
-	if result.Err != nil {
-		panic(result.Err)
+	if result.Err() != nil {
+		panic(result.Err())
 	}
 }
 

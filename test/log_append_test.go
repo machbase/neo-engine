@@ -22,8 +22,8 @@ func createLogTable() {
 			datetime datetime, 
 			datetime_now datetime
 		)`))
-	if result.Err != nil {
-		panic(result.Err)
+	if result.Err() != nil {
+		panic(result.Err())
 	}
 }
 

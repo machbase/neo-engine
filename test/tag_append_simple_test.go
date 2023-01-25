@@ -15,8 +15,8 @@ func createSimpleTagTable() {
 			time            datetime basetime, 
 			value           double
 		)`))
-	if result.Err != nil {
-		panic(result.Err)
+	if result.Err() != nil {
+		panic(result.Err())
 	}
 }
 
