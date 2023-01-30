@@ -1,5 +1,5 @@
-//go:build darwin && amd64
-// +build darwin,amd64
+//go:build darwin && amd64 && fog_edition
+// +build darwin,amd64,fog_edition
 
 package mach
 
