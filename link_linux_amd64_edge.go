@@ -1,5 +1,5 @@
-//go:build linux && arm64 && fog_edition
-// +build linux,arm64,fog_edition
+//go:build linux && amd64 && edge_edition
+// +build linux,amd64,edge_edition
 
 package mach
 
