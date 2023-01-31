@@ -17,16 +17,22 @@ go get -u github.com/machbase/neo-engine
 |          | arm64         | O           | O            |
 | macOS    | amd64 (Intel) | O           | O            |
 |          | arm64 (Apple) | O           | O            |
-| Windows  | amd64         | immnent     | X            |     
+| Windows  | amd64         | imminent    | X            |     
 
 ## Development environment
 
 ### VSCode Build flags
 
-Set one of editions as go build tags
+Set one of editions as Go build tags
 
 - edge_edition
 - fog_edition
+
+#### Command line
+
+```sh
+go build -tags edge_edition
+```
 
 #### VSCode settings.json
 
