@@ -6,4 +6,4 @@ package mach
 // #cgo LDFLAGS: ${SRCDIR}/native/libmachengine_fog_darwin_amd64.a
 import "C"
 
-const LibMachLinkInfo = "static_darwin_amd64_fog"
+const LibMachLinkInfo = "static_fog_darwin_amd64"

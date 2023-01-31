@@ -6,4 +6,4 @@ package mach
 // #cgo LDFLAGS: ${SRCDIR}/native/libmachengine_edge_darwin_arm64.a
 import "C"
 
-const LibMachLinkInfo = "static_darwin_arm64_edge"
+const LibMachLinkInfo = "static_edge_darwin_arm64"
