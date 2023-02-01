@@ -19,6 +19,12 @@ go get -u github.com/machbase/neo-engine
 |          | arm64 (Apple) | O           | O            |
 | Windows  | amd64         | imminent    | X            |     
 
+## Related projects
+
+- [neo-server](https://github.com/machbase/neo-server) machbase-neo server
+- [neo-shell](https://github.com/machbase/neo-shell) machbase-neo shell
+- [neo-grpc](https://github.com/machbase/neo-grpc) gRPC interface
+
 ## Development environment
 
 ### VSCode Build flags
