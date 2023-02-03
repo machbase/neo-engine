@@ -85,6 +85,14 @@ func (ap *Appender) Table() string {
 	return ap.tableName
 }
 
+func (ap *Appender) Columns() []*Column {
+	return ap.columns
+}
+
+func (ap *Appender) TableType() TableType {
+	return ap.tableType
+}
+
 func (ap *Appender) Append(values ...any) error {
 	if ap.tableType == TagTableType {
 		return ap.appendTable0(values)
