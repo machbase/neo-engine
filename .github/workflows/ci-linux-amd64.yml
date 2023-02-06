@@ -6,7 +6,7 @@ on:
       - opened
   push:
     branches:
-      - 'main'
+      - '*'
 
 jobs:
   builds:

@@ -1,4 +1,4 @@
-name: CI linux-amd64
+name: CI darinw-arm64
 
 on:
   pull_request:
@@ -6,7 +6,7 @@ on:
       - opened
   push:
     branches:
-      - 'main'
+      - '*'
 
 jobs:
   builds:

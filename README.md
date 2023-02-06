@@ -1,4 +1,8 @@
 
+[![CI linux-amd64](https://github.com/machbase/neo-engine/actions/workflows/ci-linux-amd64.yml/badge.svg)](https://github.com/machbase/neo-engine/actions/workflows/ci-linux-amd64.yml)
+[![CI darwin-arm64](https://github.com/machbase/neo-engine/actions/workflows/ci-darwin-arm64.yml/badge.svg)](https://github.com/machbase/neo-engine/actions/workflows/ci-darwin-arm64.yml)
+[![CI linux-arm64](https://github.com/machbase/neo-engine/actions/workflows/ci-linux-arm64.yml/badge.svg)](https://github.com/machbase/neo-engine/actions/workflows/ci-linux-arm64.yml)
+
 # neo-engine
 
 Go binding for Machbase time-series database core.
@@ -15,7 +19,8 @@ go get -u github.com/machbase/neo-engine
 |:---------|:--------------|-------------|--------------|
 | Linux    | amd64         | O           | O            |
 |          | arm64         | O           | O            |
-| macOS    | amd64 (Intel) | O           | O            |
+|          | x86 (32bit)   | X           | imminent     |
+| macOS    | amd64 (Intel) | imminent    | imminent     |
 |          | arm64 (Apple) | O           | O            |
 | Windows  | amd64         | imminent    | X            |     
 
