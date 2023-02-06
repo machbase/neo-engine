@@ -25,31 +25,34 @@ typedef struct MachEngineAppendVarStruct
     void*           mData;
 } MachEngineAppendVarStruct;
 
+/*
+ * mLength: length of IP value
+ * if mLength is MACH_ENGINE_APPEND_IP_IPV4 or MACH_ENGINE_APPEND_IP_IPV6, mAddr is used
+ */
 typedef struct MachEngineAppendIPStruct
 {
-/* 어떤 타입으로 IP 값을 입력했는지를 가지고 있다. */
     unsigned char   mLength;
-/* mLength 값이 MACH_ENGINE_APPEND_IP_IPV4 또는 MACH_ENGINE_APPEND_IP_IPV6 일 때 사용 */
     unsigned char   mAddr[16];
-/* mLength 값이 MACH_ENGINE_APPEND_IP_STRING 일 때 사용 */
     char*           mAddrString;
 } MachEngineAppendIPStruct;
-#define MACH_ENGINE_APPEND_IP_NULL 0        /* IP 데이터에 Null 입력 */
-#define MACH_ENGINE_APPEND_IP_IPV4 4        /* IPV4 형식 값을 가진다 */
-#define MACH_ENGINE_APPEND_IP_IPV6 6        /* IPV6 형식 값을 가진다 */
-#define MACH_ENGINE_APPEND_IP_STRING 255    /* IP 값을 String으로 입력 */
+#define MACH_ENGINE_APPEND_IP_NULL 0        /* null */
+#define MACH_ENGINE_APPEND_IP_IPV4 4        /* IPV4 value */
+#define MACH_ENGINE_APPEND_IP_IPV6 6        /* IPV6 value */
+#define MACH_ENGINE_APPEND_IP_STRING 255    /* string value */
 
+/*
+ * mTime: nano timestamp value or MACH_ENGINE_APPEND_DATETIME_STRING
+ * if mTime is MACH_ENGINE_APPEND_DATETIME_STRING, mDateStr and mFormatStr are used 
+ */
 typedef struct MachEngineAppendDateTimeStruct
 {
-/* TimeStamp 또는 어떤 형식으로 입력할지를 가지고 있다. */
     long long   mTime;
-/* mTime 값이 MACH_ENGINE_APPEND_DATETIME_STRING 일 때 사용 */
-    char*       mDateStr;   /* Time String 값 */
-    char*       mFormatStr; /* Time String 형식 */
+    char*       mDateStr;
+    char*       mFormatStr;
 } MachEngineAppendDateTimeStruct;
 #define MACH_ENGINE_APPEND_DATETIME_DEFAULT 0
-#define MACH_ENGINE_APPEND_DATETIME_NOW -1       /* 입력 당시 서버 시간으로 설정 */
-#define MACH_ENGINE_APPEND_DATETIME_STRING -2    /* Time 값을 String으로 입력 */
+#define MACH_ENGINE_APPEND_DATETIME_NOW -1       /* arrival time will be set as current time at server */
+#define MACH_ENGINE_APPEND_DATETIME_STRING -2    /* string value */
 
 typedef union MachEngineAppendParamData
 {
@@ -74,17 +77,17 @@ typedef union MachEngineAppendParamData
 
 typedef struct MachEngineAppendParam
 {
-    int                         mIsNull; // 1 : NULL, 0: NOT NULL
+    int                         mIsNull; /* 1: NULL, 0: NOT NULL*/
     MachEngineAppendParamData   mData;
 } MachEngineAppendParam;
 
 #define MACH_ENGINE_COLUMN_NAME_MAX_LENGTH 100
 typedef struct MachEngineColumnInfo
 {
-    char    mColumnName[MACH_ENGINE_COLUMN_NAME_MAX_LENGTH+1];  /* 컬럼 이름 */
-    int     mColumnType;                                        /* 컬럼 타입 */
-    int     mColumnSize;                                        /* 컬럼 크기 */
-    int     mColumnLength;                                      /* Ferch된 Record의 컬럼 크기 */
+    char    mColumnName[MACH_ENGINE_COLUMN_NAME_MAX_LENGTH+1];  /* column name */
+    int     mColumnType;                                        /* column type */
+    int     mColumnSize;                                        /* column size */
+    int     mColumnLength;                                      /* length of fetched column value */
 } MachEngineColumnInfo;
 
 #define MACH_OPT_NONE            (0)
@@ -92,7 +95,7 @@ typedef struct MachEngineColumnInfo
 
 /**
  * @brief Initialize MachEngineEnv
- * @param [in] aHomePath 설정할 Machbase Home 경로
+ * @param [in] aHomePath the path of machbase home
  * @param [in] aOpt MACH_OPT_XXXX options can be bitwise-ored)
  * @param [out] aEnvHandle to be allocated
  */
@@ -105,24 +108,23 @@ int MachInitialize(char* aHomePath, int aOpt, void** aEnvHandle);
 void MachFinalize(void* aEnvHandle);
 
 /**
- * @brief Machbase Database 생성 및 삭제
+ * @brief create and destroy machbase database
  */
 int MachCreateDB(void* aEnvHandle);
 int MachDestroyDB(void* aEnvHandle);
+
 /**
  * return 1 if DB is create, otherwise return 0
  */
 int MachIsDBCreated(void* aEnvHandle);
 
 /**
- * @brief Machbase Thread 시작
- * @details Machbase Thread가 Startup 완료될 때 까지 기다린다
+ * @brief startup machbase DB
  */
 int MachStartupDB(void* aEnvHandle);
 
 /**
- * @brief Machbase Thread 종료
- * @details cm protocol send를 통해 종료
+ * @brief shutdown machbase DB
  */
 int MachShutdownDB(void* aEnvHandle);
 
@@ -150,29 +152,28 @@ char* MachErrorMsg(void* aHandle);
 /*************************SQL Function*********************************/
 
 /**
- * @brief MachStmt를 할당 및 해제
- * @param [inout] aMachStmt 할당 및 해제할 MachStmt 주소
+ * @brief allocate and free statement
  */
 int MachAllocStmt(void* aEnvHandle, void** aMachStmt);
 int MachFreeStmt(void* aEnvHandle, void* aMachStmt);
 
 /**
- * @brief 쿼리 Prepare 및 Prepare Clean
- * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt 
- * @param [in] aQuery 실행 쿼리
+ * @brief prepare statement
+ * @param [in] aMachStmt statement handle
+ * @param [in] aSQL SQL string to prepare
  */
 int MachPrepare(void* aMachStmt, char* aSQL);
 
 /**
- * @brief 쿼리 Execute 및 Execute Clean
- * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt 
+ * @brief execute statement 
+ * @param [in] aMachStmt statement handle
  */
 int MachExecute(void* aMachStmt);
 int MachExecuteClean(void* aMachStmt);
 
 /**
- * @brief 쿼리 즉시 실행
- * @param [in] aQuery 실행 쿼리
+ * @brief direct execute
+ * @param [in] aSQL SQL string
  */
 int MachDirectExecute(void* aMachStmt, char* aSQL);
 
@@ -191,36 +192,36 @@ int MachDirectExecute(void* aMachStmt, char* aSQL);
 int MachStmtType(void* aMachStmt, int* aStmtType);
 
 /**
- * @brief 실행된 쿼리의 결과 개수를 가져온다.
- * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt
- * @param [out] aEffectRows 결과 개수를 저장할 변수의 주소
+ * @brief retrieve the number of result rows
+ * @param [in] aMachStmt statement handle
+ * @param [out] aEffectRows number of results rows to be stored
  */
 int MachEffectRows(void* aMachStmt, unsigned long long* aEffectRows);
 
 /**
- * @brief Select 쿼리 결과 Fetch (가져오기)
- * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt 
- * @param [out] aFetchEnd fetch할 데이터가 있는지 여부 1: 없음, 0: 있음
+ * @brief fetch the result from executed SELECT query
+ * @param [in] aMachStmt statement handle
+ * @param [out] aFetchEnd 0 if record exists, otherwise 1
  */
 int MachFetch(void* aMachStmt, int* aFetchEnd);
 
 /**
- * Ferch 결과의 컬럼 개수를 가져온다.
- * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt
- * @param [out] aColumnCount 결과 컬럼 개수
+ * retrieve the number of columns
+ * @param [in] aMachStmt statement handle
+ * @param [out] aColumnCount the result to be stored
  */
 int MachColumnCount(void* aMachStmt, int* aColumnCount);
 
 /**
- * @brief Fetch row로 부터 각 컬럼의 결과를 가지고 온다.
- * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt 
- * @param [in] aColumnIndex 가져올 column의 인덱스
- * @param [out] aColumnName column name 복사할 버퍼
- * @param [in] aBufSize aColumName의 버퍼 크기
+ * @brief retrieve the column information from fetched row
+ * @param [in] aMachStmt statement handle
+ * @param [in] aColumnIndex column index (start at 0)
+ * @param [out] aColumnName column name to be stored
+ * @param [in] aBufSize size of aColumName
  * @param [out] aType column type
  * @param [out] aSize column size 
- * @param [out] aColumnLength 컬럼의 데이터 크기
- * @param [out] aColumnInfo 컬럼 정보 구조체
+ * @param [out] aColumnLength length of column value
+ * @param [out] aColumnInfo data structure for column information
  */
 int MachColumnName(void* aMachStmt, int aColumnIndex, char* aColumnName, int aColumnNameBufSize);
 int MachColumnType(void* aMachStmt, int aColumnIndex, int* aColumnType, int* aColumnSize);
@@ -228,15 +229,16 @@ int MachColumnLength(void* aMachStmt, int aColumnIndex, int* aColumnLength);
 int MachColumnInfo(void* aMachStmt, int aColumnIndex, MachEngineColumnInfo* aColumnInfo);
 
 /**
- * @brief Fetch row로 부터 각 컬럼의 결과를 가지고 온다.
- * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt 
- * @param [in] aColumnIndex 가져올 column의 인덱스
- * @param [out] aDest column 데이터를 저장할 변수의 주소 (column 타입과 동일한 타입의 변수의 주소를 보내줘야한다)
- * @param [out] aIsNull column 데이터 null 여부 0 : not null, 1 : null
+ * @brief retrieve the column value from fetched row
+ * @param [in] aMachStmt statement handle
+ * @param [in] aColumnIndex column index
+ * @param [out] aDest column value to be stored
+ * @param [out] aIsNull 1 if the column value is NULL, otherwise 0
  */
 int MachColumnData(void* aMachStmt, int aColumnIndex, void* aDest, int aBufSize, char* aIsNull);
+
 /**
- * @brief MachColumnData 함수를 컬럼 타입에 맞게 호출하는 함수이다.
+ * @brief retrieve the column value by column type
  */
 int MachColumnDataInt16(void* aMachStmt, int aColumnIndex, short* aDest, char* aIsNull);
 int MachColumnDataInt32(void* aMachStmt, int aColumnIndex, int* aDest, char* aIsNull);
@@ -250,10 +252,10 @@ int MachColumnDataString(void* aMachStmt, int aColumnIndex, char* aDest, int aBu
 int MachColumnDataBinary(void* aMachStmt, int aColumnIndex, void* aDest, int aBufSize, char* aIsNull);
 
 /**
- * @brief 쿼리 실행시에 바인드 변수에 바인드 값을 설정한다.
- * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt
- * @param [in] aParamNo 바인드 변수 인덱스
- * @param [in] aValue 바인드 값
+ * @brief bind value on bind variable in prepared statement
+ * @param [in] aMachStmt statement handle
+ * @param [in] aParamNo bind variable index
+ * @param [in] aValue bind value
  */
 int MachBindInt32(void* aMachStmt, int aParamNo, int aValue);
 int MachBindInt64(void* aMachStmt, int aParamNo, long long aValue);
@@ -265,11 +267,13 @@ int MachBindNull(void* aMachStmt, int aParamNo);
 /*************************Append Function*********************************/
 
 /**
- * @brief 데이터 Append Stmt를 관리하는 함수이다.
- * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt
- * @param [in] aTableName Append 대상 테이블 이름
- * @param [out] aAppendSuccessCount Append 입력 성공 횟수
- * @param [out] aAppendFailureCount Append 입력 실패 횟수
+ * Append functions are used to to insert data in fast manner.
+ * MachAppendOpen should be called before Append data,
+ * MachAppendClose should be called when Append is finished.
+ * @param [in] aMachStmt statement handle
+ * @param [in] aTableName target table
+ * @param [out] aAppendSuccessCount success count
+ * @param [out] aAppendFailureCount failure count
  */
 int MachAppendOpen(void* aMachStmt, char* aTableName);
 int MachAppendClose(void* aMachStmt,
@@ -277,16 +281,18 @@ int MachAppendClose(void* aMachStmt,
                     unsigned long long* aAppendFailureCount);
 
 /**
- * @brief 테이블에 데이터를 Append 한다.
- * @details Log Table의 경우에는 _arrival_time 컬럼 지정을 해야한다.
- * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt
- * @param [in] aAppendParamArr Append 할 데이터 값
+ * @brief Append data
+ * @details the value of _ARRIVAL_TIME must be set in append buffer to append on LOG tables.
+ * @param [in] aMachStmt statement handle
+ * @param [in] aAppendParamArr append buffer which contains data to append
  */
 int MachAppendData(void* aMachStmt, MachEngineAppendParam* aAppendParamArr);
 
 /**
- * @brief 쿼리 explain
- * @param [in] aMachStmt MachAllocStmt로 할당받은 stmt 
+ * @brief EXPLAIN query
+ * @param [in] aMachStmt statement handle
+ * @param [out] aBuffer EXPLAIN result will be set
+ * @param [out] aBufSize sepcifies the size of aBuffer
  */
 int MachExplain(void* aMachStmt, char* aBuffer, int aBufSize);
 
