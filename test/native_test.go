@@ -85,7 +85,7 @@ func TestMain(m *testing.M) {
 	if db == nil {
 		panic("database instance nil")
 	}
-	if mdb, ok := db.(spi.DatabaseLife); ok {
+	if mdb, ok := db.(spi.DatabaseServer); ok {
 		err = mdb.Startup()
 		if err != nil {
 			panic(err)
@@ -102,7 +102,7 @@ func TestMain(m *testing.M) {
 
 	m.Run()
 
-	if mdb, ok := db.(spi.DatabaseLife); ok {
+	if mdb, ok := db.(spi.DatabaseServer); ok {
 		mdb.Shutdown()
 	}
 }
