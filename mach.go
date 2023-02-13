@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"runtime"
-	"strings"
 	"time"
 	"unsafe"
 
@@ -28,10 +27,14 @@ func Initialize(homeDir string) error {
 func InitializeOption(homeDir string, opt InitOption) error {
 	var handle unsafe.Pointer
 	err := initialize0(homeDir, int(opt), &handle)
-	if err == nil {
-		singleton.handle = handle
+	if err != nil {
+		return err
 	}
-	return err
+	singleton.handle = handle
+	spi.RegisterFactory("engine", func() (spi.Database, error) {
+		return &database{handle: singleton.handle}, nil
+	})
+	return nil
 }
 
 func Finalize() {
@@ -60,12 +63,6 @@ type database struct {
 	handle unsafe.Pointer
 }
 
-func New() spi.Database {
-	return &database{
-		handle: singleton.handle,
-	}
-}
-
 // implements spi.DatabaseLife interface
 func (db *database) Startup() error {
 	// machbase startup 과정에서 현재 디렉터리를 HOME으로 변경하는데,
@@ -91,14 +88,6 @@ func (db *database) Error() error {
 // implements spi.DatabaseAuth interface
 func (db *database) UserAuth(username, password string) (bool, error) {
 	return machUserAuth(db.handle, username, password)
-}
-
-func SqlTidy(sqlText string) string {
-	lines := strings.Split(sqlText, "\n")
-	for i, ln := range lines {
-		lines[i] = strings.TrimSpace(ln)
-	}
-	return strings.TrimSpace(strings.Join(lines, " "))
 }
 
 func (db *database) Explain(sqlText string) (string, error) {

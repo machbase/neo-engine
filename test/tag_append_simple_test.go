@@ -5,12 +5,11 @@ import (
 	"testing"
 	"time"
 
-	mach "github.com/machbase/neo-engine"
 	"github.com/stretchr/testify/require"
 )
 
 func createSimpleTagTable() {
-	result := db.Exec(mach.SqlTidy(
+	result := db.Exec(SqlTidy(
 		`create tag table simple_tag(
 			name            varchar(100) primary key, 
 			time            datetime basetime, 

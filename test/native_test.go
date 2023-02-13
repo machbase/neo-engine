@@ -78,9 +78,12 @@ func TestMain(m *testing.M) {
 		panic(errors.Wrap(err, "create database"))
 	}
 
-	db = mach.New()
-	if db == nil {
+	db, err = spi.New()
+	if err != nil {
 		panic(err)
+	}
+	if db == nil {
+		panic("database instance nil")
 	}
 	if mdb, ok := db.(spi.DatabaseLife); ok {
 		err = mdb.Startup()
@@ -216,6 +219,14 @@ func goid() int {
 		panic(fmt.Sprintf("cannot get goroutine id: %v", err))
 	}
 	return id
+}
+
+func SqlTidy(sqlText string) string {
+	lines := strings.Split(sqlText, "\n")
+	for i, ln := range lines {
+		lines[i] = strings.TrimSpace(ln)
+	}
+	return strings.TrimSpace(strings.Join(lines, " "))
 }
 
 var machbase_conf = []byte(`

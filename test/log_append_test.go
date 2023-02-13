@@ -6,12 +6,11 @@ import (
 	"testing"
 	"time"
 
-	mach "github.com/machbase/neo-engine"
 	"github.com/stretchr/testify/require"
 )
 
 func createLogTable() {
-	result := db.Exec(mach.SqlTidy(
+	result := db.Exec(SqlTidy(
 		`create log table log(
 			short short, ushort ushort, 
 			integer integer, uinteger uinteger, 
@@ -108,7 +107,7 @@ func TestAppendLog(t *testing.T) {
 		require.Equal(t, 1, count)
 	}
 
-	rows, err := db.Query(mach.SqlTidy(`
+	rows, err := db.Query(SqlTidy(`
 		select
 			short, ushort, integer, uinteger, long, ulong, float, double, 
 			ipv4, ipv6,
@@ -156,7 +155,7 @@ func TestAppendLog(t *testing.T) {
 	}
 	rows.Close()
 
-	rows, err = db.Query(mach.SqlTidy(`
+	rows, err = db.Query(SqlTidy(`
 		select 
 			short, ushort, integer, uinteger, long, ulong, float, double, varchar, text, json, 
 			datetime, datetime_now 
