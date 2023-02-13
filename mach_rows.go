@@ -63,6 +63,10 @@ type Row struct {
 	stmtType     StmtType
 }
 
+func (row *Row) Success() bool {
+	return row.ok
+}
+
 func (row *Row) Err() error {
 	return row.err
 }
@@ -71,7 +75,7 @@ func (row *Row) Values() []any {
 	return row.values
 }
 
-func (row *Row) AffectedRows() int64 {
+func (row *Row) RowsAffected() int64 {
 	return row.affectedRows
 }
 
@@ -85,7 +89,7 @@ func (r *Row) Message() string {
 		rows = "a row"
 	} else if r.affectedRows > 1 {
 		p := message.NewPrinter(language.English)
-		rows = p.Sprintf("%d rows", r.AffectedRows)
+		rows = p.Sprintf("%d rows", r.affectedRows)
 	}
 	if r.stmtType.IsSelect() {
 		return rows + " selected."
@@ -155,12 +159,13 @@ type Rows struct {
 	timeFormat string
 }
 
-func (rows *Rows) Close() {
+func (rows *Rows) Close() error {
 	if rows.stmt != nil {
 		machFreeStmt(rows.handle, rows.stmt)
 		rows.stmt = nil
 	}
 	rows.sqlText = ""
+	return nil
 }
 
 func (rows *Rows) IsFetchable() bool {

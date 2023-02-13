@@ -590,7 +590,7 @@ func machAppendOpen(stmt unsafe.Pointer, tableName string) error {
 	return nil
 }
 
-func machAppendClose(stmt unsafe.Pointer) (uint64, uint64, error) {
+func machAppendClose(stmt unsafe.Pointer) (int64, int64, error) {
 	var successCount C.ulonglong
 	var failureCount C.ulonglong
 	if rt := C.MachAppendClose(stmt, &successCount, &failureCount); rt != 0 {
@@ -601,7 +601,7 @@ func machAppendClose(stmt unsafe.Pointer) (uint64, uint64, error) {
 			return 0, 0, fmt.Errorf("MachAppendClose returns %d", rt)
 		}
 	}
-	return uint64(successCount), uint64(failureCount), nil
+	return int64(successCount), int64(failureCount), nil
 }
 
 func machAppendData(stmt unsafe.Pointer, values *C.MachEngineAppendParam) error {

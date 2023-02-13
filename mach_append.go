@@ -61,7 +61,7 @@ type Appender struct {
 	closed    bool
 }
 
-func (ap *Appender) Close() (uint64, uint64, error) {
+func (ap *Appender) Close() (int64, int64, error) {
 	if ap.closed {
 		return 0, 0, nil
 	}

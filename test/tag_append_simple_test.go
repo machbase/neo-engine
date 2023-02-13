@@ -54,8 +54,8 @@ func TestAppendTagSimple(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	require.Equal(t, uint64(expectCount), sc)
-	require.Equal(t, uint64(0), fc)
+	require.Equal(t, int64(expectCount), sc)
+	require.Equal(t, int64(0), fc)
 
 	rows, err := db.Query("select name, time, value from simple_tag where time >= ? order by time", ts)
 	if err != nil {

@@ -79,8 +79,8 @@ func TestAppendLog(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	require.Equal(t, uint64(expectCount), sc)
-	require.Equal(t, uint64(0), fc)
+	require.Equal(t, int64(expectCount), sc)
+	require.Equal(t, int64(0), fc)
 
 	r := db.QueryRow("select count(*) from log")
 	if r.Err() != nil {
