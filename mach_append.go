@@ -13,9 +13,11 @@ import (
 	"strings"
 	"time"
 	"unsafe"
+
+	spi "github.com/machbase/neo-spi"
 )
 
-func (db *Database) Appender(tableName string) (*Appender, error) {
+func (db *Database) Appender(tableName string) (spi.Appender, error) {
 	appender := &Appender{}
 	appender.handle = db.handle
 	appender.tableName = strings.ToUpper(tableName)
@@ -28,7 +30,7 @@ func (db *Database) Appender(tableName string) (*Appender, error) {
 	if typ < 0 || typ > 6 {
 		return nil, fmt.Errorf("table '%s' not found", tableName)
 	}
-	appender.tableType = TableType(typ)
+	appender.tableType = spi.TableType(typ)
 
 	if err := machAllocStmt(db.handle, &appender.stmt); err != nil {
 		return nil, err
@@ -56,7 +58,7 @@ type Appender struct {
 	handle    unsafe.Pointer
 	stmt      unsafe.Pointer
 	tableName string
-	tableType TableType
+	tableType spi.TableType
 	columns   []*Column
 	closed    bool
 }
@@ -85,18 +87,28 @@ func (ap *Appender) TableName() string {
 	return ap.tableName
 }
 
-func (ap *Appender) Columns() []*Column {
-	return ap.columns
+func (ap *Appender) Columns() (spi.Columns, error) {
+	cols := ap.columns
+	result := make([]*spi.Column, len(cols))
+	for i := range cols {
+		result[i] = &spi.Column{
+			Name:   cols[i].Name,
+			Type:   cols[i].Type,
+			Size:   cols[i].Size,
+			Length: cols[i].Len,
+		}
+	}
+	return result, nil
 }
 
-func (ap *Appender) TableType() TableType {
+func (ap *Appender) TableType() spi.TableType {
 	return ap.tableType
 }
 
 func (ap *Appender) Append(values ...any) error {
-	if ap.tableType == TagTableType {
+	if ap.tableType == spi.TagTableType {
 		return ap.appendTable0(values)
-	} else if ap.tableType == LogTableType {
+	} else if ap.tableType == spi.LogTableType {
 		colsWithTime := append([]any{time.Time{}}, values...)
 		return ap.appendTable0(colsWithTime)
 	} else {
@@ -105,10 +117,10 @@ func (ap *Appender) Append(values ...any) error {
 }
 
 func (ap *Appender) AppendWithTimestamp(ts time.Time, cols ...any) error {
-	if ap.tableType == LogTableType {
+	if ap.tableType == spi.LogTableType {
 		colsWithTime := append([]any{ts}, cols...)
 		return ap.appendTable0(colsWithTime)
-	} else if ap.tableType == TagTableType {
+	} else if ap.tableType == spi.TagTableType {
 		colsWithTime := append([]any{cols[0], ts}, cols[1:]...)
 		return ap.appendTable0(colsWithTime)
 	} else {

@@ -1,37 +1,5 @@
 package mach
 
-// 0: Log Table, 1: Fixed Table, 3: Volatile Table,
-// 4: Lookup Table, 5: KeyValue Table, 6: Tag Table
-type TableType int
-
-const (
-	LogTableType      TableType = iota + 0
-	FixedTableType              = 1
-	VolatileTableType           = 3
-	LookupTableType             = 4
-	KeyValueTableType           = 5
-	TagTableType                = 6
-)
-
-func (t TableType) String() string {
-	switch t {
-	case LogTableType:
-		return "LogTable"
-	case FixedTableType:
-		return "FixedTable"
-	case VolatileTableType:
-		return "VolatileTable"
-	case LookupTableType:
-		return "LookupTable"
-	case KeyValueTableType:
-		return "KeyValueTable"
-	case TagTableType:
-		return "TagTable"
-	default:
-		return "Undefined"
-	}
-}
-
 type ColumnType int
 
 const (

@@ -3,6 +3,7 @@ package mach
 import (
 	"fmt"
 	"net"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -17,6 +18,20 @@ import (
 #include <string.h>
 */
 import "C"
+
+func LinkInfo() string {
+	return LibMachLinkInfo
+}
+
+func Edition() string {
+	if strings.Contains(LibMachLinkInfo, "edge") {
+		return "edge"
+	} else if strings.Contains(LibMachLinkInfo, "fog") {
+		return "fog"
+	} else {
+		return "none"
+	}
+}
 
 func initialize0(homeDir string, flag int, envHandle *unsafe.Pointer) error {
 	cstr := C.CString(homeDir)

@@ -7,6 +7,7 @@ import (
 	"time"
 	"unsafe"
 
+	spi "github.com/machbase/neo-spi"
 	"github.com/pkg/errors"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -18,7 +19,7 @@ type Result struct {
 	stmtType     StmtType
 }
 
-func (r *Result) AffectedRows() int64 {
+func (r *Result) RowsAffected() int64 {
 	return r.affectedRows
 }
 
@@ -36,7 +37,7 @@ func (r *Result) Message() string {
 		rows = "a row"
 	} else if r.affectedRows > 1 {
 		p := message.NewPrinter(language.English)
-		rows = p.Sprintf("%d rows", r.AffectedRows)
+		rows = p.Sprintf("%d rows", r.affectedRows)
 	}
 	if r.stmtType.IsSelect() {
 		return rows + " selected."
@@ -172,49 +173,26 @@ func (rows *Rows) IsFetchable() bool {
 	return rows.stmtType.IsSelect()
 }
 
-func (rows *Rows) ResultString(nrows int64) string {
-	var verb = ""
-
-	if rows.stmtType >= 1 && rows.stmtType <= 255 {
-		return "executed."
-	} else if rows.stmtType >= 256 && rows.stmtType <= 511 {
-		// "ALTER SYSTEM"
-		return "system altered."
-	} else if rows.stmtType == 512 {
-		verb = "selected."
-	} else if rows.stmtType == 513 {
-		verb = "inserted."
-	} else if rows.stmtType == 514 || rows.stmtType == 515 {
-		verb = "deleted."
-	} else if rows.stmtType == 516 {
-		verb = "inserted and selected."
-	} else if rows.stmtType == 517 {
-		verb = "updated."
-	} else {
-		return "unknown."
-	}
-	if nrows == 0 {
-		return fmt.Sprintf("no row %s", verb)
-	} else if nrows == 1 {
-		return fmt.Sprintf("a row %s", verb)
-	} else {
-		p := message.NewPrinter(language.English)
-		return p.Sprintf("%d rows %s", nrows, verb)
-	}
+func (rows *Rows) StatementType() StmtType {
+	return rows.stmtType
 }
 
-func (rows *Rows) AffectedRows() (int64, error) {
+func (rows *Rows) RowsAffected() int64 {
 	if rows.IsFetchable() {
-		return 0, nil
+		return 0
 	}
-	return machEffectRows(rows.stmt)
+	nrow, err := machEffectRows(rows.stmt)
+	if err != nil {
+		return 0
+	}
+	return nrow
 }
 
 func (rows *Rows) SetTimeFormat(format string) {
 	rows.timeFormat = format
 }
 
-func (rows *Rows) Columns() (Columns, error) {
+func (rows *Rows) Columns() (spi.Columns, error) {
 	count, err := machColumnCount(rows.stmt)
 	if err != nil {
 		return nil, err
@@ -227,7 +205,52 @@ func (rows *Rows) Columns() (Columns, error) {
 		}
 		cols[i] = col
 	}
-	return cols, nil
+	result := make([]*spi.Column, len(cols))
+	for i := range cols {
+		result[i] = &spi.Column{
+			Name:   cols[i].Name,
+			Type:   cols[i].Type,
+			Size:   cols[i].Size,
+			Length: cols[i].Len,
+		}
+	}
+	return result, nil
+}
+
+func (rows *Rows) Message() string {
+	nrows := rows.RowsAffected()
+	return ResultString(rows.stmtType, nrows)
+}
+
+func ResultString(stmtType StmtType, nrows int64) string {
+	var verb = ""
+
+	if stmtType >= 1 && stmtType <= 255 {
+		return "executed."
+	} else if stmtType >= 256 && stmtType <= 511 {
+		// "ALTER SYSTEM"
+		return "system altered."
+	} else if stmtType == 512 {
+		verb = "selected."
+	} else if stmtType == 513 {
+		verb = "inserted."
+	} else if stmtType == 514 || stmtType == 515 {
+		verb = "deleted."
+	} else if stmtType == 516 {
+		verb = "inserted and selected."
+	} else if stmtType == 517 {
+		verb = "updated."
+	} else {
+		return "unknown."
+	}
+	if nrows == 0 {
+		return fmt.Sprintf("no row %s", verb)
+	} else if nrows == 1 {
+		return fmt.Sprintf("a row %s", verb)
+	} else {
+		p := message.NewPrinter(language.English)
+		return p.Sprintf("%d rows %s", nrows, verb)
+	}
 }
 
 // internal use only from machrpcserver

@@ -13,11 +13,12 @@ import (
 	"time"
 
 	mach "github.com/machbase/neo-engine"
+	spi "github.com/machbase/neo-spi"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
-var db *mach.Database
+var db spi.Database
 
 func TestMain(m *testing.M) {
 	var err error
@@ -81,9 +82,11 @@ func TestMain(m *testing.M) {
 	if db == nil {
 		panic(err)
 	}
-	err = db.Startup()
-	if err != nil {
-		panic(err)
+	if mdb, ok := db.(*mach.Database); ok {
+		err = mdb.Startup()
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	result := db.Exec("alter system set trace_log_level=1023")
@@ -96,7 +99,9 @@ func TestMain(m *testing.M) {
 
 	m.Run()
 
-	db.Shutdown()
+	if mdb, ok := db.(*mach.Database); ok {
+		mdb.Shutdown()
+	}
 }
 
 func TestColumns(t *testing.T) {

@@ -5,11 +5,12 @@ import (
 	"testing"
 	"time"
 
+	mach "github.com/machbase/neo-engine"
 	"github.com/stretchr/testify/require"
 )
 
 func createSimpleTagTable() {
-	result := db.Exec(db.SqlTidy(
+	result := db.Exec(mach.SqlTidy(
 		`create tag table simple_tag(
 			name            varchar(100) primary key, 
 			time            datetime basetime, 
@@ -38,7 +39,7 @@ func TestAppendTagSimple(t *testing.T) {
 		panic(err)
 	}
 
-	t.Logf("     %s", appender.String())
+	t.Logf("     %s", appender.TableName())
 	expectCount := 10000
 	ts := time.Now()
 	for i := 0; i < expectCount; i++ {

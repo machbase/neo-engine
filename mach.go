@@ -1,28 +1,18 @@
 package mach
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 	"unsafe"
+
+	spi "github.com/machbase/neo-spi"
 )
-
-func LinkInfo() string {
-	return LibMachLinkInfo
-}
-
-func Edition() string {
-	if strings.Contains(LibMachLinkInfo, "edge") {
-		return "edge"
-	} else if strings.Contains(LibMachLinkInfo, "fog") {
-		return "fog"
-	} else {
-		return "none"
-	}
-}
 
 type InitOption int
 
@@ -70,7 +60,7 @@ type Database struct {
 	handle unsafe.Pointer
 }
 
-func New() *Database {
+func New() spi.Database {
 	return &Database{
 		handle: singleton.handle,
 	}
@@ -100,7 +90,7 @@ func (db *Database) UserAuth(username, password string) (bool, error) {
 	return machUserAuth(db.handle, username, password)
 }
 
-func (db *Database) SqlTidy(sqlText string) string {
+func SqlTidy(sqlText string) string {
 	lines := strings.Split(sqlText, "\n")
 	for i, ln := range lines {
 		lines[i] = strings.TrimSpace(ln)
@@ -120,7 +110,12 @@ func (db *Database) Explain(sqlText string) (string, error) {
 	return machExplain(stmt)
 }
 
-func (db *Database) Exec(sqlText string, params ...any) *Result {
+func (db *Database) ExecContext(ctx context.Context, sqlText string, params ...any) spi.Result {
+	// TODO apply context
+	return db.Exec(sqlText, params...)
+}
+
+func (db *Database) Exec(sqlText string, params ...any) spi.Result {
 	var result = &Result{}
 
 	var stmt unsafe.Pointer
@@ -164,7 +159,11 @@ func (db *Database) Exec(sqlText string, params ...any) *Result {
 	return result
 }
 
-func (db *Database) Query(sqlText string, params ...any) (*Rows, error) {
+func (db *Database) QueryContext(ctx context.Context, sqlText string, params ...any) (spi.Rows, error) {
+	return db.Query(sqlText, params...)
+}
+
+func (db *Database) Query(sqlText string, params ...any) (spi.Rows, error) {
 	rows := &Rows{
 		handle:  db.handle,
 		sqlText: sqlText,
@@ -191,7 +190,11 @@ func (db *Database) Query(sqlText string, params ...any) (*Rows, error) {
 	return rows, nil
 }
 
-func (db *Database) QueryRow(sqlText string, params ...any) *Row {
+func (db *Database) QueryRowContext(ctx context.Context, sqlText string, params ...any) spi.Row {
+	return db.QueryRow(sqlText, params...)
+}
+
+func (db *Database) QueryRow(sqlText string, params ...any) spi.Row {
 	var row = &Row{}
 
 	var stmt unsafe.Pointer
@@ -281,4 +284,37 @@ func (db *Database) QueryRow(sqlText string, params ...any) *Row {
 	}
 	row.err = scan(stmt, row.values...)
 	return row
+}
+
+var startupTime = time.Now()
+
+func (db *Database) GetServerInfo() (*spi.ServerInfo, error) {
+	rsp := &spi.ServerInfo{}
+	// v := mods.GetVersion()
+	mem := runtime.MemStats{}
+	runtime.ReadMemStats(&mem)
+
+	rsp.Version = spi.Version{
+		// Major: int32(v.Major), Minor: int32(v.Minor), Patch: int32(v.Patch),
+		// GitSHA:         v.GitSHA,
+		// BuildTimestamp: mods.BuildTimestamp(),
+		// BuildCompiler:  mods.BuildCompiler(),
+		// Engine:         mods.EngineInfoString(),
+	}
+
+	rsp.Runtime = spi.Runtime{
+		OS:             runtime.GOOS,
+		Arch:           runtime.GOARCH,
+		Pid:            int32(os.Getpid()),
+		UptimeInSecond: int64(time.Since(startupTime).Seconds()),
+		Processes:      int32(runtime.GOMAXPROCS(-1)),
+		Goroutines:     int32(runtime.NumGoroutine()),
+		MemSys:         mem.Sys,
+		MemHeapSys:     mem.HeapSys,
+		MemHeapAlloc:   mem.HeapAlloc,
+		MemHeapInUse:   mem.HeapInuse,
+		MemStackSys:    mem.StackSys,
+		MemStackInUse:  mem.StackInuse,
+	}
+	return rsp, nil
 }
