@@ -81,7 +81,7 @@ func (ap *Appender) String() string {
 	return fmt.Sprintf("appender %s %v", ap.tableName, ap.stmt)
 }
 
-func (ap *Appender) Table() string {
+func (ap *Appender) TableName() string {
 	return ap.tableName
 }
 
