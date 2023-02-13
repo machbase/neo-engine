@@ -17,7 +17,7 @@ import (
 	spi "github.com/machbase/neo-spi"
 )
 
-func (db *Database) Appender(tableName string) (spi.Appender, error) {
+func (db *database) Appender(tableName string) (spi.Appender, error) {
 	appender := &Appender{}
 	appender.handle = db.handle
 	appender.tableName = strings.ToUpper(tableName)

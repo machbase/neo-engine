@@ -56,17 +56,18 @@ type Env struct {
 
 var singleton = Env{}
 
-type Database struct {
+type database struct {
 	handle unsafe.Pointer
 }
 
 func New() spi.Database {
-	return &Database{
+	return &database{
 		handle: singleton.handle,
 	}
 }
 
-func (db *Database) Startup() error {
+// implements spi.DatabaseLife interface
+func (db *database) Startup() error {
 	// machbase startup 과정에서 현재 디렉터리를 HOME으로 변경하는데,
 	// application의 Working directory를 유지하기 위해 chdir()을 호출한다.
 	cwd, _ := os.Getwd()
@@ -78,15 +79,17 @@ func (db *Database) Startup() error {
 	return err
 }
 
-func (db *Database) Shutdown() error {
+// implements spi.DatabaseLife interface
+func (db *database) Shutdown() error {
 	return shutdown0(db.handle)
 }
 
-func (db *Database) Error() error {
+func (db *database) Error() error {
 	return machError0(db.handle)
 }
 
-func (db *Database) UserAuth(username, password string) (bool, error) {
+// implements spi.DatabaseAuth interface
+func (db *database) UserAuth(username, password string) (bool, error) {
 	return machUserAuth(db.handle, username, password)
 }
 
@@ -98,7 +101,7 @@ func SqlTidy(sqlText string) string {
 	return strings.TrimSpace(strings.Join(lines, " "))
 }
 
-func (db *Database) Explain(sqlText string) (string, error) {
+func (db *database) Explain(sqlText string) (string, error) {
 	var stmt unsafe.Pointer
 	if err := machAllocStmt(db.handle, &stmt); err != nil {
 		return "", err
@@ -110,12 +113,12 @@ func (db *Database) Explain(sqlText string) (string, error) {
 	return machExplain(stmt)
 }
 
-func (db *Database) ExecContext(ctx context.Context, sqlText string, params ...any) spi.Result {
+func (db *database) ExecContext(ctx context.Context, sqlText string, params ...any) spi.Result {
 	// TODO apply context
 	return db.Exec(sqlText, params...)
 }
 
-func (db *Database) Exec(sqlText string, params ...any) spi.Result {
+func (db *database) Exec(sqlText string, params ...any) spi.Result {
 	var result = &Result{}
 
 	var stmt unsafe.Pointer
@@ -159,11 +162,11 @@ func (db *Database) Exec(sqlText string, params ...any) spi.Result {
 	return result
 }
 
-func (db *Database) QueryContext(ctx context.Context, sqlText string, params ...any) (spi.Rows, error) {
+func (db *database) QueryContext(ctx context.Context, sqlText string, params ...any) (spi.Rows, error) {
 	return db.Query(sqlText, params...)
 }
 
-func (db *Database) Query(sqlText string, params ...any) (spi.Rows, error) {
+func (db *database) Query(sqlText string, params ...any) (spi.Rows, error) {
 	rows := &Rows{
 		handle:  db.handle,
 		sqlText: sqlText,
@@ -190,11 +193,11 @@ func (db *Database) Query(sqlText string, params ...any) (spi.Rows, error) {
 	return rows, nil
 }
 
-func (db *Database) QueryRowContext(ctx context.Context, sqlText string, params ...any) spi.Row {
+func (db *database) QueryRowContext(ctx context.Context, sqlText string, params ...any) spi.Row {
 	return db.QueryRow(sqlText, params...)
 }
 
-func (db *Database) QueryRow(sqlText string, params ...any) spi.Row {
+func (db *database) QueryRow(sqlText string, params ...any) spi.Row {
 	var row = &Row{}
 
 	var stmt unsafe.Pointer
@@ -288,18 +291,14 @@ func (db *Database) QueryRow(sqlText string, params ...any) spi.Row {
 
 var startupTime = time.Now()
 
-func (db *Database) GetServerInfo() (*spi.ServerInfo, error) {
+func (db *database) GetServerInfo() (*spi.ServerInfo, error) {
 	rsp := &spi.ServerInfo{}
-	// v := mods.GetVersion()
+
 	mem := runtime.MemStats{}
 	runtime.ReadMemStats(&mem)
 
 	rsp.Version = spi.Version{
-		// Major: int32(v.Major), Minor: int32(v.Minor), Patch: int32(v.Patch),
-		// GitSHA:         v.GitSHA,
-		// BuildTimestamp: mods.BuildTimestamp(),
-		// BuildCompiler:  mods.BuildCompiler(),
-		// Engine:         mods.EngineInfoString(),
+		Engine: LinkInfo(),
 	}
 
 	rsp.Runtime = spi.Runtime{

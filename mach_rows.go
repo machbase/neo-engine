@@ -219,10 +219,7 @@ func (rows *Rows) Columns() (spi.Columns, error) {
 
 func (rows *Rows) Message() string {
 	nrows := rows.RowsAffected()
-	return ResultString(rows.stmtType, nrows)
-}
-
-func ResultString(stmtType StmtType, nrows int64) string {
+	stmtType := rows.stmtType
 	var verb = ""
 
 	if stmtType >= 1 && stmtType <= 255 {
