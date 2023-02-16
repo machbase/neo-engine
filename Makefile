@@ -9,6 +9,9 @@ ifeq ($(uname_m),$(filter $(uname_m), aarch64 arm64))
 	go test -v -count 1 $(ARGS) -tags=fog_edition ./test
 	go test -v -count 1 $(ARGS) -tags=edge_edition ./test
 endif
+ifeq ($(uname_m),arm)
+	go test -v -count 1 $(ARGS) -tags=edge_edition ./test
+endif
 ifeq ($(uname_m),x86_64)
 	go test -v -count 1 $(ARGS) -tags=fog_edition ./test
 	go test -v -count 1 $(ARGS) -tags=edge_edition ./test
