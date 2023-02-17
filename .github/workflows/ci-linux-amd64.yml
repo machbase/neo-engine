@@ -1,4 +1,4 @@
-name: CI darwin-amd64
+name: CI linux-amd64
 
 on:
   pull_request:
