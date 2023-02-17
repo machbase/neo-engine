@@ -20,6 +20,8 @@ const (
 	OPT_SIGHANDLER_DISABLE InitOption = 0x1
 )
 
+const FactoryName = "machbase-engine"
+
 func Initialize(homeDir string) error {
 	return InitializeOption(homeDir, OPT_SIGHANDLER_DISABLE)
 }
@@ -31,7 +33,7 @@ func InitializeOption(homeDir string, opt InitOption) error {
 		return err
 	}
 	singleton.handle = handle
-	spi.RegisterFactory("engine", func() (spi.Database, error) {
+	spi.RegisterFactory(FactoryName, func() (spi.Database, error) {
 		return &database{handle: singleton.handle}, nil
 	})
 	return nil
@@ -279,6 +281,7 @@ func (db *database) QueryRow(sqlText string, params ...any) spi.Row {
 }
 
 var startupTime = time.Now()
+var BuildVersion spi.Version
 
 func (db *database) GetServerInfo() (*spi.ServerInfo, error) {
 	rsp := &spi.ServerInfo{}
@@ -287,7 +290,13 @@ func (db *database) GetServerInfo() (*spi.ServerInfo, error) {
 	runtime.ReadMemStats(&mem)
 
 	rsp.Version = spi.Version{
-		Engine: LinkInfo(),
+		Engine:         LinkInfo(),
+		Major:          BuildVersion.Major,
+		Minor:          BuildVersion.Minor,
+		Patch:          BuildVersion.Patch,
+		GitSHA:         BuildVersion.GitSHA,
+		BuildTimestamp: BuildVersion.BuildTimestamp,
+		BuildCompiler:  BuildVersion.BuildCompiler,
 	}
 
 	rsp.Runtime = spi.Runtime{
