@@ -46,6 +46,7 @@ func TestAppendLog(t *testing.T) {
 
 	expectCount := 10000
 
+	epochTime := int(time.Now().UnixNano()) - expectCount
 	for i := 0; i < expectCount; i++ {
 		ip4 := net.ParseIP(fmt.Sprintf("192.168.0.%d", i%255))
 		ip6 := net.ParseIP(fmt.Sprintf("12:FF:FF:FF:CC:EE:FF:%02X", i%255))
@@ -69,7 +70,7 @@ func TestAppendLog(t *testing.T) {
 			[]byte(fmt.Sprintf("binary_append_%02d", i)),
 			"blob_append",
 			"clob_append",
-			i*10000000000,
+			epochTime+i,
 			time.Now())
 		if err != nil {
 			panic(err)
