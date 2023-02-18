@@ -6,4 +6,4 @@ package mach
 // #cgo LDFLAGS: ${SRCDIR}/native/libmachengine_edge_linux_arm32.a -lm -ldl
 import "C"
 
-const LibMachLinkInfo = "static_edge_linux_arm"
+const LibMachLinkInfo = "static_edge_linux_armv7l"
