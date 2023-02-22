@@ -50,8 +50,6 @@ go build -tags edge_edition
 
 ```json
     "gopls": {
-        "build.buildFlags": [
-            "-tags=edge_edition"
-        ]
+        "buildFlags": ["-tags", "fog_edition"]
     }
 ```
