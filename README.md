@@ -1,7 +1,6 @@
 
 [![CI linux-amd64](https://github.com/machbase/neo-engine/actions/workflows/ci-linux-amd64.yml/badge.svg)](https://github.com/machbase/neo-engine/actions/workflows/ci-linux-amd64.yml)
-[![CI darwin-arm64](https://github.com/machbase/neo-engine/actions/workflows/ci-darwin-arm64.yml/badge.svg)](https://github.com/machbase/neo-engine/actions/workflows/ci-darwin-arm64.yml)
-[![CI linux-arm64](https://github.com/machbase/neo-engine/actions/workflows/ci-linux-arm64.yml/badge.svg)](https://github.com/machbase/neo-engine/actions/workflows/ci-linux-arm64.yml)
+[![CI darwin-amd64](https://github.com/machbase/neo-engine/actions/workflows/ci-darwin-amd64.yml/badge.svg)](https://github.com/machbase/neo-engine/actions/workflows/ci-darwin-amd64.yml)
 
 # neo-engine
 
