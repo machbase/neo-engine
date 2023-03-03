@@ -401,7 +401,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			}
 		case 6: // MACH_DATA_TYPE_IPV4
 			if v, nonNull, err := machColumnDataIPv4(stmt, i); err != nil {
-				return errors.Wrap(err, "scal IPv4")
+				return errors.Wrap(err, "Scan IPv4")
 			} else if nonNull {
 				if err = ScanIP(v, c); err != nil {
 					return err
@@ -411,7 +411,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			}
 		case 7: // MACH_DATA_TYPE_IPV6
 			if v, nonNull, err := machColumnDataIPv6(stmt, i); err != nil {
-				return errors.Wrap(err, "scal IPv4")
+				return errors.Wrap(err, "Scan IPv4")
 			} else if nonNull {
 				if err = ScanIP(v, c); err != nil {
 					return err
