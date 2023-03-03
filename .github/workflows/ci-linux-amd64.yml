@@ -2,8 +2,7 @@ name: CI linux-amd64
 
 on:
   pull_request:
-    types:
-      - opened
+    types: [ opened, synchronize, reopened ]
 
 jobs:
   builds:
