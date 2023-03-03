@@ -234,11 +234,11 @@ func (rows *Rows) Message() string {
 	} else if stmtType == 514 || stmtType == 515 {
 		verb = "deleted."
 	} else if stmtType == 516 {
-		verb = "inserted and selected."
+		verb = "select and inserted."
 	} else if stmtType == 517 {
 		verb = "updated."
 	} else {
-		return "unknown."
+		return fmt.Sprintf("executed (%d).", stmtType)
 	}
 	if nrows == 0 {
 		return fmt.Sprintf("no row %s", verb)
