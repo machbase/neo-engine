@@ -17,10 +17,20 @@ import (
 	spi "github.com/machbase/neo-spi"
 )
 
-func (db *database) Appender(tableName string) (spi.Appender, error) {
+func (db *database) Appender(tableName string, opts ...spi.AppendOption) (spi.Appender, error) {
 	appender := &Appender{}
 	appender.handle = db.handle
 	appender.tableName = strings.ToUpper(tableName)
+	appender.timeformat = "ns"
+
+	for _, opt := range opts {
+		switch v := opt.(type) {
+		case spi.AppendTimeformatOption:
+			appender.timeformat = string(v)
+		default:
+			return nil, fmt.Errorf("unknown appender option %T", v)
+		}
+	}
 
 	row := db.QueryRow("select type from M$SYS_TABLES where name = ?", appender.tableName)
 	var typ int32 = -1
@@ -61,6 +71,8 @@ type Appender struct {
 	tableType spi.TableType
 	columns   []*Column
 	closed    bool
+
+	timeformat string
 }
 
 func (ap *Appender) Close() (int64, int64, error) {
@@ -217,13 +229,76 @@ func (ap *Appender) appendTable0(vals []any) error {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
 			case time.Time:
-				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(v.UnixNano())
+				tv := v.UnixNano()
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
 			case int:
-				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(v)
+				tv := int64(v)
+				switch ap.timeformat {
+				case "s":
+					tv = tv * 1000000000
+				case "ms":
+					tv = tv * 1000000
+				case "us":
+					tv = tv * 1000
+				case "ns":
+				default:
+					return fmt.Errorf("MachAppendData cannot apply int with %s to %s (%s)", ap.timeformat, c.Name, c.Type)
+				}
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
+			case int16:
+				tv := int64(v)
+				switch ap.timeformat {
+				case "s":
+					tv = tv * 1000000000
+				case "ms":
+					tv = tv * 1000000
+				case "us":
+					tv = tv * 1000
+				case "ns":
+				default:
+					return fmt.Errorf("MachAppendData cannot apply int16 with %s to %s (%s)", ap.timeformat, c.Name, c.Type)
+				}
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
 			case int32:
-				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(v)
+				tv := int64(v)
+				switch ap.timeformat {
+				case "s":
+					tv = tv * 1000000000
+				case "ms":
+					tv = tv * 1000000
+				case "us":
+					tv = tv * 1000
+				case "ns":
+				default:
+					return fmt.Errorf("MachAppendData cannot apply int32 with %s to %s (%s)", ap.timeformat, c.Name, c.Type)
+				}
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
 			case int64:
-				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(v)
+				tv := int64(v)
+				switch ap.timeformat {
+				case "s":
+					tv = tv * 1000000000
+				case "ms":
+					tv = tv * 1000000
+				case "us":
+					tv = tv * 1000
+				case "ns":
+				default:
+					return fmt.Errorf("MachAppendData cannot apply int64 with %s to %s (%s)", ap.timeformat, c.Name, c.Type)
+				}
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
+			case string:
+				if len(ap.timeformat) > 0 {
+					cstr := C.CString(v)
+					defer C.free(unsafe.Pointer(cstr))
+					cfmt := C.CString(ap.timeformat)
+					defer C.free(unsafe.Pointer(cfmt))
+					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = -2 // MACH_ENGINE_APPEND_DATETIME_STRING
+					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mDateStr = cstr
+					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mFormatStr = cfmt
+				} else {
+					return fmt.Errorf("MachAppendData cannot apply string without format to %s (%s)", c.Name, c.Type)
+				}
 			}
 		case ColumnTypeNameIPv4:
 			ip, ok := val.(net.IP)
