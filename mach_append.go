@@ -27,6 +27,8 @@ func (db *database) Appender(tableName string, opts ...spi.AppendOption) (spi.Ap
 		switch v := opt.(type) {
 		case spi.AppendTimeformatOption:
 			appender.timeformat = string(v)
+		default:
+			return nil, fmt.Errorf("unknown appender option %T", v)
 		}
 	}
 
@@ -291,6 +293,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 					defer C.free(unsafe.Pointer(cstr))
 					cfmt := C.CString(ap.timeformat)
 					defer C.free(unsafe.Pointer(cfmt))
+					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = -2 // MACH_ENGINE_APPEND_DATETIME_STRING
 					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mDateStr = cstr
 					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mFormatStr = cfmt
 				} else {
