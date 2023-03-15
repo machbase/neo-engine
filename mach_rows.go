@@ -252,7 +252,7 @@ func (rows *Rows) Message() string {
 
 // internal use only from machrpcserver
 func (rows *Rows) Fetch() ([]any, bool, error) {
-	// select 가 아니면 fetch를 진행하지 않는다.
+	// Do not proceed if the statement is not a SELECT
 	if !rows.IsFetchable() {
 		return nil, false, sql.ErrNoRows
 	}
@@ -316,7 +316,7 @@ func (rows *Rows) Fetch() ([]any, bool, error) {
 }
 
 func (rows *Rows) Next() bool {
-	// select 가 아니면
+	// the statement is not SELECT
 	if !rows.IsFetchable() {
 		return false
 	}
@@ -351,7 +351,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			}
 		case 1: // MACH_DATA_TYPE_INT32
 			if v, nonNull, err := machColumnDataInt32(stmt, i); err != nil {
-				return errors.Wrap(err, "Scan int16")
+				return errors.Wrap(err, "Scan int32")
 			} else if nonNull {
 				if err = ScanInt32(v, c); err != nil {
 					return err
@@ -361,7 +361,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			}
 		case 2: // MACH_DATA_TYPE_INT64
 			if v, nonNull, err := machColumnDataInt64(stmt, i); err != nil {
-				return errors.Wrap(err, "Scan int16")
+				return errors.Wrap(err, "Scan int64")
 			} else if nonNull {
 				if err = ScanInt64(v, c); err != nil {
 					return err

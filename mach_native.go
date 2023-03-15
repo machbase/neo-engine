@@ -244,8 +244,9 @@ func machEffectRows(stmt unsafe.Pointer) (int64, error) {
 	return int64(rn), nil
 }
 
+// return true if fetch success(record exists), otherwise false
 func machFetch(stmt unsafe.Pointer) (bool, error) {
-	var fetchEnd C.int
+	var fetchEnd C.int // 0 if record exists, otherwise 1
 	if rt := C.MachFetch(stmt, &fetchEnd); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
