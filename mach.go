@@ -196,7 +196,10 @@ func (db *database) QueryRow(sqlText string, params ...any) spi.Row {
 		return row
 	}
 	defer func() {
-		row.err = machFreeStmt(db.handle, stmt)
+		err := machFreeStmt(db.handle, stmt)
+		if err != nil && row.err == nil {
+			row.err = err
+		}
 	}()
 
 	if row.err = machPrepare(stmt, sqlText); row.err != nil {
@@ -218,9 +221,7 @@ func (db *database) QueryRow(sqlText string, params ...any) spi.Row {
 		row.stmtType = typ
 	}
 
-	row.ok = true
-
-	// select 가 아니면 fetch를 진행하지 않는다.
+	// Do not proceed if the statement is not a SELECT
 	if !row.stmtType.IsSelect() {
 		affectedRows, err := machEffectRows(stmt)
 		if err != nil {
@@ -228,10 +229,19 @@ func (db *database) QueryRow(sqlText string, params ...any) spi.Row {
 			return row
 		}
 		row.affectedRows = affectedRows
+		row.ok = true
 		return row
 	}
 
-	if _, row.err = machFetch(stmt); row.err != nil {
+	var fetched bool
+	if fetched, row.err = machFetch(stmt); row.err != nil {
+		// fetch error
+		return row
+	}
+
+	// nothing fetched
+	if !fetched {
+		row.err = sql.ErrNoRows
 		return row
 	}
 
@@ -277,6 +287,9 @@ func (db *database) QueryRow(sqlText string, params ...any) spi.Row {
 		}
 	}
 	row.err = scan(stmt, row.values...)
+	if row.err == nil {
+		row.ok = true
+	}
 	return row
 }
 

@@ -24,6 +24,10 @@ func bind(stmt unsafe.Pointer, idx int, c any) error {
 		if err := machBindInt32(stmt, idx, int32(cv)); err != nil {
 			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
 		}
+	case int16:
+		if err := machBindInt32(stmt, idx, int32(cv)); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
 	case int32:
 		if err := machBindInt32(stmt, idx, cv); err != nil {
 			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
