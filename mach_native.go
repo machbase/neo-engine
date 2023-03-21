@@ -24,9 +24,10 @@ func LinkInfo() string {
 }
 
 func Edition() string {
-	if strings.Contains(LibMachLinkInfo, "edge") {
+	nfo := LinkInfo()
+	if strings.Contains(nfo, "edge") {
 		return "edge"
-	} else if strings.Contains(LibMachLinkInfo, "fog") {
+	} else if strings.Contains(nfo, "fog") {
 		return "fog"
 	} else {
 		return "none"
