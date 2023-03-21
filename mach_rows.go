@@ -231,12 +231,14 @@ func (rows *Rows) Message() string {
 		verb = "selected."
 	} else if stmtType == 513 {
 		verb = "inserted."
-	} else if stmtType == 514 || stmtType == 515 {
+	} else if stmtType >= 514 && stmtType <= 517 {
 		verb = "deleted."
-	} else if stmtType == 516 {
+	} else if stmtType == 518 {
 		verb = "select and inserted."
-	} else if stmtType == 517 {
+	} else if stmtType == 519 {
 		verb = "updated."
+	} else if stmtType >= 521 && stmtType <= 523 {
+		return "rollup executed."
 	} else {
 		return fmt.Sprintf("executed (%d).", stmtType)
 	}

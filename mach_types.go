@@ -21,9 +21,10 @@ type ColumnSize int
 // * ALTER SYSTEM: 256-511
 // * SELECT: 512
 // * INSERT: 513
-// * DELETE: 514-515
-// * INSERT_SELECT: 516
-// * UPDATE: 517
+// * DELETE: 514-517
+// * INSERT_SELECT: 518
+// * UPDATE: 519
+// * EXEC_ROLLUP: 521-523
 type StmtType int
 
 func (typ StmtType) IsSelect() bool {
