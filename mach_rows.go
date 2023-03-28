@@ -158,6 +158,7 @@ type Rows struct {
 	stmtType   StmtType
 	sqlText    string
 	timeFormat string
+	fetchError error
 }
 
 func (rows *Rows) Close() error {
@@ -325,9 +326,14 @@ func (rows *Rows) Next() bool {
 
 	next, err := machFetch(rows.stmt)
 	if err != nil {
+		rows.fetchError = err
 		return false
 	}
 	return next
+}
+
+func (rows *Rows) FetchError() error {
+	return rows.fetchError
 }
 
 func (rows *Rows) Scan(cols ...any) error {
