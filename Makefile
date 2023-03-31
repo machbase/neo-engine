@@ -27,4 +27,7 @@ ifeq ($(uname_m),i386)
 	go test -v -count 1 $(ARGS) -tags=edge_edition ./test
 endif
 endif
+ifeq ($(shell uname -o),Cygwin)
+	go test -v -count 1 $(ARGS) -tags=fog_edition ./test
+endif
 
