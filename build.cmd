@@ -13,8 +13,8 @@
 @REM SET CXX=zig c++ -target native-native-msvc
 @REM SET CXX=
 @REM @SET CGO_CFLAGS=-IC:/Users/Eirny/zig-windows-x86_64-0.11.0-dev.2160+49d37e2d1/lib/libc/include/any-windows-any
-@REM SET CGO_LDFLAGS=-static ./native/libmachengine_fog_windows_amd64.lib 
-SET CGO_LDFLAGS= --static -l.\native\libmachengine_fog_windows_amd64.lib
+@REM SET CGO_LDFLAGS=-static ./native/libmachengine_fog_windows_amd64.a
+SET CGO_LDFLAGS= --static -lmachengine_fog_windows_amd64 -LC:/Users/ratse/work/neo-engine/native  -lm  -lws2_32  -lnetapi32 -ladvapi32 -liphlpapi -ldbghelp -lshell32 -luser32
 SET CGO_CFLAGS=
 
-go build -v -buildmode=c-shared -o tmp\a.out -tags=fog_edition .\windows\main.go 
+go build -buildmode=c-shared -o tmp\mach.exe -tags=fog_edition .\windows\main.go
