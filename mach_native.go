@@ -73,6 +73,7 @@ func startup0(envHandle unsafe.Pointer) error {
 	if rt := C.MachStartupDB(envHandle); rt != 0 {
 		dbErr := machError0(envHandle)
 		if dbErr != nil {
+			fmt.Println("========>", dbErr.Error())
 			return dbErr
 		} else {
 			return fmt.Errorf("MachStartupDB returns %d", rt)
