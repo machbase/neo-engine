@@ -26,9 +26,9 @@ go get -u github.com/machbase/neo-engine
 ## Related projects
 
 - [neo-server](https://github.com/machbase/neo-server) machbase-neo server
-- [neo-shell](https://github.com/machbase/neo-shell) machbase-neo shell
 - [neo-grpc](https://github.com/machbase/neo-grpc) gRPC interface
 - [neo-spi](https://github.com/machbase/neo-spi) Defines the general interface
+- [neo-web](https://github.com/machbase/neo-web) machbase-neo web ui
 
 ## Development environment
 
