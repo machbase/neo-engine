@@ -56,6 +56,13 @@ func TestMain(m *testing.M) {
 		machbase_conf = []byte(tmp)
 	}
 
+	if runtime.GOOS == "windows" {
+		// can not assign other ip address on Windows
+		tmp := string(machbase_conf)
+		tmp = strings.Replace(tmp, "BIND_IP_ADDRESS = 127.0.0.1", "BIND_IP_ADDRESS = 0.0.0.0", 1)
+		machbase_conf = []byte(tmp)
+	}
+
 	confpath := filepath.Join(homepath, "conf", "machbase.conf")
 	if err = os.WriteFile(confpath, machbase_conf, 0644); err != nil {
 		panic(errors.Wrap(err, "machbase.conf"))
@@ -99,6 +106,7 @@ func TestMain(m *testing.M) {
 	if mdb, ok := db.(spi.DatabaseServer); ok {
 		mdb.Shutdown()
 	}
+	mach.Finalize()
 }
 
 func TestColumns(t *testing.T) {

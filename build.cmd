@@ -14,4 +14,4 @@
 
 @REM go build -o tmp/mach.exe -tags=fog_edition .\windows\main.go
 
-go test -tags=fog_edition -timeout 30s -run ^TestAppendLog$  github.com/machbase/neo-engine/test
+@go test -v -count=1 -tags=fog_edition -timeout 30s  github.com/machbase/neo-engine/test
