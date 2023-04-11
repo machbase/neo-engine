@@ -26,17 +26,11 @@ func TestMain(m *testing.M) {
 	fmt.Println("-------------------------------")
 	fmt.Println(mach.LinkInfo())
 
-	// exePath, err := os.Executable()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// homepath := filepath.Join(filepath.Dir(exePath), "machbase")
-
-	homepath, err := filepath.Abs("./tmp/machbase")
+	homepath, err := filepath.Abs(filepath.Join(".", "tmp", "machbase"))
 	if err != nil {
 		panic(errors.Wrap(err, "abs tmp dir"))
 	}
-	if err := mkDirIfNotExists("./tmp"); err != nil {
+	if err := mkDirIfNotExists(filepath.Join(".", "tmp")); err != nil {
 		panic(errors.Wrap(err, "create tmp dir"))
 	}
 	if err := mkDirIfNotExists(homepath); err != nil {
@@ -56,9 +50,16 @@ func TestMain(m *testing.M) {
 		panic("invalid machbase.conf")
 	}
 
-	if strings.Contains(mach.LibMachLinkInfo, "fog") {
+	if strings.Contains(mach.LinkInfo(), "fog") {
 		tmp := string(machbase_conf)
 		tmp = strings.Replace(tmp, "TAG_CACHE_MAX_MEMORY_SIZE = 33554432", "TAG_CACHE_MAX_MEMORY_SIZE = 536870912", 1)
+		machbase_conf = []byte(tmp)
+	}
+
+	if runtime.GOOS == "windows" {
+		// can not assign other ip address on Windows
+		tmp := string(machbase_conf)
+		tmp = strings.Replace(tmp, "BIND_IP_ADDRESS = 127.0.0.1", "BIND_IP_ADDRESS = 0.0.0.0", 1)
 		machbase_conf = []byte(tmp)
 	}
 
@@ -105,6 +106,7 @@ func TestMain(m *testing.M) {
 	if mdb, ok := db.(spi.DatabaseServer); ok {
 		mdb.Shutdown()
 	}
+	//mach.Finalize()
 }
 
 func TestColumns(t *testing.T) {

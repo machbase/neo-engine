@@ -52,3 +52,33 @@ go build -tags edge_edition
         "buildFlags": ["-tags", "fog_edition"]
     }
 ```
+#### VSCode settings.json for Windows
+
+- `./vscode/settings.json`
+
+```json
+{
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/vendor": true
+    },
+    "gopls": {
+        "ui.semanticTokens": true,
+        "ui.completion.usePlaceholders": true,
+        "buildFlags": ["-tags", "fog_edition"]
+    },
+    "go.toolsEnvVars": {
+        "GOOS": "windows",
+        "GOARCH": "amd64",
+        "CGO_ENABLED":"1",
+        "CC": "C:\\TDM-GCC-64\\bin\\gcc.exe",
+        "CXX": "C:\\TDM-GCC-64\\bin\\g++.exe"
+    },
+    "go.testFlags": ["-timeout", "60s", "-v", "-count=1", "-race", "-cover", "-tags=fog_edition"]
+}
+```
