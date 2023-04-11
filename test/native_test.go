@@ -106,7 +106,7 @@ func TestMain(m *testing.M) {
 	if mdb, ok := db.(spi.DatabaseServer); ok {
 		mdb.Shutdown()
 	}
-	mach.Finalize()
+	//mach.Finalize()
 }
 
 func TestColumns(t *testing.T) {
