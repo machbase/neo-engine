@@ -18,10 +18,10 @@ go get -u github.com/machbase/neo-engine
 |:---------|:--------------|-------------|--------------|
 | Linux    | amd64         | O           | O            |
 |          | arm64         | O           | O            |
-|          | x86 (32bit)   | X           | imminent     |
-| macOS    | amd64 (Intel) | imminent    | imminent     |
+|          | arm (32bit)   | X           | O            |
+| macOS    | amd64 (Intel) | O           | O            |
 |          | arm64 (Apple) | O           | O            |
-| Windows  | amd64         | imminent    | X            |     
+| Windows  | amd64         | O           | X            |     
 
 ## Related projects
 
