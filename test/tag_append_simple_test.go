@@ -23,7 +23,7 @@ func createSimpleTagTable() {
 func TestAppendTagSimple(t *testing.T) {
 	t.Logf("---- append simple_tag [%d]", goid())
 
-	pr := db.QueryRow("select count(*) from complex_tag")
+	pr := db.QueryRow("select count(*) from simple_tag")
 	if pr.Err() != nil {
 		panic(pr.Err())
 	}
