@@ -86,4 +86,25 @@ func TestAppendTagSimple(t *testing.T) {
 	}
 	require.Equal(t, expectCount, count)
 	t.Log("---- append simple_tag done")
+
+	rows, err = db.Query("select name, time, value from simple_tag where name = 'name-0' limit 5")
+	if err != nil {
+		panic(err)
+	}
+	countName := 0
+	for i := 0; rows.Next(); i++ {
+		var name string
+		var ts time.Time
+		var val float64
+
+		err := rows.Scan(&name, &ts, &val)
+		if err != nil {
+			panic(err)
+		}
+		require.Equal(t, "name-0", name)
+		countName++
+		t.Log(name, ts, val)
+	}
+	rows.Close()
+	require.Equal(t, 5, countName)
 }
