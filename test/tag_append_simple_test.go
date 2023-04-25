@@ -87,6 +87,8 @@ func TestAppendTagSimple(t *testing.T) {
 	require.Equal(t, expectCount, count)
 	t.Log("---- append simple_tag done")
 
+	// wait flush data of append
+	time.Sleep(1 * time.Second)
 	rows, err = db.Query("select name, time, value from simple_tag where name = 'name-0' limit 5")
 	if err != nil {
 		panic(err)

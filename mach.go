@@ -92,7 +92,7 @@ func (db *database) UserAuth(username, password string) (bool, error) {
 	return machUserAuth(db.handle, username, password)
 }
 
-func (db *database) Explain(sqlText string) (string, error) {
+func (db *database) Explain(sqlText string, full bool) (string, error) {
 	var stmt unsafe.Pointer
 	if err := machAllocStmt(db.handle, &stmt); err != nil {
 		return "", err
@@ -101,7 +101,7 @@ func (db *database) Explain(sqlText string) (string, error) {
 	if err := machPrepare(stmt, sqlText); err != nil {
 		return "", err
 	}
-	return machExplain(stmt)
+	return machExplain(stmt, full)
 }
 
 func (db *database) ExecContext(ctx context.Context, sqlText string, params ...any) spi.Result {
