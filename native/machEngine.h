@@ -293,9 +293,10 @@ int MachAppendData(void* aMachStmt, MachEngineAppendParam* aAppendParamArr);
  * @brief EXPLAIN query
  * @param [in] aMachStmt statement handle
  * @param [out] aBuffer EXPLAIN result will be set
- * @param [out] aBufSize sepcifies the size of aBuffer
+ * @param [in] aBufSize sepcifies the size of aBuffer
+ * @param [in] aExplainMode (0: explain only, 1: explain full)
  */
-int MachExplain(void* aMachStmt, char* aBuffer, int aBufSize);
+int MachExplain(void* aMachStmt, char* aBuffer, int aBufSize, int aExplainMode);
 
 #endif
 
