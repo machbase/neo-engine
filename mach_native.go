@@ -128,9 +128,13 @@ func machUserAuth(envHandle unsafe.Pointer, username string, password string) (b
 	}
 }
 
-func machExplain(stmt unsafe.Pointer) (string, error) {
-	var cstr = [1024]C.char{}
-	if rt := C.MachExplain(stmt, &cstr[0], C.int(len(cstr))); rt != 0 {
+func machExplain(stmt unsafe.Pointer, full bool) (string, error) {
+	var cstr = [4096]C.char{}
+	var mode = 0
+	if full {
+		mode = 1
+	}
+	if rt := C.MachExplain(stmt, &cstr[0], C.int(len(cstr)), C.int(mode)); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
 			return "", stmtErr
