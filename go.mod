@@ -3,10 +3,10 @@ module github.com/machbase/neo-engine
 go 1.19
 
 require (
-	github.com/machbase/neo-spi v1.1.2-0.20230425030538-9c21efb716a4
+	github.com/machbase/neo-spi v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
-	golang.org/x/text v0.6.0
+	golang.org/x/text v0.9.0
 )
 
 require (
