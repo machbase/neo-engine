@@ -7,6 +7,8 @@ import (
 	"net"
 	"os"
 	"runtime"
+	"sort"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -295,6 +297,7 @@ func (db *database) QueryRow(sqlText string, params ...any) spi.Row {
 
 var startupTime = time.Now()
 var BuildVersion spi.Version
+var ServicePorts map[string][]*spi.ServicePort
 
 func (db *database) GetServerInfo() (*spi.ServerInfo, error) {
 	rsp := &spi.ServerInfo{}
@@ -326,5 +329,25 @@ func (db *database) GetServerInfo() (*spi.ServerInfo, error) {
 		MemStackSys:    mem.StackSys,
 		MemStackInUse:  mem.StackInuse,
 	}
+
 	return rsp, nil
+}
+
+func (db *database) GetServicePorts(svc string) ([]*spi.ServicePort, error) {
+	ports := []*spi.ServicePort{}
+	for k, s := range ServicePorts {
+		if len(svc) > 0 {
+			if strings.ToLower(svc) != k {
+				continue
+			}
+		}
+		ports = append(ports, s...)
+	}
+	sort.Slice(ports, func(i, j int) bool {
+		if ports[i].Service == ports[j].Service {
+			return ports[i].Address < ports[j].Address
+		}
+		return ports[i].Service < ports[j].Service
+	})
+	return ports, nil
 }
