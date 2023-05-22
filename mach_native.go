@@ -129,7 +129,7 @@ func machUserAuth(envHandle unsafe.Pointer, username string, password string) (b
 }
 
 func machExplain(stmt unsafe.Pointer, full bool) (string, error) {
-	var cstr = [4096]C.char{}
+	var cstr = [1024 * 16]C.char{}
 	var mode = 0
 	if full {
 		mode = 1
