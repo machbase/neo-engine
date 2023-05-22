@@ -140,7 +140,11 @@ func (row *Row) Scan(cols ...any) error {
 		case []byte:
 			row.err = ScanBytes(v, cols[i])
 		default:
-			return fmt.Errorf("column %d can not assign to %T", i, v)
+			if v == nil {
+				cols[i] = nil
+			} else {
+				return fmt.Errorf("column %d can not assign to %T", i, v)
+			}
 		}
 		if row.err != nil {
 			return row.err
