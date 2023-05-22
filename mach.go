@@ -100,8 +100,15 @@ func (db *database) Explain(sqlText string, full bool) (string, error) {
 		return "", err
 	}
 	defer machFreeStmt(db.handle, stmt)
-	if err := machPrepare(stmt, sqlText); err != nil {
-		return "", err
+
+	if full {
+		if err := machDirectExecute(stmt, sqlText); err != nil {
+			return "", err
+		}
+	} else {
+		if err := machPrepare(stmt, sqlText); err != nil {
+			return "", err
+		}
 	}
 	return machExplain(stmt, full)
 }
