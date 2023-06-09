@@ -159,7 +159,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 		switch c.Type {
 		default:
 			return fmt.Errorf("machAppendData unknown column type '%s'", c.Type)
-		case ColumnTypeNameInt16:
+		case spi.ColumnBufferTypeInt16:
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
@@ -168,7 +168,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 			case int16:
 				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
 			}
-		case ColumnTypeNameInt32:
+		case spi.ColumnBufferTypeInt32:
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
@@ -185,7 +185,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 			case uint:
 				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
 			}
-		case ColumnTypeNameInt64:
+		case spi.ColumnBufferTypeInt64:
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
@@ -206,14 +206,14 @@ func (ap *Appender) appendTable0(vals []any) error {
 			case uint64:
 				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
 			}
-		case ColumnTypeNameFloat:
+		case spi.ColumnBufferTypeFloat:
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
 			case float32:
 				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
 			}
-		case ColumnTypeNameDouble:
+		case spi.ColumnBufferTypeDouble:
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
@@ -222,7 +222,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 			case float64:
 				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
 			}
-		case ColumnTypeNameDatetime:
+		case spi.ColumnBufferTypeDatetime:
 			(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mDateStr = nil
 			(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mFormatStr = nil
 			switch v := val.(type) {
@@ -300,7 +300,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 					return fmt.Errorf("MachAppendData cannot apply string without format to %s (%s)", c.Name, c.Type)
 				}
 			}
-		case ColumnTypeNameIPv4:
+		case spi.ColumnBufferTypeIPv4:
 			ip, ok := val.(net.IP)
 			if !ok {
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
@@ -314,7 +314,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 					(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddr[i] = C.uchar(ipv4[i])
 				}
 			}
-		case ColumnTypeNameIPv6:
+		case spi.ColumnBufferTypeIPv6:
 			ip, ok := val.(net.IP)
 			if !ok {
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
@@ -328,7 +328,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 					(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddr[i] = C.uchar(ipv6[i])
 				}
 			}
-		case ColumnTypeNameString:
+		case spi.ColumnBufferTypeString:
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
@@ -343,7 +343,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mData = unsafe.Pointer(cstr)
 				}
 			}
-		case ColumnTypeNameBinary:
+		case spi.ColumnBufferTypeBinary:
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
