@@ -6,6 +6,7 @@ require (
 	github.com/machbase/neo-spi v1.2.1-0.20230508071206-90bcddd6d54b
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
+	golang.org/x/sys v0.5.0
 	golang.org/x/text v0.9.0
 )
 

@@ -29,6 +29,7 @@ func Initialize(homeDir string) error {
 }
 
 func InitializeOption(homeDir string, opt InitOption) error {
+	homeDir = translateCodePage(homeDir)
 	var handle unsafe.Pointer
 	err := initialize0(homeDir, int(opt), &handle)
 	if err != nil {
