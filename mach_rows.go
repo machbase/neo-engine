@@ -163,6 +163,23 @@ type Rows struct {
 	sqlText    string
 	timeFormat string
 	fetchError error
+	executed   bool
+}
+
+func (rows *Rows) Execute(params ...any) error {
+	if rows.executed {
+		return errors.New("query already executed")
+	}
+	rows.executed = true
+	for i, p := range params {
+		if err := bind(rows.stmt, i, p); err != nil {
+			return err
+		}
+	}
+	if err := machExecute(rows.stmt); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (rows *Rows) Close() error {

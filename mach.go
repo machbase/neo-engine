@@ -168,6 +168,16 @@ func (db *database) QueryContext(ctx context.Context, sqlText string, params ...
 }
 
 func (db *database) Query(sqlText string, params ...any) (spi.Rows, error) {
+	prepared, err := db.PrepareQuery(sqlText)
+	if err != nil {
+		return nil, err
+	}
+	rows := prepared.(*Rows)
+	err = rows.Execute(params...)
+	return rows, err
+}
+
+func (db *database) PrepareQuery(sqlText string) (spi.Rows, error) {
 	rows := &Rows{
 		handle:  db.handle,
 		sqlText: sqlText,
@@ -176,14 +186,6 @@ func (db *database) Query(sqlText string, params ...any) (spi.Rows, error) {
 		return nil, err
 	}
 	if err := machPrepare(rows.stmt, sqlText); err != nil {
-		return nil, err
-	}
-	for i, p := range params {
-		if err := bind(rows.stmt, i, p); err != nil {
-			return nil, err
-		}
-	}
-	if err := machExecute(rows.stmt); err != nil {
 		return nil, err
 	}
 	if stmtType, err := machStmtType(rows.stmt); err != nil {
