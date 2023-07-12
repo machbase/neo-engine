@@ -210,6 +210,14 @@ func (ap *Appender) appendTable0(vals []any) error {
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case int:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
+			case int16:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
+			case int32:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
+			case int64:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
 			case float32:
 				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
 			}
@@ -217,6 +225,14 @@ func (ap *Appender) appendTable0(vals []any) error {
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case int:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			case int16:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			case int32:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			case int64:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
 			case float32:
 				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
 			case float64:
