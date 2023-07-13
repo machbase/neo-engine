@@ -135,6 +135,8 @@ func ScanString(v string, c any) error {
 		*cv = v
 	case *[]uint8:
 		*cv = []uint8(v)
+	case *net.IP:
+		*cv = net.ParseIP(v)
 	default:
 		return fmt.Errorf("scan convert from STRING to %T not supported", c)
 	}
@@ -148,7 +150,7 @@ func ScanBytes(v []byte, c any) error {
 	case *string:
 		*cv = string(v)
 	default:
-		return fmt.Errorf("scan convert from STRING to %T not supported", c)
+		return fmt.Errorf("scan convert from BYTES to %T not supported", c)
 	}
 	return nil
 }
