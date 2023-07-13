@@ -22,6 +22,7 @@ var db spi.Database
 
 func TestMain(m *testing.M) {
 	var err error
+	var testMode string = "fog"
 
 	fmt.Println("-------------------------------")
 	fmt.Println(mach.LinkInfo())
@@ -50,7 +51,7 @@ func TestMain(m *testing.M) {
 		panic("invalid machbase.conf")
 	}
 
-	if strings.Contains(mach.LinkInfo(), "fog") {
+	if testMode == "fog" {
 		tmp := string(machbase_conf)
 		tmp = strings.Replace(tmp, "TAG_CACHE_MAX_MEMORY_SIZE = 33554432", "TAG_CACHE_MAX_MEMORY_SIZE = 536870912", 1)
 		machbase_conf = []byte(tmp)
