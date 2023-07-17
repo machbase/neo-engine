@@ -14,14 +14,14 @@ go get -u github.com/machbase/neo-engine
 
 ## Supporting platforms
 
-| OS       | ARCH          | fog_edition | edge_edition |
-|:---------|:--------------|-------------|--------------|
-| Linux    | amd64         | O           | O            |
-|          | arm64         | O           | O            |
-|          | arm (32bit)   | X           | O            |
-| macOS    | amd64 (Intel) | O           | O            |
-|          | arm64 (Apple) | O           | O            |
-| Windows  | amd64         | O           | X            |     
+| OS       | ARCH          | SUPPORT     |
+|:---------|:--------------|-------------|
+| Linux    | amd64         | O           |
+|          | arm64         | O           |
+|          | arm (32bit)   | O           |
+| macOS    | amd64 (Intel) | O           |
+|          | arm64 (Apple) | O           |
+| Windows  | amd64         | O           |  
 
 ## Related projects
 
@@ -34,24 +34,6 @@ go get -u github.com/machbase/neo-engine
 
 ### VSCode Build flags
 
-Set one of editions as Go build tags
-
-- edge_edition
-- fog_edition
-
-#### Command line
-
-```sh
-go build -tags edge_edition
-```
-
-#### VSCode settings.json
-
-```json
-    "gopls": {
-        "buildFlags": ["-tags", "fog_edition"]
-    }
-```
 #### VSCode settings.json for Windows
 
 - `./vscode/settings.json`
@@ -70,7 +52,6 @@ go build -tags edge_edition
     "gopls": {
         "ui.semanticTokens": true,
         "ui.completion.usePlaceholders": true,
-        "buildFlags": ["-tags", "fog_edition"]
     },
     "go.toolsEnvVars": {
         "GOOS": "windows",
@@ -79,6 +60,6 @@ go build -tags edge_edition
         "CC": "C:\\TDM-GCC-64\\bin\\gcc.exe",
         "CXX": "C:\\TDM-GCC-64\\bin\\g++.exe"
     },
-    "go.testFlags": ["-timeout", "60s", "-v", "-count=1", "-race", "-cover", "-tags=fog_edition"]
+    "go.testFlags": ["-timeout", "60s", "-v", "-count=1", "-race", "-cover"]
 }
 ```
