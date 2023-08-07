@@ -91,15 +91,19 @@ typedef struct MachEngineColumnInfo
 } MachEngineColumnInfo;
 
 #define MACH_OPT_NONE            (0)
-#define MACH_OPT_SIG_HANDLER_OFF (1)
+#define MACH_OPT_SIGHANDLER_MASK (3)
+#define MACH_OPT_SIGHANDLER_ON   (0)
+#define MACH_OPT_SIGHANDLER_OFF  (1)
+#define MACH_OPT_SIGINT_OFF      (2)
 
 /**
  * @brief Initialize MachEngineEnv
  * @param [in] aHomePath the path of machbase home
+ * @param [in] aPortNo the port number of machbase server, it takes effect only when aPortNo > 0
  * @param [in] aOpt MACH_OPT_XXXX options can be bitwise-ored)
  * @param [out] aEnvHandle to be allocated
  */
-int MachInitialize(char* aHomePath, int aOpt, void** aEnvHandle);
+int MachInitialize(char* aHomePath, int aPortNo, int aOpt, void** aEnvHandle);
 
 /**
  * Finalize MachEngineEnv
