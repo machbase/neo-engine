@@ -23,7 +23,4 @@ ifeq ($(uname_m),i386)
 	go test -v -count 1 $(ARGS) ./test
 endif
 endif
-ifeq ($(shell uname -o),Cygwin)
-	go test -v -count 1 $(ARGS) ./test
-endif
 
