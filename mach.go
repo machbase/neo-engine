@@ -18,14 +18,18 @@ import (
 type InitOption int
 
 const (
-	OPT_NONE               InitOption = 0x0
-	OPT_SIGHANDLER_DISABLE InitOption = 0x1
+	// machbase-engine takes all control of the signals
+	OPT_SIGHANDLER_ON InitOption = 0x0
+	// the caller takes all control, machbase-engine can not leave stack dump when the process crashed
+	OPT_SIGHANDLER_OFF InitOption = 0x1
+	// engine takes all control except SIGINT, so that the caller can take SIGINT control
+	OPT_SIGHANDLER_SIGINT_OFF InitOption = 0x2
 )
 
 const FactoryName = "machbase-engine"
 
 func Initialize(homeDir string, machPort int) error {
-	return InitializeOption(homeDir, machPort, OPT_SIGHANDLER_DISABLE)
+	return InitializeOption(homeDir, machPort, OPT_SIGHANDLER_OFF)
 }
 
 func InitializeOption(homeDir string, machPort int, opt InitOption) error {
