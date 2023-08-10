@@ -19,11 +19,8 @@ ifeq ($(uname_s),Darwin)
 ifeq ($(uname_m),$(filter $(uname_m), aarch64 arm64))
 	go test -v -count 1 $(ARGS) ./test
 endif
-ifeq ($(uname_m),i386)
+ifeq ($(uname_m),$(filter $(uname_m), x86_64 i386))
 	go test -v -count 1 $(ARGS) ./test
 endif
-endif
-ifeq ($(shell uname -o),Cygwin)
-	go test -v -count 1 $(ARGS) ./test
 endif
 
