@@ -69,7 +69,7 @@ func TestMain(m *testing.M) {
 		panic(errors.Wrap(err, "machbase.conf"))
 	}
 
-	mach.Initialize(homepath)
+	mach.Initialize(homepath, 5656)
 
 	if mach.ExistsDatabase() {
 		if err = mach.DestroyDatabase(); err != nil {

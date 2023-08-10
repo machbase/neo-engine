@@ -24,14 +24,14 @@ const (
 
 const FactoryName = "machbase-engine"
 
-func Initialize(homeDir string) error {
-	return InitializeOption(homeDir, OPT_SIGHANDLER_DISABLE)
+func Initialize(homeDir string, machPort int) error {
+	return InitializeOption(homeDir, machPort, OPT_SIGHANDLER_DISABLE)
 }
 
-func InitializeOption(homeDir string, opt InitOption) error {
+func InitializeOption(homeDir string, machPort int, opt InitOption) error {
 	homeDir = translateCodePage(homeDir)
 	var handle unsafe.Pointer
-	err := initialize0(homeDir, int(opt), &handle)
+	err := initialize0(homeDir, machPort, int(opt), &handle)
 	if err != nil {
 		return err
 	}
