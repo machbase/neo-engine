@@ -1,8 +1,8 @@
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/machbase/neo-spi v1.2.1-0.20230508071206-90bcddd6d54b h1:uy4WHjIEGS+Xw/I1HnFtqTouwNKuD4O5NYFT945eYVM=
-github.com/machbase/neo-spi v1.2.1-0.20230508071206-90bcddd6d54b/go.mod h1:jmzExsS84LOY0f097WhbXw1avVgl64/tHm6CdW/P+zM=
+github.com/machbase/neo-spi v1.4.2-0.20230826114627-513e14c4aa77 h1:c1qhZ1z/8kJjKghCPUbRV3JYTNsRXZgfynQzy5UzrHc=
+github.com/machbase/neo-spi v1.4.2-0.20230826114627-513e14c4aa77/go.mod h1:jmzExsS84LOY0f097WhbXw1avVgl64/tHm6CdW/P+zM=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

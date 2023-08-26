@@ -166,12 +166,16 @@ type Rows struct {
 }
 
 func (rows *Rows) Close() error {
+	var err error
 	if rows.stmt != nil {
-		machFreeStmt(rows.handle, rows.stmt)
+		err = machFreeStmt(rows.handle, rows.stmt)
+		if DefaultDetective != nil {
+			DefaultDetective.DelistDetective(rows)
+		}
 		rows.stmt = nil
 	}
 	rows.sqlText = ""
-	return nil
+	return err
 }
 
 func (rows *Rows) IsFetchable() bool {
@@ -326,6 +330,10 @@ func (rows *Rows) Next() bool {
 	// the statement is not SELECT
 	if !rows.IsFetchable() {
 		return false
+	}
+
+	if DefaultDetective != nil {
+		DefaultDetective.UpdateDetective(rows)
 	}
 
 	next, err := machFetch(rows.stmt)
