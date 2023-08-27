@@ -357,6 +357,10 @@ func (db *database) GetInflights() ([]*spi.Inflight, error) {
 	return DefaultDetective.InflightsDetective(), nil
 }
 
+func (db *database) GetPostflights() ([]*spi.Postflight, error) {
+	return DefaultDetective.PostflightsDetective(), nil
+}
+
 func (db *database) GetServicePorts(svc string) ([]*spi.ServicePort, error) {
 	ports := []*spi.ServicePort{}
 	for k, s := range ServicePorts {
@@ -383,4 +387,5 @@ type Detective interface {
 	DelistDetective(any)
 	UpdateDetective(any)
 	InflightsDetective() []*spi.Inflight
+	PostflightsDetective() []*spi.Postflight
 }
