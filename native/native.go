@@ -1,4 +1,4 @@
 package native
 
-var GitHash = "290e2e0d"
-var Version = "8.0.2"
+var GitHash = "7fbb77f8"
+var Version = "8.0.4"
