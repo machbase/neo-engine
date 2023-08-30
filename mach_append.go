@@ -165,8 +165,12 @@ func (ap *Appender) appendTable0(vals []any) error {
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
 			case uint16:
 				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
+			case *uint16:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(*v)
 			case int16:
 				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
+			case *int16:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(*v)
 			}
 		case spi.ColumnBufferTypeInt32:
 			switch v := val.(type) {
@@ -174,16 +178,28 @@ func (ap *Appender) appendTable0(vals []any) error {
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
 			case int16:
 				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case *int16:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
 			case uint16:
 				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case *uint16:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
 			case int32:
 				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case *int32:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
 			case uint32:
 				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case *uint32:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
 			case int:
 				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case *int:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
 			case uint:
 				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case *uint:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
 			}
 		case spi.ColumnBufferTypeInt64:
 			switch v := val.(type) {
@@ -191,20 +207,36 @@ func (ap *Appender) appendTable0(vals []any) error {
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
 			case int16:
 				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *int16:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
 			case uint16:
 				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *uint16:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
 			case int32:
 				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *int32:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
 			case uint32:
 				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *uint32:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
 			case int:
 				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *int:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
 			case uint:
 				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *uint:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
 			case int64:
 				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *int64:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
 			case uint64:
 				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *uint64:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
 			}
 		case spi.ColumnBufferTypeFloat:
 			switch v := val.(type) {
@@ -212,14 +244,24 @@ func (ap *Appender) appendTable0(vals []any) error {
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
 			case int:
 				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
+			case *int:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(*v)
 			case int16:
 				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
+			case *int16:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(*v)
 			case int32:
 				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
+			case *int32:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(*v)
 			case int64:
 				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
+			case *int64:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(*v)
 			case float32:
 				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
+			case *float32:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(*v)
 			}
 		case spi.ColumnBufferTypeDouble:
 			switch v := val.(type) {
@@ -227,16 +269,28 @@ func (ap *Appender) appendTable0(vals []any) error {
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
 			case int:
 				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			case *int:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(*v)
 			case int16:
 				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			case *int16:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(*v)
 			case int32:
 				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			case *int32:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(*v)
 			case int64:
 				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			case *int64:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(*v)
 			case float32:
 				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			case *float32:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(*v)
 			case float64:
 				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			case *float64:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(*v)
 			}
 		case spi.ColumnBufferTypeDatetime:
 			(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mDateStr = nil
@@ -245,6 +299,9 @@ func (ap *Appender) appendTable0(vals []any) error {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
 			case time.Time:
+				tv := v.UnixNano()
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
+			case *time.Time:
 				tv := v.UnixNano()
 				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
 			case int:
@@ -315,6 +372,18 @@ func (ap *Appender) appendTable0(vals []any) error {
 				} else {
 					return fmt.Errorf("MachAppendData cannot apply string without format to %s (%s)", c.Name, c.Type)
 				}
+			case *string:
+				if len(ap.timeformat) > 0 {
+					cstr := C.CString(*v)
+					defer C.free(unsafe.Pointer(cstr))
+					cfmt := C.CString(ap.timeformat)
+					defer C.free(unsafe.Pointer(cfmt))
+					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = -2 // MACH_ENGINE_APPEND_DATETIME_STRING
+					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mDateStr = cstr
+					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mFormatStr = cfmt
+				} else {
+					return fmt.Errorf("MachAppendData cannot apply string without format to %s (%s)", c.Name, c.Type)
+				}
 			}
 		case spi.ColumnBufferTypeIPv4:
 			ip, ok := val.(net.IP)
@@ -358,6 +427,16 @@ func (ap *Appender) appendTable0(vals []any) error {
 					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(cstrlen)
 					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mData = unsafe.Pointer(cstr)
 				}
+			case *string:
+				if len(*v) == 0 {
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(0)
+				} else {
+					cstr := C.CString(*v)
+					defer C.free(unsafe.Pointer(cstr))
+					cstrlen := C.strlen(cstr)
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(cstrlen)
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mData = unsafe.Pointer(cstr)
+				}
 			}
 		case spi.ColumnBufferTypeBinary:
 			switch v := val.(type) {
@@ -368,6 +447,16 @@ func (ap *Appender) appendTable0(vals []any) error {
 					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(0)
 				} else {
 					cstr := C.CString(v)
+					defer C.free(unsafe.Pointer(cstr))
+					cstrlen := C.strlen(cstr)
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(cstrlen)
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mData = unsafe.Pointer(cstr)
+				}
+			case *string:
+				if len(*v) == 0 {
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(0)
+				} else {
+					cstr := C.CString(*v)
 					defer C.free(unsafe.Pointer(cstr))
 					cstrlen := C.strlen(cstr)
 					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(cstrlen)
