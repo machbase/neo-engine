@@ -1,26 +1,4 @@
-.PHONY: all test test-edition test-fog test-edge
-
-uname_s := $(shell uname -s)
-uname_m := $(shell uname -m)
+.PHONY: all test
 
 test:
-ifeq ($(uname_s),Linux)
-ifeq ($(uname_m),$(filter $(uname_m), aarch64 arm64))
-	go test -v -count 1 $(ARGS) ./test
-endif
-ifeq ($(uname_m),$(filter $(uname_m), arm armv6l armv7l))
-	go test -v -count 1 $(ARGS) ./test
-endif
-ifeq ($(uname_m),x86_64)
-	go test -v -count 1 $(ARGS) ./test
-endif
-endif
-ifeq ($(uname_s),Darwin)
-ifeq ($(uname_m),$(filter $(uname_m), aarch64 arm64))
-	go test -v -count 1 $(ARGS) ./test
-endif
-ifeq ($(uname_m),$(filter $(uname_m), x86_64 i386))
-	go test -v -count 1 $(ARGS) ./test
-endif
-endif
-
+	go run mage.go test

@@ -1,6 +1,7 @@
-package test
+package mach_test
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"testing"
@@ -10,7 +11,13 @@ import (
 )
 
 func createLogTable() {
-	result := db.Exec(SqlTidy(
+	ctx := context.TODO()
+	conn, err := db.Connect(ctx, connectOpts...)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+	result := conn.Exec(ctx, SqlTidy(
 		`create log table log(
 			short short, ushort ushort, 
 			integer integer, uinteger uinteger, 
@@ -28,18 +35,24 @@ func createLogTable() {
 }
 
 func TestAppendLog(t *testing.T) {
-	pr := db.QueryRow("select count(*) from log")
+	ctx := context.TODO()
+	conn, err := db.Connect(ctx, connectOpts...)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+	pr := conn.QueryRow(ctx, "select count(*) from log")
 	if pr.Err() != nil {
 		panic(pr.Err())
 	}
 	var existingCount int
-	err := pr.Scan(&existingCount)
+	err = pr.Scan(&existingCount)
 	if err != nil {
 		panic(err)
 	}
 
 	t.Log("---- append log")
-	appender, err := db.Appender("log")
+	appender, err := conn.Appender(ctx, "log")
 	if err != nil {
 		panic(err)
 	}
@@ -83,7 +96,7 @@ func TestAppendLog(t *testing.T) {
 	require.Equal(t, int64(expectCount), sc)
 	require.Equal(t, int64(0), fc)
 
-	r := db.QueryRow("select count(*) from log")
+	r := conn.QueryRow(ctx, "select count(*) from log")
 	if r.Err() != nil {
 		panic(r.Err())
 	}
@@ -96,7 +109,7 @@ func TestAppendLog(t *testing.T) {
 
 	t.Log("---- append log done")
 
-	row := db.QueryRow("select count(*) from m$sys_tables  where name = ?", "LOG")
+	row := conn.QueryRow(ctx, "select count(*) from m$sys_tables  where name = ?", "LOG")
 	if row.Err() != nil {
 		panic(err)
 	} else {
@@ -108,7 +121,7 @@ func TestAppendLog(t *testing.T) {
 		require.Equal(t, 1, count)
 	}
 
-	rows, err := db.Query(SqlTidy(`
+	rows, err := conn.Query(ctx, SqlTidy(`
 		select
 			short, ushort, integer, uinteger, long, ulong, float, double, 
 			ipv4, ipv6,
@@ -156,7 +169,7 @@ func TestAppendLog(t *testing.T) {
 	}
 	rows.Close()
 
-	rows, err = db.Query(SqlTidy(`
+	rows, err = conn.Query(ctx, SqlTidy(`
 		select 
 			short, ushort, integer, uinteger, long, ulong, float, double, varchar, text, json, 
 			datetime, datetime_now 

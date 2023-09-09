@@ -25,7 +25,9 @@ func LinkInfo() string {
 
 func Edition() string {
 	nfo := LinkInfo()
-	if strings.Contains(nfo, "edge") {
+	if strings.Contains(nfo, "standard") {
+		return "standard"
+	} else if strings.Contains(nfo, "edge") {
 		return "edge"
 	} else if strings.Contains(nfo, "fog") {
 		return "fog"
@@ -94,6 +96,43 @@ func shutdown0(envHandle unsafe.Pointer) error {
 	}
 }
 
+func machConnectionCount(envHandle unsafe.Pointer) int {
+	ret := C.MachGetConnectionCount(envHandle)
+	return int(ret)
+}
+
+func machConnect(envHandle unsafe.Pointer, username string, password string, conn *unsafe.Pointer) error {
+	cusername := C.CString(username)
+	cpassword := C.CString(password)
+	defer func() {
+		C.free(unsafe.Pointer(cusername))
+		C.free(unsafe.Pointer(cpassword))
+	}()
+	if rt := C.MachConnect(envHandle, cusername, cpassword, conn); rt == 0 {
+		return nil
+	} else {
+		dbErr := machError0(envHandle)
+		if dbErr != nil {
+			return dbErr
+		} else {
+			return fmt.Errorf("MachConnect returns %d", rt)
+		}
+	}
+}
+
+func machDisconnect(conn unsafe.Pointer) error {
+	if rt := C.MachDisconnect(conn); rt == 0 {
+		return nil
+	} else {
+		dbErr := machError0(conn)
+		if dbErr != nil {
+			return dbErr
+		} else {
+			return fmt.Errorf("MachDisconnect returns %d", rt)
+		}
+	}
+}
+
 func machError0(handle unsafe.Pointer) error {
 	code := C.MachErrorCode(handle)
 	msg := C.MachErrorMsg(handle)
@@ -145,10 +184,10 @@ func machExplain(stmt unsafe.Pointer, full bool) (string, error) {
 	return C.GoString(&cstr[0]), nil
 }
 
-func machAllocStmt(envHandle unsafe.Pointer, stmt *unsafe.Pointer) error {
+func machAllocStmt(conn unsafe.Pointer, stmt *unsafe.Pointer) error {
 	var ptr unsafe.Pointer
-	if rt := C.MachAllocStmt(envHandle, &ptr); rt != 0 {
-		dbErr := machError0(envHandle)
+	if rt := C.MachAllocStmt(conn, &ptr); rt != 0 {
+		dbErr := machError0(conn)
 		if dbErr != nil {
 			return dbErr
 		} else {
@@ -159,8 +198,8 @@ func machAllocStmt(envHandle unsafe.Pointer, stmt *unsafe.Pointer) error {
 	return nil
 }
 
-func machFreeStmt(envHandle unsafe.Pointer, stmt unsafe.Pointer) error {
-	if rt := C.MachFreeStmt(envHandle, stmt); rt != 0 {
+func machFreeStmt(stmt unsafe.Pointer) error {
+	if rt := C.MachFreeStmt(stmt); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
 			return stmtErr

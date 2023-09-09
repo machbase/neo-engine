@@ -157,7 +157,6 @@ func (row *Row) Scan(cols ...any) error {
 }
 
 type Rows struct {
-	handle     unsafe.Pointer
 	stmt       unsafe.Pointer
 	stmtType   StmtType
 	sqlText    string
@@ -168,7 +167,7 @@ type Rows struct {
 func (rows *Rows) Close() error {
 	var err error
 	if rows.stmt != nil {
-		err = machFreeStmt(rows.handle, rows.stmt)
+		err = machFreeStmt(rows.stmt)
 		if DefaultDetective != nil {
 			DefaultDetective.DelistDetective(rows)
 		}

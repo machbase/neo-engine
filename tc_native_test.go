@@ -1,6 +1,7 @@
-package test
+package mach_test
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"net"
@@ -19,6 +20,7 @@ import (
 )
 
 var db spi.Database
+var connectOpts []spi.ConnectOption
 
 func TestMain(m *testing.M) {
 	var err error
@@ -69,7 +71,7 @@ func TestMain(m *testing.M) {
 		panic(errors.Wrap(err, "machbase.conf"))
 	}
 
-	mach.Initialize(homepath, 5656)
+	mach.InitializeOption(homepath, 5656, mach.OPT_SIGHANDLER_OFF)
 
 	if mach.ExistsDatabase() {
 		if err = mach.DestroyDatabase(); err != nil {
@@ -93,11 +95,23 @@ func TestMain(m *testing.M) {
 			panic(err)
 		}
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+	defer cancel()
 
-	result := db.Exec("alter system set trace_log_level=1023")
+	connectOpts = []spi.ConnectOption{
+		mach.WithPassword("sys", "manager"),
+	}
+
+	conn, err := db.Connect(ctx, connectOpts...)
+	if err != nil {
+		panic(err)
+	}
+	result := conn.Exec(ctx, "alter system set trace_log_level=1023")
 	if result.Err() != nil {
 		panic(result.Err())
 	}
+	conn.Close()
+
 	createLogTable()
 	createTagTable()
 	createSimpleTagTable()
@@ -107,14 +121,21 @@ func TestMain(m *testing.M) {
 	if mdb, ok := db.(spi.DatabaseServer); ok {
 		mdb.Shutdown()
 	}
-	//mach.Finalize()
 }
 
 func TestColumns(t *testing.T) {
-	rows, err := db.Query("select * from log")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	conn, err := db.Connect(ctx, connectOpts...)
 	if err != nil {
 		panic(err)
 	}
+	defer conn.Close()
+	rows, err := conn.Query(ctx, "select * from log")
+	if err != nil {
+		panic(err)
+	}
+	require.NotNil(t, rows, "no rows selected")
 	defer rows.Close()
 	cols, err := rows.Columns()
 	if err != nil {
@@ -152,7 +173,13 @@ func TestColumns(t *testing.T) {
 }
 
 func TestExec(t *testing.T) {
-	result := db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+	ctx := context.TODO()
+	conn, err := db.Connect(ctx, connectOpts...)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+	result := conn.Exec(ctx, "insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		0, 1, 2, 3, 4, 5, 6.6, 7.77,
 		net.ParseIP("127.0.0.1"), net.ParseIP("AB:CC:CC:CC:CC:CC:CC:FF"),
 		fmt.Sprintf("varchar_1_%s.", randomVarchar()),
@@ -161,7 +188,7 @@ func TestExec(t *testing.T) {
 		panic(result.Err())
 	}
 
-	result = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+	result = conn.Exec(ctx, "insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		1, 1, 2, 3, 4, 5, 6.6, 7.77,
 		net.ParseIP("127.0.0.2"), net.ParseIP("AB:CC:CC:CC:CC:CC:CC:DD"),
 		fmt.Sprintf("varchar_2_%s.", randomVarchar()),
@@ -170,7 +197,7 @@ func TestExec(t *testing.T) {
 		panic(result.Err())
 	}
 
-	result = db.Exec("insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+	result = conn.Exec(ctx, "insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		2, 1, 2, 3, 4, 5, 6.6, 7.77,
 		net.ParseIP("127.0.0.3"), net.ParseIP("AB:CC:CC:CC:CC:CC:CC:AA"),
 		fmt.Sprintf("varchar_3_%s.", randomVarchar()),

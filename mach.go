@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -76,11 +77,13 @@ var _ spi.Database = &database{}
 var _ spi.DatabaseServer = &database{}
 var _ spi.DatabaseAuth = &database{}
 var _ spi.DatabaseAux = &database{}
+var _ spi.Conn = &connection{}
+var _ spi.Explainer = &connection{}
 
 // implements spi.DatabaseLife interface
 func (db *database) Startup() error {
-	// machbase startup 과정에서 현재 디렉터리를 HOME으로 변경하는데,
-	// application의 Working directory를 유지하기 위해 chdir()을 호출한다.
+	// machbase change the current dir to $HOME during startup process.
+	// Call chdir() for keeping the working dir of the application.
 	cwd, _ := os.Getwd()
 	defer func() {
 		os.Chdir(cwd)
@@ -104,39 +107,49 @@ func (db *database) UserAuth(username, password string) (bool, error) {
 	return machUserAuth(db.handle, username, password)
 }
 
-func (db *database) Explain(sqlText string, full bool) (string, error) {
-	var stmt unsafe.Pointer
-	if err := machAllocStmt(db.handle, &stmt); err != nil {
-		return "", err
-	}
-	defer machFreeStmt(db.handle, stmt)
-
-	if full {
-		if err := machDirectExecute(stmt, sqlText); err != nil {
-			return "", err
-		}
-	} else {
-		if err := machPrepare(stmt, sqlText); err != nil {
-			return "", err
-		}
-	}
-	return machExplain(stmt, full)
+type connection struct {
+	ctx       context.Context
+	username  string
+	password  string
+	handle    unsafe.Pointer
+	closeOnce sync.Once
 }
 
-func (db *database) ExecContext(ctx context.Context, sqlText string, params ...any) spi.Result {
-	// TODO apply context
-	return db.Exec(sqlText, params...)
+func WithPassword(username string, password string) spi.ConnectOption {
+	return func(c spi.Conn) {
+		c.(*connection).username = username
+		c.(*connection).password = password
+	}
 }
 
-func (db *database) Exec(sqlText string, params ...any) spi.Result {
+func (db *database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi.Conn, error) {
+	ret := &connection{ctx: ctx}
+	for _, o := range opts {
+		o(ret)
+	}
+	var handle unsafe.Pointer
+	if err := machConnect(db.handle, ret.username, ret.password, &handle); err != nil {
+		return nil, err
+	}
+	ret.handle = handle
+	return ret, nil
+}
+
+func (conn *connection) Close() (err error) {
+	conn.closeOnce.Do(func() {
+		err = machDisconnect(conn.handle)
+	})
+	return
+}
+
+func (conn *connection) Exec(ctx context.Context, sqlText string, params ...any) spi.Result {
 	var result = &Result{}
-
 	var stmt unsafe.Pointer
-	if err := machAllocStmt(db.handle, &stmt); err != nil {
+	if err := machAllocStmt(conn.handle, &stmt); err != nil {
 		result.err = err
 		return result
 	}
-	defer machFreeStmt(db.handle, stmt)
+	defer machFreeStmt(stmt)
 	if len(params) == 0 {
 		if err := machDirectExecute(stmt, sqlText); err != nil {
 			result.err = err
@@ -172,16 +185,11 @@ func (db *database) Exec(sqlText string, params ...any) spi.Result {
 	return result
 }
 
-func (db *database) QueryContext(ctx context.Context, sqlText string, params ...any) (spi.Rows, error) {
-	return db.Query(sqlText, params...)
-}
-
-func (db *database) Query(sqlText string, params ...any) (spi.Rows, error) {
+func (conn *connection) Query(ctx context.Context, sqlText string, params ...any) (spi.Rows, error) {
 	rows := &Rows{
-		handle:  db.handle,
 		sqlText: sqlText,
 	}
-	if err := machAllocStmt(db.handle, &rows.stmt); err != nil {
+	if err := machAllocStmt(conn.handle, &rows.stmt); err != nil {
 		return nil, err
 	}
 	if err := machPrepare(rows.stmt, sqlText); err != nil {
@@ -206,19 +214,14 @@ func (db *database) Query(sqlText string, params ...any) (spi.Rows, error) {
 	return rows, nil
 }
 
-func (db *database) QueryRowContext(ctx context.Context, sqlText string, params ...any) spi.Row {
-	return db.QueryRow(sqlText, params...)
-}
-
-func (db *database) QueryRow(sqlText string, params ...any) spi.Row {
+func (conn *connection) QueryRow(ctx context.Context, sqlText string, params ...any) spi.Row {
 	var row = &Row{}
-
 	var stmt unsafe.Pointer
-	if row.err = machAllocStmt(db.handle, &stmt); row.err != nil {
+	if row.err = machAllocStmt(conn.handle, &stmt); row.err != nil {
 		return row
 	}
 	defer func() {
-		err := machFreeStmt(db.handle, stmt)
+		err := machFreeStmt(stmt)
 		if err != nil && row.err == nil {
 			row.err = err
 		}
@@ -313,6 +316,25 @@ func (db *database) QueryRow(sqlText string, params ...any) spi.Row {
 		row.ok = true
 	}
 	return row
+}
+
+func (conn *connection) Explain(ctx context.Context, sqlText string, full bool) (string, error) {
+	var stmt unsafe.Pointer
+	if err := machAllocStmt(conn.handle, &stmt); err != nil {
+		return "", err
+	}
+	defer machFreeStmt(stmt)
+
+	if full {
+		if err := machDirectExecute(stmt, sqlText); err != nil {
+			return "", err
+		}
+	} else {
+		if err := machPrepare(stmt, sqlText); err != nil {
+			return "", err
+		}
+	}
+	return machExplain(stmt, full)
 }
 
 var startupTime = time.Now()
