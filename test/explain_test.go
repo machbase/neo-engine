@@ -4,11 +4,13 @@ import (
 	"strings"
 	"testing"
 
+	spi "github.com/machbase/neo-spi"
 	"github.com/stretchr/testify/require"
 )
 
 func TestExplain(t *testing.T) {
-	plan, err := db.Explain("select * from complex_tag order by time desc", false)
+	aux := db.(spi.DatabaseAux)
+	plan, err := aux.Explain("select * from complex_tag order by time desc", false)
 	require.Nil(t, err)
 	require.True(t, len(plan) > 0)
 	require.True(t, strings.HasPrefix(plan, " PROJECT"))
@@ -17,7 +19,8 @@ func TestExplain(t *testing.T) {
 }
 
 func TestExplainFull(t *testing.T) {
-	plan, err := db.Explain("select * from complex_tag order by time desc", true)
+	aux := db.(spi.DatabaseAux)
+	plan, err := aux.Explain("select * from complex_tag order by time desc", true)
 	require.Nil(t, err)
 	require.True(t, len(plan) > 0)
 	require.True(t, strings.Contains(plan, "********"))

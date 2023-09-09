@@ -72,6 +72,11 @@ type database struct {
 	handle unsafe.Pointer
 }
 
+var _ spi.Database = &database{}
+var _ spi.DatabaseServer = &database{}
+var _ spi.DatabaseAuth = &database{}
+var _ spi.DatabaseAux = &database{}
+
 // implements spi.DatabaseLife interface
 func (db *database) Startup() error {
 	// machbase startup 과정에서 현재 디렉터리를 HOME으로 변경하는데,
@@ -181,6 +186,9 @@ func (db *database) Query(sqlText string, params ...any) (spi.Rows, error) {
 	}
 	if err := machPrepare(rows.stmt, sqlText); err != nil {
 		return nil, err
+	}
+	if DefaultDetective != nil {
+		DefaultDetective.EnlistDetective(rows, sqlText)
 	}
 	for i, p := range params {
 		if err := bind(rows.stmt, i, p); err != nil {
@@ -345,6 +353,14 @@ func (db *database) GetServerInfo() (*spi.ServerInfo, error) {
 	return rsp, nil
 }
 
+func (db *database) GetInflights() ([]*spi.Inflight, error) {
+	return DefaultDetective.InflightsDetective(), nil
+}
+
+func (db *database) GetPostflights() ([]*spi.Postflight, error) {
+	return DefaultDetective.PostflightsDetective(), nil
+}
+
 func (db *database) GetServicePorts(svc string) ([]*spi.ServicePort, error) {
 	ports := []*spi.ServicePort{}
 	for k, s := range ServicePorts {
@@ -362,4 +378,14 @@ func (db *database) GetServicePorts(svc string) ([]*spi.ServicePort, error) {
 		return ports[i].Service < ports[j].Service
 	})
 	return ports, nil
+}
+
+var DefaultDetective Detective
+
+type Detective interface {
+	EnlistDetective(obj any, sqlTextOrTableName string)
+	DelistDetective(any)
+	UpdateDetective(any)
+	InflightsDetective() []*spi.Inflight
+	PostflightsDetective() []*spi.Postflight
 }

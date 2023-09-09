@@ -25,28 +25,56 @@ func bind(stmt unsafe.Pointer, idx int, c any) error {
 		if err := machBindInt32(stmt, idx, int32(cv)); err != nil {
 			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
 		}
+	case *int:
+		if err := machBindInt32(stmt, idx, int32(*cv)); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
 	case int16:
 		if err := machBindInt32(stmt, idx, int32(cv)); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
+	case *int16:
+		if err := machBindInt32(stmt, idx, int32(*cv)); err != nil {
 			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
 		}
 	case int32:
 		if err := machBindInt32(stmt, idx, cv); err != nil {
 			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
 		}
+	case *int32:
+		if err := machBindInt32(stmt, idx, *cv); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
 	case int64:
 		if err := machBindInt64(stmt, idx, cv); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
+	case *int64:
+		if err := machBindInt64(stmt, idx, *cv); err != nil {
 			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
 		}
 	case float32:
 		if err := machBindFloat64(stmt, idx, float64(cv)); err != nil {
 			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
 		}
+	case *float32:
+		if err := machBindFloat64(stmt, idx, float64(*cv)); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
 	case float64:
 		if err := machBindFloat64(stmt, idx, cv); err != nil {
 			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
 		}
+	case *float64:
+		if err := machBindFloat64(stmt, idx, *cv); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
 	case string:
 		if err := machBindString(stmt, idx, cv); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
+	case *string:
+		if err := machBindString(stmt, idx, *cv); err != nil {
 			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
 		}
 	case []byte:
@@ -58,6 +86,10 @@ func bind(stmt unsafe.Pointer, idx int, c any) error {
 			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
 		}
 	case time.Time:
+		if err := machBindInt64(stmt, idx, cv.UnixNano()); err != nil {
+			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
+		}
+	case *time.Time:
 		if err := machBindInt64(stmt, idx, cv.UnixNano()); err != nil {
 			return errors.Wrapf(err, "bind error idx %d type %T", idx, c)
 		}
