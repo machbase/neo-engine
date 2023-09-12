@@ -97,7 +97,7 @@ typedef struct MachEngineColumnInfo
 #define MACH_OPT_SIGINT_OFF      (2)
 
 /**
- * @brief Initialize MachEngineEnv
+ * @brief Initialize DB Handle
  * @param [in] aHomePath the path of machbase home
  * @param [in] aPortNo the port number of machbase server, it takes effect only when aPortNo > 0
  * @param [in] aOpt MACH_OPT_XXXX options can be bitwise-ored)
@@ -106,7 +106,7 @@ typedef struct MachEngineColumnInfo
 int MachInitialize(char* aHomePath, int aPortNo, int aOpt, void** aEnvHandle);
 
 /**
- * Finalize MachEngineEnv
+ * Finalize DB Handle
  * aEnvHandle will be freed
  */
 void MachFinalize(void* aEnvHandle);
@@ -132,6 +132,19 @@ int MachStartupDB(void* aEnvHandle);
  */
 int MachShutdownDB(void* aEnvHandle);
 
+/**
+ * @brief connect machbase DB
+ */
+int MachConnect(void*  aEnvHandle,
+                char*  aUserName,
+                char*  aPassword,
+                void** aConHandle);
+
+/**
+ * @brief disconnect machbase DB
+ */
+int MachDisconnect(void* aConHandle);
+
 /*
  * DB user authentification
  * return value is 0 or error code,
@@ -152,14 +165,18 @@ int MachUserAuth(void* aEnvHandle,
 int MachErrorCode(void* aHandle);
 char* MachErrorMsg(void* aHandle);
 
+/**
+ * @brief get current connected handle count
+ */
+int MachGetConnectionCount(void* aEnvHandle);
 
 /*************************SQL Function*********************************/
 
 /**
  * @brief allocate and free statement
  */
-int MachAllocStmt(void* aEnvHandle, void** aMachStmt);
-int MachFreeStmt(void* aEnvHandle, void* aMachStmt);
+int MachAllocStmt(void* aConHandle, void** aMachStmt);
+int MachFreeStmt(void* aMachStmt);
 
 /**
  * @brief prepare statement
@@ -269,6 +286,15 @@ int MachBindString(void* aMachStmt, int aParamNo, char* aValue, int aLength);
 int MachBindBinary(void* aMachStmt, int aParamNo, void* aValue, int aLength);
 int MachBindNull(void* aMachStmt, int aParamNo);
 
+/**
+ * @brief EXPLAIN query
+ * @param [in] aMachStmt statement handle
+ * @param [out] aBuffer EXPLAIN result will be set
+ * @param [in] aBufSize sepcifies the size of aBuffer
+ * @param [in] aExplainMode (0: explain only, 1: explain full)
+ */
+int MachExplain(void* aMachStmt, char* aBuffer, int aBufSize, int aExplainMode);
+
 /*************************Append Function*********************************/
 
 /**
@@ -292,15 +318,6 @@ int MachAppendClose(void* aMachStmt,
  * @param [in] aAppendParamArr append buffer which contains data to append
  */
 int MachAppendData(void* aMachStmt, MachEngineAppendParam* aAppendParamArr);
-
-/**
- * @brief EXPLAIN query
- * @param [in] aMachStmt statement handle
- * @param [out] aBuffer EXPLAIN result will be set
- * @param [in] aBufSize sepcifies the size of aBuffer
- * @param [in] aExplainMode (0: explain only, 1: explain full)
- */
-int MachExplain(void* aMachStmt, char* aBuffer, int aBufSize, int aExplainMode);
 
 #endif
 
