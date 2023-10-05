@@ -13,7 +13,7 @@ import (
 
 func Test() error {
 	mg.Deps(CheckTmp)
-	if err := sh.RunV("go", "test", "-v", "-race", "-count", "1", "-cover", "-coverprofile", "./tmp/cover.out", "."); err != nil {
+	if err := sh.RunV("go", "test", "./...", "-count", "1", "-cover", "-coverprofile", "./tmp/cover.out"); err != nil {
 		return err
 	}
 	if output, err := sh.Output("go", "tool", "cover", "-func=./tmp/cover.out"); err != nil {

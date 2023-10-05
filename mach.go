@@ -108,11 +108,12 @@ func (db *database) UserAuth(username, password string) (bool, error) {
 }
 
 type connection struct {
-	ctx       context.Context
-	username  string
-	password  string
-	handle    unsafe.Pointer
-	closeOnce sync.Once
+	ctx         context.Context
+	username    string
+	password    string
+	isTrustUser bool
+	handle      unsafe.Pointer
+	closeOnce   sync.Once
 }
 
 func WithPassword(username string, password string) spi.ConnectOption {
@@ -122,14 +123,27 @@ func WithPassword(username string, password string) spi.ConnectOption {
 	}
 }
 
+func WithTrustUser(username string) spi.ConnectOption {
+	return func(c spi.Conn) {
+		c.(*connection).username = username
+		c.(*connection).isTrustUser = true
+	}
+}
+
 func (db *database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi.Conn, error) {
 	ret := &connection{ctx: ctx}
 	for _, o := range opts {
 		o(ret)
 	}
 	var handle unsafe.Pointer
-	if err := machConnect(db.handle, ret.username, ret.password, &handle); err != nil {
-		return nil, err
+	if ret.isTrustUser {
+		if err := machConnectTrust(db.handle, ret.username, &handle); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := machConnect(db.handle, ret.username, ret.password, &handle); err != nil {
+			return nil, err
+		}
 	}
 	ret.handle = handle
 	return ret, nil

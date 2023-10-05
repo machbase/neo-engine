@@ -120,6 +120,23 @@ func machConnect(envHandle unsafe.Pointer, username string, password string, con
 	}
 }
 
+func machConnectTrust(envHandle unsafe.Pointer, username string, conn *unsafe.Pointer) error {
+	cusername := C.CString(username)
+	defer func() {
+		C.free(unsafe.Pointer(cusername))
+	}()
+	if rt := C.MachConnectNoAuth(envHandle, cusername, conn); rt == 0 {
+		return nil
+	} else {
+		dbErr := machError0(envHandle)
+		if dbErr != nil {
+			return dbErr
+		} else {
+			return fmt.Errorf("MachConnect returns %d", rt)
+		}
+	}
+}
+
 func machDisconnect(conn unsafe.Pointer) error {
 	if rt := C.MachDisconnect(conn); rt == 0 {
 		return nil
