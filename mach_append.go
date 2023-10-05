@@ -8,6 +8,7 @@ package mach
 */
 import "C"
 import (
+	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -17,9 +18,8 @@ import (
 	spi "github.com/machbase/neo-spi"
 )
 
-func (db *database) Appender(tableName string, opts ...spi.AppendOption) (spi.Appender, error) {
+func (conn *connection) Appender(ctx context.Context, tableName string, opts ...spi.AppendOption) (spi.Appender, error) {
 	appender := &Appender{}
-	appender.handle = db.handle
 	appender.tableName = strings.ToUpper(tableName)
 	appender.timeformat = "ns"
 
@@ -32,7 +32,13 @@ func (db *database) Appender(tableName string, opts ...spi.AppendOption) (spi.Ap
 		}
 	}
 
-	row := db.QueryRow("select type from M$SYS_TABLES where name = ?", appender.tableName)
+	var stmt unsafe.Pointer
+	if err := machAllocStmt(conn.handle, &stmt); err != nil {
+		return nil, err
+	}
+	defer machFreeStmt(stmt)
+
+	row := conn.QueryRow(ctx, "select type from M$SYS_TABLES where name = ?", appender.tableName)
 	var typ int32 = -1
 	if err := row.Scan(&typ); err != nil {
 		return nil, err
@@ -42,7 +48,7 @@ func (db *database) Appender(tableName string, opts ...spi.AppendOption) (spi.Ap
 	}
 	appender.tableType = spi.TableType(typ)
 
-	if err := machAllocStmt(db.handle, &appender.stmt); err != nil {
+	if err := machAllocStmt(conn.handle, &appender.stmt); err != nil {
 		return nil, err
 	}
 	if err := machAppendOpen(appender.stmt, tableName); err != nil {
@@ -65,7 +71,6 @@ func (db *database) Appender(tableName string, opts ...spi.AppendOption) (spi.Ap
 }
 
 type Appender struct {
-	handle    unsafe.Pointer
 	stmt      unsafe.Pointer
 	tableName string
 	tableType spi.TableType
@@ -85,7 +90,7 @@ func (ap *Appender) Close() (int64, int64, error) {
 		return s, f, err
 	}
 
-	if err := machFreeStmt(ap.handle, ap.stmt); err != nil {
+	if err := machFreeStmt(ap.stmt); err != nil {
 		return s, f, err
 	}
 	return s, f, nil

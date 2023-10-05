@@ -1,6 +1,7 @@
-package test
+package mach_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -9,8 +10,14 @@ import (
 )
 
 func TestExplain(t *testing.T) {
-	aux := db.(spi.DatabaseAux)
-	plan, err := aux.Explain("select * from complex_tag order by time desc", false)
+	ctx := context.TODO()
+	conn, err := db.Connect(ctx, connectOpts...)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+	explainer := conn.(spi.Explainer)
+	plan, err := explainer.Explain(ctx, "select * from complex_tag order by time desc", false)
 	require.Nil(t, err)
 	require.True(t, len(plan) > 0)
 	require.True(t, strings.HasPrefix(plan, " PROJECT"))
@@ -19,8 +26,14 @@ func TestExplain(t *testing.T) {
 }
 
 func TestExplainFull(t *testing.T) {
-	aux := db.(spi.DatabaseAux)
-	plan, err := aux.Explain("select * from complex_tag order by time desc", true)
+	ctx := context.TODO()
+	conn, err := db.Connect(ctx, connectOpts...)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+	explainer := conn.(spi.Explainer)
+	plan, err := explainer.Explain(ctx, "select * from complex_tag order by time desc", true)
 	require.Nil(t, err)
 	require.True(t, len(plan) > 0)
 	require.True(t, strings.Contains(plan, "********"))

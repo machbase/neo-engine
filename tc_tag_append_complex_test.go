@@ -1,6 +1,7 @@
-package test
+package mach_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -9,7 +10,13 @@ import (
 )
 
 func createTagTable() {
-	result := db.Exec(SqlTidy(
+	ctx := context.TODO()
+	conn, err := db.Connect(ctx, connectOpts...)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+	result := conn.Exec(ctx, SqlTidy(
 		`create tag table complex_tag(
 			name            varchar(100) primary key, 
 			time            datetime basetime, 
@@ -30,17 +37,24 @@ func createTagTable() {
 func TestAppendTagComplex(t *testing.T) {
 	t.Logf("---- append complex_tag [%d]", goid())
 
-	pr := db.QueryRow("select count(*) from complex_tag")
+	ctx := context.TODO()
+	conn, err := db.Connect(ctx, connectOpts...)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	pr := conn.QueryRow(ctx, "select count(*) from complex_tag")
 	if pr.Err() != nil {
 		panic(pr.Err())
 	}
 	var existingCount int
-	err := pr.Scan(&existingCount)
+	err = pr.Scan(&existingCount)
 	if err != nil {
 		panic(err)
 	}
 
-	appender, err := db.Appender("complex_tag")
+	appender, err := conn.Appender(ctx, "complex_tag")
 	if err != nil {
 		panic(err)
 	}
@@ -71,7 +85,7 @@ func TestAppendTagComplex(t *testing.T) {
 	require.Equal(t, int64(expectCount), sc)
 	require.Equal(t, int64(0), fc)
 
-	rows, err := db.Query(`
+	rows, err := conn.Query(ctx, `
 		select 
 			name, time, value, type, ivalue, pname, payload 
 		from
@@ -108,7 +122,7 @@ func TestAppendTagComplex(t *testing.T) {
 	}
 	rows.Close()
 
-	r := db.QueryRow("select count(*) from complex_tag where time >= ?", ts)
+	r := conn.QueryRow(ctx, "select count(*) from complex_tag where time >= ?", ts)
 	if r.Err() != nil {
 		panic(r.Err())
 	}
