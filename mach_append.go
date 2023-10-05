@@ -59,7 +59,7 @@ func (conn *connection) Appender(ctx context.Context, tableName string, opts ...
 	if err != nil {
 		return nil, err
 	}
-	appender.columns = make([]*Column, colCount)
+	appender.columns = make([]*spi.Column, colCount)
 	for i := 0; i < colCount; i++ {
 		nfo, err := machColumnInfo(appender.stmt, i)
 		if err != nil {
@@ -74,7 +74,7 @@ type Appender struct {
 	stmt      unsafe.Pointer
 	tableName string
 	tableType spi.TableType
-	columns   []*Column
+	columns   []*spi.Column
 	closed    bool
 
 	timeformat string
@@ -112,7 +112,7 @@ func (ap *Appender) Columns() (spi.Columns, error) {
 			Name:   cols[i].Name,
 			Type:   cols[i].Type,
 			Size:   cols[i].Size,
-			Length: cols[i].Len,
+			Length: cols[i].Length,
 		}
 	}
 	return result, nil

@@ -205,24 +205,15 @@ func (rows *Rows) Columns() (spi.Columns, error) {
 	if err != nil {
 		return nil, err
 	}
-	cols := make([]*Column, count)
+	ret := make([]*spi.Column, count)
 	for i := 0; i < count; i++ {
 		col, err := machColumnInfo(rows.stmt, i)
 		if err != nil {
 			return nil, errors.Wrap(err, "ColumnTypes")
 		}
-		cols[i] = col
+		ret[i] = col
 	}
-	result := make([]*spi.Column, len(cols))
-	for i := range cols {
-		result[i] = &spi.Column{
-			Name:   cols[i].Name,
-			Type:   cols[i].Type,
-			Size:   cols[i].Size,
-			Length: cols[i].Len,
-		}
-	}
-	return result, nil
+	return ret, nil
 }
 
 func (rows *Rows) Message() string {

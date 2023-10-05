@@ -8,6 +8,7 @@ import (
 	"unsafe"
 
 	_ "github.com/machbase/neo-engine/native"
+	spi "github.com/machbase/neo-spi"
 	"github.com/pkg/errors"
 )
 
@@ -407,7 +408,7 @@ func machColumnCount(stmt unsafe.Pointer) (int, error) {
 	return int(count), nil
 }
 
-func machColumnInfo(stmt unsafe.Pointer, idx int) (*Column, error) {
+func machColumnInfo(stmt unsafe.Pointer, idx int) (*spi.Column, error) {
 	var nfo C.MachEngineColumnInfo
 	if rt := C.MachColumnInfo(stmt, C.int(idx), &nfo); rt != 0 {
 		stmtErr := machError0(stmt)
@@ -423,11 +424,11 @@ func machColumnInfo(stmt unsafe.Pointer, idx int) (*Column, error) {
 		return nil, fmt.Errorf("MachColumnInfo %s", err.Error())
 	}
 
-	return &Column{
-		Name: C.GoString(&nfo.mColumnName[0]),
-		Type: typ,
-		Size: int(nfo.mColumnSize),
-		Len:  int(nfo.mColumnLength),
+	return &spi.Column{
+		Name:   C.GoString(&nfo.mColumnName[0]),
+		Type:   typ,
+		Size:   int(nfo.mColumnSize),
+		Length: int(nfo.mColumnLength),
 	}, nil
 }
 

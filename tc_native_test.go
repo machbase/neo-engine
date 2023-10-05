@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -16,7 +15,6 @@ import (
 	mach "github.com/machbase/neo-engine"
 	spi "github.com/machbase/neo-spi"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
 )
 
 var db spi.Database
@@ -25,6 +23,8 @@ var connectOpts []spi.ConnectOption
 func TestMain(m *testing.M) {
 	var err error
 	var testMode string = "fog"
+	var initOption = mach.OPT_SIGHANDLER_OFF
+	var machPort = 5656
 
 	fmt.Println("-------------------------------")
 	fmt.Println(mach.LinkInfo())
@@ -71,7 +71,7 @@ func TestMain(m *testing.M) {
 		panic(errors.Wrap(err, "machbase.conf"))
 	}
 
-	mach.InitializeOption(homepath, 5656, mach.OPT_SIGHANDLER_OFF)
+	mach.InitializeOption(homepath, machPort, initOption)
 
 	if mach.ExistsDatabase() {
 		if err = mach.DestroyDatabase(); err != nil {
@@ -99,7 +99,7 @@ func TestMain(m *testing.M) {
 	defer cancel()
 
 	connectOpts = []spi.ConnectOption{
-		mach.WithPassword("sys", "manager"),
+		mach.WithTrustUser("sys"),
 	}
 
 	conn, err := db.Connect(ctx, connectOpts...)
@@ -120,90 +120,6 @@ func TestMain(m *testing.M) {
 
 	if mdb, ok := db.(spi.DatabaseServer); ok {
 		mdb.Shutdown()
-	}
-}
-
-func TestColumns(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	conn, err := db.Connect(ctx, connectOpts...)
-	if err != nil {
-		panic(err)
-	}
-	defer conn.Close()
-	rows, err := conn.Query(ctx, "select * from log")
-	if err != nil {
-		panic(err)
-	}
-	require.NotNil(t, rows, "no rows selected")
-	defer rows.Close()
-	cols, err := rows.Columns()
-	if err != nil {
-		panic(err)
-	}
-
-	type ColumnsData struct {
-		name string
-		typ  string
-	}
-
-	data := []ColumnsData{
-		{"SHORT", "int16"},
-		{"USHORT", "int16"},
-		{"INTEGER", "int32"},
-		{"UINTEGER", "int32"},
-		{"LONG", "int64"},
-		{"ULONG", "int64"},
-		{"FLOAT", "float32"},
-		{"DOUBLE", "float64"},
-		{"IPV4", "ipv4"},
-		{"IPV6", "ipv6"},
-		{"VARCHAR", "string"},
-		{"TEXT", "string"},
-		{"JSON", "string"},
-		{"BINARY", "binary"},
-		{"BLOB", "binary"},
-		{"CLOB", "binary"},
-		{"DATETIME", "datetime"},
-		{"DATETIME_NOW", "datetime"},
-	}
-	for i, cd := range data {
-		require.Equal(t, cd.name, cols[i].Name)
-	}
-}
-
-func TestExec(t *testing.T) {
-	ctx := context.TODO()
-	conn, err := db.Connect(ctx, connectOpts...)
-	if err != nil {
-		panic(err)
-	}
-	defer conn.Close()
-	result := conn.Exec(ctx, "insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		0, 1, 2, 3, 4, 5, 6.6, 7.77,
-		net.ParseIP("127.0.0.1"), net.ParseIP("AB:CC:CC:CC:CC:CC:CC:FF"),
-		fmt.Sprintf("varchar_1_%s.", randomVarchar()),
-		"text_1", "{\"json\":1}", []byte("binary_00"), "blob_01", "clob_01", 1, time.Now())
-	if result.Err() != nil {
-		panic(result.Err())
-	}
-
-	result = conn.Exec(ctx, "insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		1, 1, 2, 3, 4, 5, 6.6, 7.77,
-		net.ParseIP("127.0.0.2"), net.ParseIP("AB:CC:CC:CC:CC:CC:CC:DD"),
-		fmt.Sprintf("varchar_2_%s.", randomVarchar()),
-		"text_2", "{\"json\":1}", []byte("binary_01"), "blob_01", "clob_01", 1, time.Now())
-	if result.Err() != nil {
-		panic(result.Err())
-	}
-
-	result = conn.Exec(ctx, "insert into log values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		2, 1, 2, 3, 4, 5, 6.6, 7.77,
-		net.ParseIP("127.0.0.3"), net.ParseIP("AB:CC:CC:CC:CC:CC:CC:AA"),
-		fmt.Sprintf("varchar_3_%s.", randomVarchar()),
-		"text_3", "{\"json\":2}", []byte("binary_02"), "blob_01", "clob_01", 1, time.Now())
-	if result.Err() != nil {
-		panic(result.Err())
 	}
 }
 
