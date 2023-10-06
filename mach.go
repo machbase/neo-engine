@@ -156,6 +156,10 @@ func (conn *connection) Close() (err error) {
 	return
 }
 
+func (conn *connection) Ping() (time.Duration, error) {
+	return 0, nil
+}
+
 func (conn *connection) Exec(ctx context.Context, sqlText string, params ...any) spi.Result {
 	var result = &Result{}
 	var stmt unsafe.Pointer
