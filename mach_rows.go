@@ -157,7 +157,6 @@ func (row *Row) Scan(cols ...any) error {
 }
 
 type Rows struct {
-	handle     unsafe.Pointer
 	stmt       unsafe.Pointer
 	stmtType   StmtType
 	sqlText    string
@@ -168,7 +167,7 @@ type Rows struct {
 func (rows *Rows) Close() error {
 	var err error
 	if rows.stmt != nil {
-		err = machFreeStmt(rows.handle, rows.stmt)
+		err = machFreeStmt(rows.stmt)
 		if DefaultDetective != nil {
 			DefaultDetective.DelistDetective(rows)
 		}
@@ -206,24 +205,15 @@ func (rows *Rows) Columns() (spi.Columns, error) {
 	if err != nil {
 		return nil, err
 	}
-	cols := make([]*Column, count)
+	ret := make([]*spi.Column, count)
 	for i := 0; i < count; i++ {
 		col, err := machColumnInfo(rows.stmt, i)
 		if err != nil {
 			return nil, errors.Wrap(err, "ColumnTypes")
 		}
-		cols[i] = col
+		ret[i] = col
 	}
-	result := make([]*spi.Column, len(cols))
-	for i := range cols {
-		result[i] = &spi.Column{
-			Name:   cols[i].Name,
-			Type:   cols[i].Type,
-			Size:   cols[i].Size,
-			Length: cols[i].Len,
-		}
-	}
-	return result, nil
+	return ret, nil
 }
 
 func (rows *Rows) Message() string {

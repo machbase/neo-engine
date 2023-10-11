@@ -6,15 +6,6 @@ import (
 	spi "github.com/machbase/neo-spi"
 )
 
-type Column struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
-	Size int    `json:"size"`
-	Len  int    `json:"length"`
-}
-
-type Columns []*Column
-
 func ColumnTypeString(typ ColumnType) (string, error) {
 	switch typ {
 	case 0: // MACH_DATA_TYPE_INT16
@@ -40,36 +31,4 @@ func ColumnTypeString(typ ColumnType) (string, error) {
 	default:
 		return "", fmt.Errorf("unknown type %T", typ)
 	}
-}
-
-func (cols Columns) Names() []string {
-	rt := make([]string, len(cols))
-	for i, c := range cols {
-		rt[i] = c.Name
-	}
-	return rt
-}
-
-func (cols Columns) Types() []string {
-	rt := make([]string, len(cols))
-	for i, c := range cols {
-		rt[i] = c.Type
-	}
-	return rt
-}
-
-func (cols Columns) Sizes() []int {
-	rt := make([]int, len(cols))
-	for i, c := range cols {
-		rt[i] = c.Size
-	}
-	return rt
-}
-
-func (cols Columns) Lengths() []int {
-	rt := make([]int, len(cols))
-	for i, c := range cols {
-		rt[i] = c.Len
-	}
-	return rt
 }
