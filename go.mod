@@ -3,7 +3,7 @@ module github.com/machbase/neo-engine
 go 1.19
 
 require (
-	github.com/machbase/neo-spi v1.4.3-0.20230909140959-a0490ccf9cb2
+	github.com/machbase/neo-spi v1.5.0
 	github.com/magefile/mage v1.15.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
