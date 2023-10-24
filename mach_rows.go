@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -216,15 +217,40 @@ func (rows *Rows) Columns() (spi.Columns, error) {
 	return ret, nil
 }
 
+func (rows *Rows) definedMessage() (string, bool) {
+	fields := strings.Fields(rows.sqlText)
+	if len(fields) > 0 {
+		head := strings.ToLower(fields[0])
+		switch head {
+		case "create":
+			return "Created successfully.", true
+		case "drop":
+			return "Dropped successfully.", true
+		case "truncate":
+			return "Truncated successfully.", true
+		case "alter":
+			return "Altered successfully.", true
+		case "connect":
+			return "Connected successfully.", true
+		}
+	}
+	return "", false
+}
+
 func (rows *Rows) Message() string {
 	nrows := rows.RowsAffected()
 	stmtType := rows.stmtType
 	var verb = ""
 
 	if stmtType >= 1 && stmtType <= 255 {
+		if msg, ok := rows.definedMessage(); ok {
+			return msg
+		}
 		return "executed."
 	} else if stmtType >= 256 && stmtType <= 511 {
-		// "ALTER SYSTEM"
+		if msg, ok := rows.definedMessage(); ok {
+			return msg
+		}
 		return "system altered."
 	} else if stmtType == 512 {
 		verb = "selected."
