@@ -79,23 +79,27 @@ type Appender struct {
 	columns   []*spi.Column
 	closed    bool
 
+	successCount int64
+	failCount    int64
+
 	timeformat string
 }
 
 func (ap *Appender) Close() (int64, int64, error) {
 	if ap.closed {
-		return 0, 0, nil
+		return ap.successCount, ap.failCount, nil
 	}
 	ap.closed = true
-	s, f, err := machAppendClose(ap.stmt)
+	var err error
+	ap.successCount, ap.failCount, err = machAppendClose(ap.stmt)
 	if err != nil {
-		return s, f, err
+		return ap.successCount, ap.failCount, err
 	}
 
 	if err := machFreeStmt(ap.stmt); err != nil {
-		return s, f, err
+		return ap.successCount, ap.failCount, err
 	}
-	return s, f, nil
+	return ap.successCount, ap.failCount, nil
 }
 
 func (ap *Appender) String() string {

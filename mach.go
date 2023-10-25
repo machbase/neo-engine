@@ -159,7 +159,7 @@ func (conn *connection) Close() (err error) {
 }
 
 func (conn *connection) Connected() bool {
-	if !conn.closed {
+	if conn.closed {
 		return false
 	}
 	if len(conn.ctx.Done()) != 0 {
