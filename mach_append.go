@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"net"
 	"strings"
-	"sync"
 	"time"
 	"unsafe"
 
@@ -21,6 +20,7 @@ import (
 
 func (conn *connection) Appender(ctx context.Context, tableName string, opts ...spi.AppendOption) (spi.Appender, error) {
 	appender := &Appender{}
+	appender.conn = conn
 	appender.tableName = strings.ToUpper(tableName)
 	appender.timeformat = "ns"
 
@@ -72,7 +72,7 @@ func (conn *connection) Appender(ctx context.Context, tableName string, opts ...
 }
 
 type Appender struct {
-	mutex     sync.Mutex
+	conn      *connection
 	stmt      unsafe.Pointer
 	tableName string
 	tableType spi.TableType
@@ -83,9 +83,6 @@ type Appender struct {
 }
 
 func (ap *Appender) Close() (int64, int64, error) {
-	ap.mutex.Lock()
-	defer ap.mutex.Unlock()
-
 	if ap.closed {
 		return 0, 0, nil
 	}
@@ -481,8 +478,12 @@ func (ap *Appender) appendTable0(vals []any) error {
 		}
 	}
 
-	ap.mutex.Lock()
+	if ap.closed {
+		return fmt.Errorf("closed appender")
+	}
+	if ap.conn == nil || !ap.conn.Connected() {
+		return fmt.Errorf("invalid connection")
+	}
 	err := machAppendData(ap.stmt, &buffer[0])
-	ap.mutex.Unlock()
 	return err
 }

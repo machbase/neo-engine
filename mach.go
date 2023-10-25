@@ -114,6 +114,7 @@ type connection struct {
 	isTrustUser bool
 	handle      unsafe.Pointer
 	closeOnce   sync.Once
+	closed      bool
 }
 
 func WithPassword(username string, password string) spi.ConnectOption {
@@ -151,9 +152,22 @@ func (db *database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi
 
 func (conn *connection) Close() (err error) {
 	conn.closeOnce.Do(func() {
+		conn.closed = true
 		err = machDisconnect(conn.handle)
 	})
 	return
+}
+
+func (conn *connection) Connected() bool {
+	if !conn.closed {
+		return false
+	}
+	if len(conn.ctx.Done()) != 0 {
+		<-conn.ctx.Done()
+		conn.Close()
+		return false
+	}
+	return true
 }
 
 func (conn *connection) Ping() (time.Duration, error) {
