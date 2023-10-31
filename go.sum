@@ -1,8 +1,8 @@
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/machbase/neo-spi v1.4.3-0.20230909140959-a0490ccf9cb2 h1:0xxjVXtX2I8NyyhMsihH3Y7/CHAAtjKsdhD1uKt+Kss=
-github.com/machbase/neo-spi v1.4.3-0.20230909140959-a0490ccf9cb2/go.mod h1:jmzExsS84LOY0f097WhbXw1avVgl64/tHm6CdW/P+zM=
+github.com/machbase/neo-spi v1.5.1-0.20231024045420-cb1fe0971906 h1:smWC1X0twzXSb73k6egUM4TH/3FVRMWAqKMq55HvLiw=
+github.com/machbase/neo-spi v1.5.1-0.20231024045420-cb1fe0971906/go.mod h1:jmzExsS84LOY0f097WhbXw1avVgl64/tHm6CdW/P+zM=
 github.com/magefile/mage v1.15.0 h1:BvGheCMAsG3bWUDbZ8AyXXpCNwU9u5CB6sM+HNb9HYg=
 github.com/magefile/mage v1.15.0/go.mod h1:z5UZb/iS3GoOSn0JgWuiw7dxlurVYTu+/jHXqQg881A=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
