@@ -115,6 +115,7 @@ type connection struct {
 	handle      unsafe.Pointer
 	closeOnce   sync.Once
 	closed      bool
+	db          *database
 }
 
 func WithPassword(username string, password string) spi.ConnectOption {
@@ -132,7 +133,7 @@ func WithTrustUser(username string) spi.ConnectOption {
 }
 
 func (db *database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi.Conn, error) {
-	ret := &connection{ctx: ctx}
+	ret := &connection{ctx: ctx, db: db}
 	for _, o := range opts {
 		o(ret)
 	}

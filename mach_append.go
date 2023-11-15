@@ -39,15 +39,23 @@ func (conn *connection) Appender(ctx context.Context, tableName string, opts ...
 	}
 	defer machFreeStmt(stmt)
 
-	row := conn.QueryRow(ctx, "select type from M$SYS_TABLES where name = ?", appender.tableName)
-	var typ int32 = -1
-	if err := row.Scan(&typ); err != nil {
+	// table type
+	// make a new internal connection to avoid MACH-ERR 2118
+	// MACH-ERR 2118 Lock object was already initialized. (Do not use select and append simultaneously in single session.)
+	if qcon, err := conn.db.Connect(ctx, WithTrustUser("sys")); err != nil {
 		return nil, err
+	} else {
+		defer qcon.Close()
+		row := qcon.QueryRow(ctx, "select type from M$SYS_TABLES where name = ?", appender.tableName)
+		var typ int32 = -1
+		if err := row.Scan(&typ); err != nil {
+			return nil, err
+		}
+		if typ < 0 || typ > 6 {
+			return nil, fmt.Errorf("table '%s' not found", tableName)
+		}
+		appender.tableType = spi.TableType(typ)
 	}
-	if typ < 0 || typ > 6 {
-		return nil, fmt.Errorf("table '%s' not found", tableName)
-	}
-	appender.tableType = spi.TableType(typ)
 
 	if err := machAllocStmt(conn.handle, &appender.stmt); err != nil {
 		return nil, err
