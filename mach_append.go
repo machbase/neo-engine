@@ -18,19 +18,14 @@ import (
 	spi "github.com/machbase/neo-spi"
 )
 
-func (conn *connection) Appender(ctx context.Context, tableName string, opts ...spi.AppendOption) (spi.Appender, error) {
+func (conn *connection) Appender(ctx context.Context, tableName string, opts ...spi.AppenderOption) (spi.Appender, error) {
 	appender := &Appender{}
 	appender.conn = conn
 	appender.tableName = strings.ToUpper(tableName)
 	appender.timeformat = "ns"
 
 	for _, opt := range opts {
-		switch v := opt.(type) {
-		case spi.AppendTimeformatOption:
-			appender.timeformat = string(v)
-		default:
-			return nil, fmt.Errorf("unknown appender option %T", v)
-		}
+		opt(appender)
 	}
 
 	var stmt unsafe.Pointer
@@ -77,6 +72,14 @@ func (conn *connection) Appender(ctx context.Context, tableName string, opts ...
 		appender.columns[i] = nfo
 	}
 	return appender, nil
+}
+
+func AppenderTimeformat(timeformat string) spi.AppenderOption {
+	return func(a spi.Appender) {
+		if apd, ok := a.(*Appender); ok {
+			apd.timeformat = timeformat
+		}
+	}
 }
 
 type Appender struct {
