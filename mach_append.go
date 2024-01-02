@@ -193,6 +193,14 @@ func (ap *Appender) appendTable0(vals []any) error {
 				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
 			case *int16:
 				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(*v)
+			case *float64:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(*v)
+			case float64:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
+			case *float32:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(*v)
+			case float32:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
 			}
 		case spi.ColumnBufferTypeInt32:
 			switch v := val.(type) {
@@ -222,6 +230,14 @@ func (ap *Appender) appendTable0(vals []any) error {
 				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
 			case *uint:
 				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
+			case *float64:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
+			case float64:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case *float32:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
+			case float32:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
 			}
 		case spi.ColumnBufferTypeInt64:
 			switch v := val.(type) {
@@ -259,6 +275,14 @@ func (ap *Appender) appendTable0(vals []any) error {
 				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
 			case *uint64:
 				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
+			case *float64:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
+			case float64:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *float32:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
+			case float32:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
 			}
 		case spi.ColumnBufferTypeFloat:
 			switch v := val.(type) {
