@@ -167,7 +167,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 		return fmt.Errorf("table '%s' has no columns", ap.tableName)
 	}
 	if len(ap.columns) != len(vals) {
-		return fmt.Errorf("value count %d, table '%s' requres %d columns for appeding", len(vals), ap.tableName, len(ap.columns))
+		return fmt.Errorf("value count %d, table '%s' requres %d columns to append", len(vals), ap.tableName, len(ap.columns))
 	}
 
 	buffer := make([]C.MachEngineAppendParam, len(ap.columns))
