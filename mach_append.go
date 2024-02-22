@@ -406,6 +406,20 @@ func (ap *Appender) appendTable0(vals []any) error {
 					return fmt.Errorf("MachAppendData cannot apply int64 with %s to %s (%s)", ap.timeformat, c.Name, c.Type)
 				}
 				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
+			case float64:
+				tv := int64(v)
+				switch ap.timeformat {
+				case "s":
+					tv = tv * 1000000000
+				case "ms":
+					tv = tv * 1000000
+				case "us":
+					tv = tv * 1000
+				case "ns":
+				default:
+					return fmt.Errorf("MachAppendData cannot apply float64 with %s to %s (%s)", ap.timeformat, c.Name, c.Type)
+				}
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
 			case string:
 				if len(ap.timeformat) > 0 {
 					cstr := C.CString(v)
