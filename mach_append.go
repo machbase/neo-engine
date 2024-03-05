@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -27,12 +28,6 @@ func (conn *connection) Appender(ctx context.Context, tableName string, opts ...
 	for _, opt := range opts {
 		opt(appender)
 	}
-
-	var stmt unsafe.Pointer
-	if err := machAllocStmt(conn.handle, &stmt); err != nil {
-		return nil, err
-	}
-	defer machFreeStmt(stmt)
 
 	// table type
 	// make a new internal connection to avoid MACH-ERR 2118
@@ -51,16 +46,19 @@ func (conn *connection) Appender(ctx context.Context, tableName string, opts ...
 		}
 		appender.tableType = spi.TableType(typ)
 	}
-
 	if err := machAllocStmt(conn.handle, &appender.stmt); err != nil {
 		return nil, err
 	}
 	if err := machAppendOpen(appender.stmt, tableName); err != nil {
+		machFreeStmt(appender.stmt)
 		return nil, err
 	}
+	atomic.AddInt32(&statz.Appenders, 1)
 
 	colCount, err := machColumnCount(appender.stmt)
 	if err != nil {
+		machAppendClose(appender.stmt)
+		machFreeStmt(appender.stmt)
 		return nil, err
 	}
 	appender.columns = make([]*spi.Column, colCount)
@@ -102,6 +100,7 @@ func (ap *Appender) Close() (int64, int64, error) {
 	}
 	ap.closed = true
 	var err error
+	atomic.AddInt32(&statz.Appenders, -1)
 	ap.successCount, ap.failCount, err = machAppendClose(ap.stmt)
 	if err != nil {
 		return ap.successCount, ap.failCount, err

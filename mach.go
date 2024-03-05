@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -148,12 +149,26 @@ func (db *database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi
 		}
 	}
 	ret.handle = handle
+	atomic.AddInt32(&statz.Conns, 1)
+	if statz.Debug {
+		_, file, no, ok := runtime.Caller(1)
+		if ok {
+			fmt.Printf("Connect() called from %s#%d\n", file, no)
+		}
+	}
 	return ret, nil
 }
 
 func (conn *connection) Close() (err error) {
+	if statz.Debug {
+		_, file, no, ok := runtime.Caller(1)
+		if ok {
+			fmt.Printf("Close() called from %s#%d\n", file, no)
+		}
+	}
 	conn.closeOnce.Do(func() {
 		conn.closed = true
+		atomic.AddInt32(&statz.Conns, -1)
 		err = machDisconnect(conn.handle)
 	})
 	return
@@ -226,6 +241,7 @@ func (conn *connection) Query(ctx context.Context, sqlText string, params ...any
 		return nil, err
 	}
 	if err := machPrepare(rows.stmt, sqlText); err != nil {
+		machFreeStmt(rows.stmt)
 		return nil, err
 	}
 	if DefaultDetective != nil {
@@ -233,27 +249,33 @@ func (conn *connection) Query(ctx context.Context, sqlText string, params ...any
 	}
 	for i, p := range params {
 		if err := bind(rows.stmt, i, p); err != nil {
+			machFreeStmt(rows.stmt)
 			return nil, err
 		}
 	}
 	if err := machExecute(rows.stmt); err != nil {
+		machFreeStmt(rows.stmt)
 		return nil, err
 	}
 	if stmtType, err := machStmtType(rows.stmt); err != nil {
+		machFreeStmt(rows.stmt)
 		return nil, err
 	} else {
 		rows.stmtType = stmtType
 	}
+	atomic.AddInt32(&statz.Stmts, 1)
 	return rows, nil
 }
 
 func (conn *connection) QueryRow(ctx context.Context, sqlText string, params ...any) spi.Row {
 	var row = &Row{}
 	var stmt unsafe.Pointer
+	atomic.AddInt32(&statz.Stmts, 1)
 	if row.err = machAllocStmt(conn.handle, &stmt); row.err != nil {
 		return row
 	}
 	defer func() {
+		atomic.AddInt32(&statz.Stmts, -1)
 		err := machFreeStmt(stmt)
 		if err != nil && row.err == nil {
 			row.err = err
@@ -443,4 +465,25 @@ type Detective interface {
 	UpdateDetective(any)
 	InflightsDetective() []*spi.Inflight
 	PostflightsDetective() []*spi.Postflight
+}
+
+type Statz struct {
+	Debug     bool
+	Conns     int32
+	Stmts     int32
+	Appenders int32
+}
+
+var statz Statz
+
+func StatzDebug(flag bool) {
+	statz.Debug = flag
+}
+
+func StatzSnapshot() map[string]any {
+	return map[string]any{
+		"conns":     statz.Conns,
+		"stmts":     statz.Stmts,
+		"appenders": statz.Appenders,
+	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -168,6 +169,7 @@ type Rows struct {
 func (rows *Rows) Close() error {
 	var err error
 	if rows.stmt != nil {
+		atomic.AddInt32(&statz.Stmts, -1)
 		err = machFreeStmt(rows.stmt)
 		if DefaultDetective != nil {
 			DefaultDetective.DelistDetective(rows)
