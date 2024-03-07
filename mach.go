@@ -518,6 +518,7 @@ func StatzSnapshot() map[string]any {
 	return map[string]any{
 		"conns":          statz.ConnsInUse,
 		"conns_used":     statz.Conns,
+		"conns_raw":      machConnectionCount(singleton.handle),
 		"stmts":          statz.StmtsInUse,
 		"stmts_used":     statz.Stmts,
 		"appenders":      statz.AppendersInUse,
