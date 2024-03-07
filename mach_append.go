@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"net"
 	"strings"
-	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -53,7 +52,7 @@ func (conn *connection) Appender(ctx context.Context, tableName string, opts ...
 		machFreeStmt(appender.stmt)
 		return nil, err
 	}
-	atomic.AddInt32(&statz.Appenders, 1)
+	statz.AllocAppender()
 
 	colCount, err := machColumnCount(appender.stmt)
 	if err != nil {
@@ -100,7 +99,7 @@ func (ap *Appender) Close() (int64, int64, error) {
 	}
 	ap.closed = true
 	var err error
-	atomic.AddInt32(&statz.Appenders, -1)
+	statz.FreeAppender()
 	ap.successCount, ap.failCount, err = machAppendClose(ap.stmt)
 	if err != nil {
 		return ap.successCount, ap.failCount, err

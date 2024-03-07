@@ -149,11 +149,11 @@ func (db *database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi
 		}
 	}
 	ret.handle = handle
-	atomic.AddInt32(&statz.Conns, 1)
+	statz.AllocConn()
 	if statz.Debug {
 		_, file, no, ok := runtime.Caller(1)
 		if ok {
-			fmt.Printf("Connect() called from %s#%d\n", file, no)
+			fmt.Printf("Conn.Connect() from %s#%d\n", file, no)
 		}
 	}
 	return ret, nil
@@ -163,12 +163,12 @@ func (conn *connection) Close() (err error) {
 	if statz.Debug {
 		_, file, no, ok := runtime.Caller(1)
 		if ok {
-			fmt.Printf("Close() called from %s#%d\n", file, no)
+			fmt.Printf("Conn.Close() from %s#%d\n", file, no)
 		}
 	}
 	conn.closeOnce.Do(func() {
 		conn.closed = true
-		atomic.AddInt32(&statz.Conns, -1)
+		statz.FreeConn()
 		err = machDisconnect(conn.handle)
 	})
 	return
@@ -197,7 +197,11 @@ func (conn *connection) Exec(ctx context.Context, sqlText string, params ...any)
 		result.err = err
 		return result
 	}
-	defer machFreeStmt(stmt)
+	statz.AllocStmt()
+	defer func() {
+		machFreeStmt(stmt)
+		statz.FreeStmt()
+	}()
 	if len(params) == 0 {
 		if err := machDirectExecute(stmt, sqlText); err != nil {
 			result.err = err
@@ -263,19 +267,19 @@ func (conn *connection) Query(ctx context.Context, sqlText string, params ...any
 	} else {
 		rows.stmtType = stmtType
 	}
-	atomic.AddInt32(&statz.Stmts, 1)
+	statz.AllocStmt()
 	return rows, nil
 }
 
 func (conn *connection) QueryRow(ctx context.Context, sqlText string, params ...any) spi.Row {
 	var row = &Row{}
 	var stmt unsafe.Pointer
-	atomic.AddInt32(&statz.Stmts, 1)
+	statz.AllocStmt()
 	if row.err = machAllocStmt(conn.handle, &stmt); row.err != nil {
 		return row
 	}
 	defer func() {
-		atomic.AddInt32(&statz.Stmts, -1)
+		statz.FreeStmt()
 		err := machFreeStmt(stmt)
 		if err != nil && row.err == nil {
 			row.err = err
@@ -468,13 +472,43 @@ type Detective interface {
 }
 
 type Statz struct {
-	Debug     bool
-	Conns     int32
-	Stmts     int32
-	Appenders int32
+	Conns          int64
+	Stmts          int64
+	Appenders      int64
+	ConnsInUse     int32
+	StmtsInUse     int32
+	AppendersInUse int32
+	Debug          bool
 }
 
 var statz Statz
+
+func (s *Statz) AllocConn() {
+	atomic.AddInt32(&s.ConnsInUse, 1)
+	atomic.AddInt64(&s.Conns, 1)
+}
+
+func (s *Statz) FreeConn() {
+	atomic.AddInt32(&s.ConnsInUse, -1)
+}
+
+func (s *Statz) AllocStmt() {
+	atomic.AddInt32(&s.StmtsInUse, 1)
+	atomic.AddInt64(&s.Stmts, 1)
+}
+
+func (s *Statz) FreeStmt() {
+	atomic.AddInt32(&s.StmtsInUse, -1)
+}
+
+func (s *Statz) AllocAppender() {
+	atomic.AddInt32(&s.AppendersInUse, 1)
+	atomic.AddInt64(&s.Appenders, 1)
+}
+
+func (s *Statz) FreeAppender() {
+	atomic.AddInt32(&s.AppendersInUse, -1)
+}
 
 func StatzDebug(flag bool) {
 	statz.Debug = flag
@@ -482,8 +516,11 @@ func StatzDebug(flag bool) {
 
 func StatzSnapshot() map[string]any {
 	return map[string]any{
-		"conns":     statz.Conns,
-		"stmts":     statz.Stmts,
-		"appenders": statz.Appenders,
+		"conns":          statz.ConnsInUse,
+		"conns_used":     statz.Conns,
+		"stmts":          statz.StmtsInUse,
+		"stmts_used":     statz.Stmts,
+		"appenders":      statz.AppendersInUse,
+		"appenders_used": statz.Appenders,
 	}
 }
