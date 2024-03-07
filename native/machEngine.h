@@ -152,6 +152,12 @@ int MachConnectNoAuth(void*  aEnvHandle,
  */
 int MachDisconnect(void* aConHandle);
 
+/**
+ * @brief Cancel Session execution 
+ */
+int MachCancel(void* aConHandle);
+
+
 /*
  * DB user authentification
  * return value is 0 or error code,
