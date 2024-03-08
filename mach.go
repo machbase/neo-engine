@@ -515,7 +515,7 @@ func StatzDebug(flag bool) {
 }
 
 func StatzSnapshot() map[string]any {
-	return map[string]any{
+	ret := map[string]any{
 		"conns":          statz.ConnsInUse,
 		"conns_used":     statz.Conns,
 		"stmts":          statz.StmtsInUse,
@@ -523,4 +523,8 @@ func StatzSnapshot() map[string]any {
 		"appenders":      statz.AppendersInUse,
 		"appenders_used": statz.Appenders,
 	}
+	if singleton.handle != nil {
+		ret["conns_raw"] = machConnectionCount(singleton.handle)
+	}
+	return ret
 }
