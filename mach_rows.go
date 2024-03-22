@@ -8,7 +8,7 @@ import (
 	"time"
 	"unsafe"
 
-	spi "github.com/machbase/neo-spi"
+	"github.com/machbase/neo-server/spi"
 	"github.com/pkg/errors"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"

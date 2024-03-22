@@ -13,7 +13,7 @@ import (
 	"time"
 
 	mach "github.com/machbase/neo-engine"
-	spi "github.com/machbase/neo-spi"
+	"github.com/machbase/neo-server/spi"
 	"github.com/pkg/errors"
 )
 

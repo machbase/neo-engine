@@ -3,7 +3,7 @@ package mach
 import (
 	"fmt"
 
-	spi "github.com/machbase/neo-spi"
+	"github.com/machbase/neo-server/spi"
 )
 
 func ColumnTypeString(typ ColumnType) (string, error) {

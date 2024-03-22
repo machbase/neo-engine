@@ -15,7 +15,7 @@ import (
 	"time"
 	"unsafe"
 
-	spi "github.com/machbase/neo-spi"
+	"github.com/machbase/neo-server/spi"
 )
 
 func (conn *connection) Appender(ctx context.Context, tableName string, opts ...spi.AppenderOption) (spi.Appender, error) {

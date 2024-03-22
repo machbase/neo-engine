@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	spi "github.com/machbase/neo-spi"
+	"github.com/machbase/neo-server/spi"
 	"github.com/stretchr/testify/require"
 )
 

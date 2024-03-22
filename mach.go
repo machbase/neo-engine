@@ -14,7 +14,7 @@ import (
 	"time"
 	"unsafe"
 
-	spi "github.com/machbase/neo-spi"
+	"github.com/machbase/neo-server/spi"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sony/sonyflake"
 )
@@ -45,7 +45,7 @@ func InitializeOption(homeDir string, machPort int, opt InitOption) error {
 	}
 	singleton.handle = handle
 	spi.RegisterFactory(FactoryName, func() (spi.Database, error) {
-		return &database{
+		return &Database{
 			handle: singleton.handle,
 			conns:  cmap.New[*ConnWatcher](),
 			idGen:  sonyflake.NewSonyflake(sonyflake.Settings{}),
@@ -76,20 +76,20 @@ type Env struct {
 
 var singleton = Env{}
 
-type database struct {
+type Database struct {
 	handle unsafe.Pointer
 	idGen  *sonyflake.Sonyflake
 	conns  cmap.ConcurrentMap[string, *ConnWatcher]
 }
 
-var _ spi.Database = &database{}
-var _ spi.DatabaseServer = &database{}
-var _ spi.DatabaseAuth = &database{}
+var _ spi.Database = &Database{}
+var _ spi.DatabaseServer = &Database{}
+var _ spi.DatabaseAuth = &Database{}
 var _ spi.Conn = &connection{}
 var _ spi.Explainer = &connection{}
 
 // implements spi.DatabaseLife interface
-func (db *database) Startup() error {
+func (db *Database) Startup() error {
 	// machbase change the current dir to $HOME during startup process.
 	// Call chdir() for keeping the working dir of the application.
 	cwd, _ := os.Getwd()
@@ -102,30 +102,30 @@ func (db *database) Startup() error {
 }
 
 // implements spi.DatabaseLife interface
-func (db *database) Shutdown() error {
+func (db *Database) Shutdown() error {
 	return shutdown0(db.handle)
 }
 
-func (db *database) Error() error {
+func (db *Database) Error() error {
 	return machError0(db.handle)
 }
 
 // implements spi.DatabaseAuth interface
-func (db *database) UserAuth(username, password string) (bool, error) {
+func (db *Database) UserAuth(username, password string) (bool, error) {
 	return machUserAuth(db.handle, username, password)
 }
 
 // TODO remove this func
-func (db *database) GetInflights() ([]*spi.Inflight, error) {
+func (db *Database) GetInflights() ([]*spi.Inflight, error) {
 	return nil, nil
 }
 
 // TODO remove this func
-func (db *database) GetPostflights() ([]*spi.Postflight, error) {
+func (db *Database) GetPostflights() ([]*spi.Postflight, error) {
 	return nil, nil
 }
 
-func (db *database) RegisterWatcher(key string, conn *connection) {
+func (db *Database) RegisterWatcher(key string, conn *connection) {
 	db.SetWatcher(key, &ConnWatcher{
 		Key:     key,
 		Created: time.Now(),
@@ -133,19 +133,19 @@ func (db *database) RegisterWatcher(key string, conn *connection) {
 	})
 }
 
-func (db *database) SetWatcher(key string, cw *ConnWatcher) {
+func (db *Database) SetWatcher(key string, cw *ConnWatcher) {
 	db.conns.Set(key, cw)
 }
 
-func (db *database) GetWatcher(key string) (*ConnWatcher, bool) {
+func (db *Database) GetWatcher(key string) (*ConnWatcher, bool) {
 	return db.conns.Get(key)
 }
 
-func (db *database) RemoveWatcher(key string) {
+func (db *Database) RemoveWatcher(key string) {
 	db.conns.Remove(key)
 }
 
-func (db *database) ListWatcher(cb func(*ConnWatcher) bool) {
+func (db *Database) ListWatcher(cb func(*ConnWatcher) bool) {
 	if cb == nil {
 		return
 	}
@@ -176,7 +176,7 @@ type connection struct {
 	handle      unsafe.Pointer
 	closeOnce   sync.Once
 	closed      bool
-	db          *database
+	db          *Database
 
 	latestSQL string
 }
@@ -195,7 +195,7 @@ func WithTrustUser(username string) spi.ConnectOption {
 	}
 }
 
-func (db *database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi.Conn, error) {
+func (db *Database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi.Conn, error) {
 	id, err := db.idGen.NextID()
 	if err != nil {
 		return nil, fmt.Errorf("connection id fail, %s", err.Error())
@@ -475,7 +475,7 @@ var startupTime = time.Now()
 var BuildVersion spi.Version
 var ServicePorts map[string][]*spi.ServicePort
 
-func (db *database) GetServerInfo() (*spi.ServerInfo, error) {
+func (db *Database) GetServerInfo() (*spi.ServerInfo, error) {
 	rsp := &spi.ServerInfo{}
 
 	mem := runtime.MemStats{}
@@ -509,7 +509,7 @@ func (db *database) GetServerInfo() (*spi.ServerInfo, error) {
 	return rsp, nil
 }
 
-func (db *database) GetServicePorts(svc string) ([]*spi.ServicePort, error) {
+func (db *Database) GetServicePorts(svc string) ([]*spi.ServicePort, error) {
 	ports := []*spi.ServicePort{}
 	for k, s := range ServicePorts {
 		if len(svc) > 0 {
