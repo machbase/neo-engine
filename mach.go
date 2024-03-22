@@ -15,6 +15,8 @@ import (
 	"unsafe"
 
 	spi "github.com/machbase/neo-spi"
+	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/sony/sonyflake"
 )
 
 type InitOption int
@@ -43,7 +45,11 @@ func InitializeOption(homeDir string, machPort int, opt InitOption) error {
 	}
 	singleton.handle = handle
 	spi.RegisterFactory(FactoryName, func() (spi.Database, error) {
-		return &database{handle: singleton.handle}, nil
+		return &database{
+			handle: singleton.handle,
+			conns:  cmap.New[*ConnWatcher](),
+			idGen:  sonyflake.NewSonyflake(sonyflake.Settings{}),
+		}, nil
 	})
 	return nil
 }
@@ -72,12 +78,13 @@ var singleton = Env{}
 
 type database struct {
 	handle unsafe.Pointer
+	idGen  *sonyflake.Sonyflake
+	conns  cmap.ConcurrentMap[string, *ConnWatcher]
 }
 
 var _ spi.Database = &database{}
 var _ spi.DatabaseServer = &database{}
 var _ spi.DatabaseAuth = &database{}
-var _ spi.DatabaseAux = &database{}
 var _ spi.Conn = &connection{}
 var _ spi.Explainer = &connection{}
 
@@ -108,6 +115,59 @@ func (db *database) UserAuth(username, password string) (bool, error) {
 	return machUserAuth(db.handle, username, password)
 }
 
+// TODO remove this func
+func (db *database) GetInflights() ([]*spi.Inflight, error) {
+	return nil, nil
+}
+
+// TODO remove this func
+func (db *database) GetPostflights() ([]*spi.Postflight, error) {
+	return nil, nil
+}
+
+func (db *database) RegisterWatcher(key string, conn *connection) {
+	db.SetWatcher(key, &ConnWatcher{
+		Key:     key,
+		Created: time.Now(),
+		conn:    conn,
+	})
+}
+
+func (db *database) SetWatcher(key string, cw *ConnWatcher) {
+	db.conns.Set(key, cw)
+}
+
+func (db *database) GetWatcher(key string) (*ConnWatcher, bool) {
+	return db.conns.Get(key)
+}
+
+func (db *database) RemoveWatcher(key string) {
+	db.conns.Remove(key)
+}
+
+func (db *database) ListWatcher(cb func(*ConnWatcher) bool) {
+	if cb == nil {
+		return
+	}
+	var cont = true
+	db.conns.IterCb(func(_ string, v *ConnWatcher) {
+		if !cont {
+			return
+		}
+		cont = cb(v)
+	})
+}
+
+type ConnWatcher struct {
+	Key     string
+	Created time.Time
+	conn    *connection
+}
+
+func (cw *ConnWatcher) LatestSQL() string {
+	return cw.conn.latestSQL
+}
+
 type connection struct {
 	ctx         context.Context
 	username    string
@@ -117,6 +177,8 @@ type connection struct {
 	closeOnce   sync.Once
 	closed      bool
 	db          *database
+
+	latestSQL string
 }
 
 func WithPassword(username string, password string) spi.ConnectOption {
@@ -134,7 +196,16 @@ func WithTrustUser(username string) spi.ConnectOption {
 }
 
 func (db *database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi.Conn, error) {
-	ret := &connection{ctx: ctx, db: db}
+	id, err := db.idGen.NextID()
+	if err != nil {
+		return nil, fmt.Errorf("connection id fail, %s", err.Error())
+	}
+	strId := fmt.Sprintf("%X", id)
+	ret := &connection{
+		ctx:       ctx,
+		db:        db,
+		latestSQL: "CONNECT",
+	}
 	for _, o := range opts {
 		o(ret)
 	}
@@ -156,10 +227,13 @@ func (db *database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi
 			fmt.Printf("Conn.Connect() from %s#%d\n", file, no)
 		}
 	}
+
+	db.RegisterWatcher(strId, ret)
 	return ret, nil
 }
 
 func (conn *connection) Close() (err error) {
+	conn.latestSQL = "CLOSE"
 	if statz.Debug {
 		_, file, no, ok := runtime.Caller(1)
 		if ok {
@@ -191,6 +265,7 @@ func (conn *connection) Ping() (time.Duration, error) {
 }
 
 func (conn *connection) Exec(ctx context.Context, sqlText string, params ...any) spi.Result {
+	conn.latestSQL = sqlText
 	var result = &Result{}
 	var stmt unsafe.Pointer
 	if err := machAllocStmt(conn.handle, &stmt); err != nil {
@@ -238,6 +313,7 @@ func (conn *connection) Exec(ctx context.Context, sqlText string, params ...any)
 }
 
 func (conn *connection) Query(ctx context.Context, sqlText string, params ...any) (spi.Rows, error) {
+	conn.latestSQL = sqlText
 	rows := &Rows{
 		sqlText: sqlText,
 	}
@@ -247,9 +323,6 @@ func (conn *connection) Query(ctx context.Context, sqlText string, params ...any
 	if err := machPrepare(rows.stmt, sqlText); err != nil {
 		machFreeStmt(rows.stmt)
 		return nil, err
-	}
-	if DefaultDetective != nil {
-		DefaultDetective.EnlistDetective(rows, sqlText)
 	}
 	for i, p := range params {
 		if err := bind(rows.stmt, i, p); err != nil {
@@ -272,6 +345,7 @@ func (conn *connection) Query(ctx context.Context, sqlText string, params ...any
 }
 
 func (conn *connection) QueryRow(ctx context.Context, sqlText string, params ...any) spi.Row {
+	conn.latestSQL = sqlText
 	var row = &Row{}
 	var stmt unsafe.Pointer
 	statz.AllocStmt()
@@ -378,6 +452,7 @@ func (conn *connection) QueryRow(ctx context.Context, sqlText string, params ...
 }
 
 func (conn *connection) Explain(ctx context.Context, sqlText string, full bool) (string, error) {
+	conn.latestSQL = "EXPLAIN " + sqlText
 	var stmt unsafe.Pointer
 	if err := machAllocStmt(conn.handle, &stmt); err != nil {
 		return "", err
@@ -434,14 +509,6 @@ func (db *database) GetServerInfo() (*spi.ServerInfo, error) {
 	return rsp, nil
 }
 
-func (db *database) GetInflights() ([]*spi.Inflight, error) {
-	return DefaultDetective.InflightsDetective(), nil
-}
-
-func (db *database) GetPostflights() ([]*spi.Postflight, error) {
-	return DefaultDetective.PostflightsDetective(), nil
-}
-
 func (db *database) GetServicePorts(svc string) ([]*spi.ServicePort, error) {
 	ports := []*spi.ServicePort{}
 	for k, s := range ServicePorts {
@@ -459,16 +526,6 @@ func (db *database) GetServicePorts(svc string) ([]*spi.ServicePort, error) {
 		return ports[i].Service < ports[j].Service
 	})
 	return ports, nil
-}
-
-var DefaultDetective Detective
-
-type Detective interface {
-	EnlistDetective(obj any, sqlTextOrTableName string)
-	DelistDetective(any)
-	UpdateDetective(any)
-	InflightsDetective() []*spi.Inflight
-	PostflightsDetective() []*spi.Postflight
 }
 
 type Statz struct {

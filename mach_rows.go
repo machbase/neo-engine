@@ -170,9 +170,6 @@ func (rows *Rows) Close() error {
 	if rows.stmt != nil {
 		statz.FreeStmt()
 		err = machFreeStmt(rows.stmt)
-		if DefaultDetective != nil {
-			DefaultDetective.DelistDetective(rows)
-		}
 		rows.stmt = nil
 	}
 	rows.sqlText = ""
@@ -348,11 +345,6 @@ func (rows *Rows) Next() bool {
 	if !rows.IsFetchable() {
 		return false
 	}
-
-	if DefaultDetective != nil {
-		DefaultDetective.UpdateDetective(rows)
-	}
-
 	next, err := machFetch(rows.stmt)
 	if err != nil {
 		rows.fetchError = err
