@@ -83,10 +83,7 @@ type Database struct {
 }
 
 var _ spi.Database = &Database{}
-var _ spi.DatabaseServer = &Database{}
-var _ spi.DatabaseAuth = &Database{}
 var _ spi.Conn = &connection{}
-var _ spi.Explainer = &connection{}
 
 // implements spi.DatabaseLife interface
 func (db *Database) Startup() error {
@@ -113,16 +110,6 @@ func (db *Database) Error() error {
 // implements spi.DatabaseAuth interface
 func (db *Database) UserAuth(username, password string) (bool, error) {
 	return machUserAuth(db.handle, username, password)
-}
-
-// TODO remove this func
-func (db *Database) GetInflights() ([]*spi.Inflight, error) {
-	return nil, nil
-}
-
-// TODO remove this func
-func (db *Database) GetPostflights() ([]*spi.Postflight, error) {
-	return nil, nil
 }
 
 func (db *Database) RegisterWatcher(key string, conn *connection) {
@@ -472,16 +459,16 @@ func (conn *connection) Explain(ctx context.Context, sqlText string, full bool) 
 }
 
 var startupTime = time.Now()
-var BuildVersion spi.Version
-var ServicePorts map[string][]*spi.ServicePort
+var BuildVersion Version
+var ServicePorts map[string][]*ServicePort
 
-func (db *Database) GetServerInfo() (*spi.ServerInfo, error) {
-	rsp := &spi.ServerInfo{}
+func (db *Database) GetServerInfo() (*ServerInfo, error) {
+	rsp := &ServerInfo{}
 
 	mem := runtime.MemStats{}
 	runtime.ReadMemStats(&mem)
 
-	rsp.Version = spi.Version{
+	rsp.Version = Version{
 		Engine:         LinkInfo(),
 		Major:          BuildVersion.Major,
 		Minor:          BuildVersion.Minor,
@@ -491,7 +478,7 @@ func (db *Database) GetServerInfo() (*spi.ServerInfo, error) {
 		BuildCompiler:  BuildVersion.BuildCompiler,
 	}
 
-	rsp.Runtime = spi.Runtime{
+	rsp.Runtime = Runtime{
 		OS:             runtime.GOOS,
 		Arch:           runtime.GOARCH,
 		Pid:            int32(os.Getpid()),
@@ -509,8 +496,38 @@ func (db *Database) GetServerInfo() (*spi.ServerInfo, error) {
 	return rsp, nil
 }
 
-func (db *Database) GetServicePorts(svc string) ([]*spi.ServicePort, error) {
-	ports := []*spi.ServicePort{}
+type ServerInfo struct {
+	Version Version
+	Runtime Runtime
+}
+
+type Version struct {
+	Major          int32
+	Minor          int32
+	Patch          int32
+	GitSHA         string
+	BuildTimestamp string
+	BuildCompiler  string
+	Engine         string
+}
+
+type Runtime struct {
+	OS             string
+	Arch           string
+	Pid            int32
+	UptimeInSecond int64
+	Processes      int32
+	Goroutines     int32
+	MemSys         uint64
+	MemHeapSys     uint64
+	MemHeapAlloc   uint64
+	MemHeapInUse   uint64
+	MemStackSys    uint64
+	MemStackInUse  uint64
+}
+
+func (db *Database) GetServicePorts(svc string) ([]*ServicePort, error) {
+	ports := []*ServicePort{}
 	for k, s := range ServicePorts {
 		if len(svc) > 0 {
 			if strings.ToLower(svc) != k {
@@ -526,6 +543,11 @@ func (db *Database) GetServicePorts(svc string) ([]*spi.ServicePort, error) {
 		return ports[i].Service < ports[j].Service
 	})
 	return ports, nil
+}
+
+type ServicePort struct {
+	Service string
+	Address string
 }
 
 type Statz struct {

@@ -111,7 +111,7 @@ func TestAppendLog(t *testing.T) {
 
 	row := conn.QueryRow(ctx, "select count(*) from m$sys_tables  where name = ?", "LOG")
 	if row.Err() != nil {
-		panic(err)
+		panic(row.Err())
 	} else {
 		var count int
 		err = row.Scan(&count)
