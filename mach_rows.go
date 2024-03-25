@@ -118,7 +118,7 @@ func (row *Row) Scan(cols ...any) error {
 	}
 	for i := range cols {
 		if i >= len(row.values) {
-			return fmt.Errorf("column %d is out of range %d", i, len(row.values))
+			spi.ErrDatabaseScanIndex(i, len(row.values))
 		}
 		var isNull bool
 		switch v := row.values[i].(type) {
@@ -144,7 +144,7 @@ func (row *Row) Scan(cols ...any) error {
 			if v == nil {
 				cols[i] = nil
 			} else {
-				return fmt.Errorf("column %d can not assign to %T", i, v)
+				return spi.ErrDatabaseScanType(fmt.Sprintf("column[%d]", i), v)
 			}
 		}
 		if row.err != nil {
@@ -208,7 +208,7 @@ func (rows *Rows) Columns() (spi.Columns, error) {
 	for i := 0; i < count; i++ {
 		col, err := machColumnInfo(rows.stmt, i)
 		if err != nil {
-			return nil, errors.Wrap(err, "ColumnTypes")
+			return nil, err
 		}
 		ret[i] = col
 	}
@@ -330,12 +330,12 @@ func (rows *Rows) Fetch() ([]any, bool, error) {
 		case 9: // MACH_DATA_TYPE_BINARY
 			values[i] = []byte{}
 		default:
-			return nil, next, fmt.Errorf("Fetch unsupported type %T", typ)
+			return nil, next, spi.ErrDatabaseUnsupportedType("Fetch", int(typ))
 		}
 	}
 	err = scan(rows.stmt, values...)
 	if err != nil {
-		return nil, next, errors.Wrap(err, "Fetch")
+		return nil, next, err
 	}
 	return values, next, nil
 }

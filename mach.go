@@ -185,7 +185,7 @@ func WithTrustUser(username string) spi.ConnectOption {
 func (db *Database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi.Conn, error) {
 	id, err := db.idGen.NextID()
 	if err != nil {
-		return nil, fmt.Errorf("connection id fail, %s", err.Error())
+		spi.ErrDatabaseConnectID(err.Error())
 	}
 	strId := fmt.Sprintf("%X", id)
 	ret := &connection{
@@ -428,7 +428,7 @@ func (conn *connection) QueryRow(ctx context.Context, sqlText string, params ...
 		case 9: // MACH_DATA_TYPE_BINARY
 			row.values[i] = make([]byte, siz)
 		default:
-			row.err = fmt.Errorf("QueryRow unsupported type %d", typ)
+			row.err = spi.ErrDatabaseUnsupportedType("QueryRow", int(typ))
 		}
 	}
 	row.err = scan(stmt, row.values...)

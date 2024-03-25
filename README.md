@@ -26,4 +26,3 @@ go get -u github.com/machbase/neo-engine
 ## Related projects
 
 - [neo-server](https://github.com/machbase/neo-server) machbase-neo server
-- [neo-web](https://github.com/machbase/neo-web) machbase-neo web ui
