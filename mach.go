@@ -7,8 +7,6 @@ import (
 	"net"
 	"os"
 	"runtime"
-	"sort"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -458,98 +456,6 @@ func (conn *connection) Explain(ctx context.Context, sqlText string, full bool) 
 	return machExplain(stmt, full)
 }
 
-var startupTime = time.Now()
-var BuildVersion Version
-var ServicePorts map[string][]*ServicePort
-
-func (db *Database) GetServerInfo() (*ServerInfo, error) {
-	rsp := &ServerInfo{}
-
-	mem := runtime.MemStats{}
-	runtime.ReadMemStats(&mem)
-
-	rsp.Version = Version{
-		Engine:         LinkInfo(),
-		Major:          BuildVersion.Major,
-		Minor:          BuildVersion.Minor,
-		Patch:          BuildVersion.Patch,
-		GitSHA:         BuildVersion.GitSHA,
-		BuildTimestamp: BuildVersion.BuildTimestamp,
-		BuildCompiler:  BuildVersion.BuildCompiler,
-	}
-
-	rsp.Runtime = Runtime{
-		OS:             runtime.GOOS,
-		Arch:           runtime.GOARCH,
-		Pid:            int32(os.Getpid()),
-		UptimeInSecond: int64(time.Since(startupTime).Seconds()),
-		Processes:      int32(runtime.GOMAXPROCS(-1)),
-		Goroutines:     int32(runtime.NumGoroutine()),
-		MemSys:         mem.Sys,
-		MemHeapSys:     mem.HeapSys,
-		MemHeapAlloc:   mem.HeapAlloc,
-		MemHeapInUse:   mem.HeapInuse,
-		MemStackSys:    mem.StackSys,
-		MemStackInUse:  mem.StackInuse,
-	}
-
-	return rsp, nil
-}
-
-type ServerInfo struct {
-	Version Version
-	Runtime Runtime
-}
-
-type Version struct {
-	Major          int32
-	Minor          int32
-	Patch          int32
-	GitSHA         string
-	BuildTimestamp string
-	BuildCompiler  string
-	Engine         string
-}
-
-type Runtime struct {
-	OS             string
-	Arch           string
-	Pid            int32
-	UptimeInSecond int64
-	Processes      int32
-	Goroutines     int32
-	MemSys         uint64
-	MemHeapSys     uint64
-	MemHeapAlloc   uint64
-	MemHeapInUse   uint64
-	MemStackSys    uint64
-	MemStackInUse  uint64
-}
-
-func (db *Database) GetServicePorts(svc string) ([]*ServicePort, error) {
-	ports := []*ServicePort{}
-	for k, s := range ServicePorts {
-		if len(svc) > 0 {
-			if strings.ToLower(svc) != k {
-				continue
-			}
-		}
-		ports = append(ports, s...)
-	}
-	sort.Slice(ports, func(i, j int) bool {
-		if ports[i].Service == ports[j].Service {
-			return ports[i].Address < ports[j].Address
-		}
-		return ports[i].Service < ports[j].Service
-	})
-	return ports, nil
-}
-
-type ServicePort struct {
-	Service string
-	Address string
-}
-
 type Statz struct {
 	Conns          int64
 	Stmts          int64
@@ -557,6 +463,7 @@ type Statz struct {
 	ConnsInUse     int32
 	StmtsInUse     int32
 	AppendersInUse int32
+	RawConns       int32
 	Debug          bool
 }
 
@@ -593,17 +500,10 @@ func StatzDebug(flag bool) {
 	statz.Debug = flag
 }
 
-func StatzSnapshot() map[string]any {
-	ret := map[string]any{
-		"conns":          statz.ConnsInUse,
-		"conns_used":     statz.Conns,
-		"stmts":          statz.StmtsInUse,
-		"stmts_used":     statz.Stmts,
-		"appenders":      statz.AppendersInUse,
-		"appenders_used": statz.Appenders,
-	}
+func StatzSnapshot() *Statz {
+	ret := statz
 	if singleton.handle != nil {
-		ret["conns_raw"] = machConnectionCount(singleton.handle)
+		ret.RawConns = int32(machConnectionCount(singleton.handle))
 	}
-	return ret
+	return &ret
 }
