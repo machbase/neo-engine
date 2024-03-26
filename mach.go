@@ -12,7 +12,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/machbase/neo-server/spi"
+	"github.com/machbase/neo-engine/spi"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sony/sonyflake"
 )
@@ -190,7 +190,7 @@ func WithTrustUser(username string) spi.ConnectOption {
 func (db *Database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi.Conn, error) {
 	id, err := db.idGen.NextID()
 	if err != nil {
-		spi.ErrDatabaseConnectID(err.Error())
+		return nil, spi.ErrDatabaseConnectID(err.Error())
 	}
 	strId := fmt.Sprintf("%X", id)
 	ret := &connection{

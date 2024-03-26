@@ -13,7 +13,7 @@ import (
 	"time"
 
 	mach "github.com/machbase/neo-engine"
-	"github.com/machbase/neo-server/spi"
+	"github.com/machbase/neo-engine/spi"
 	"github.com/pkg/errors"
 )
 
@@ -87,7 +87,7 @@ func TestMain(m *testing.M) {
 		panic(errors.Wrap(err, "create database"))
 	}
 
-	db, err = spi.New()
+	db, err = spi.NewDatabase()
 	if err != nil {
 		panic(err)
 	}

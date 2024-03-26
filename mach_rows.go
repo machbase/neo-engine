@@ -8,7 +8,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/machbase/neo-server/spi"
+	"github.com/machbase/neo-engine/spi"
 	"github.com/pkg/errors"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -118,7 +118,7 @@ func (row *Row) Scan(cols ...any) error {
 	}
 	for i := range cols {
 		if i >= len(row.values) {
-			spi.ErrDatabaseScanIndex(i, len(row.values))
+			return spi.ErrDatabaseScanIndex(i, len(row.values))
 		}
 		var isNull bool
 		switch v := row.values[i].(type) {

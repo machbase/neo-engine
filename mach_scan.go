@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/machbase/neo-server/spi"
+	"github.com/machbase/neo-engine/spi"
 )
 
 func ScanInt16(v int16, c any) error {

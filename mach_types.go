@@ -1,7 +1,7 @@
 package mach
 
 import (
-	"github.com/machbase/neo-server/spi"
+	"github.com/machbase/neo-engine/spi"
 )
 
 type ColumnType int
