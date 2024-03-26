@@ -149,8 +149,8 @@ type ConnWatcher struct {
 	conn    *connection
 }
 
-func (cw *ConnWatcher) LatestSQL() string {
-	return cw.conn.latestSQL
+func (cw *ConnWatcher) LatestSql() (string, time.Time) {
+	return cw.conn.latestSql, cw.conn.latestTime
 }
 
 type connection struct {
@@ -163,7 +163,14 @@ type connection struct {
 	closed      bool
 	db          *Database
 
-	latestSQL string
+	latestTime    time.Time
+	latestSql     string
+	closeCallback func()
+}
+
+func (conn *connection) SetLatestSql(sql string) {
+	conn.latestTime = time.Now()
+	conn.latestSql = sql
 }
 
 func WithPassword(username string, password string) spi.ConnectOption {
@@ -187,9 +194,8 @@ func (db *Database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi
 	}
 	strId := fmt.Sprintf("%X", id)
 	ret := &connection{
-		ctx:       ctx,
-		db:        db,
-		latestSQL: "CONNECT",
+		ctx: ctx,
+		db:  db,
 	}
 	for _, o := range opts {
 		o(ret)
@@ -212,13 +218,16 @@ func (db *Database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi
 			fmt.Printf("Conn.Connect() from %s#%d\n", file, no)
 		}
 	}
-
-	db.RegisterWatcher(strId, ret)
+	ret.closeCallback = func() {
+		ret.SetLatestSql("CLOSE") // 3. set latest sql time
+		db.RemoveWatcher(strId)
+	}
+	db.RegisterWatcher(strId, ret) // 1. set creTime
+	ret.SetLatestSql("CONNECT")    // 2. set latest sql time
 	return ret, nil
 }
 
 func (conn *connection) Close() (err error) {
-	conn.latestSQL = "CLOSE"
 	if statz.Debug {
 		_, file, no, ok := runtime.Caller(1)
 		if ok {
@@ -229,6 +238,9 @@ func (conn *connection) Close() (err error) {
 		conn.closed = true
 		statz.FreeConn()
 		err = machDisconnect(conn.handle)
+		if conn.closeCallback != nil {
+			conn.closeCallback()
+		}
 	})
 	return
 }
@@ -250,7 +262,7 @@ func (conn *connection) Ping() (time.Duration, error) {
 }
 
 func (conn *connection) Exec(ctx context.Context, sqlText string, params ...any) spi.Result {
-	conn.latestSQL = sqlText
+	conn.SetLatestSql(sqlText)
 	var result = &Result{}
 	var stmt unsafe.Pointer
 	if err := machAllocStmt(conn.handle, &stmt); err != nil {
@@ -298,7 +310,7 @@ func (conn *connection) Exec(ctx context.Context, sqlText string, params ...any)
 }
 
 func (conn *connection) Query(ctx context.Context, sqlText string, params ...any) (spi.Rows, error) {
-	conn.latestSQL = sqlText
+	conn.SetLatestSql(sqlText)
 	rows := &Rows{
 		sqlText: sqlText,
 	}
@@ -330,7 +342,7 @@ func (conn *connection) Query(ctx context.Context, sqlText string, params ...any
 }
 
 func (conn *connection) QueryRow(ctx context.Context, sqlText string, params ...any) spi.Row {
-	conn.latestSQL = sqlText
+	conn.SetLatestSql(sqlText)
 	var row = &Row{}
 	var stmt unsafe.Pointer
 	statz.AllocStmt()
@@ -437,7 +449,7 @@ func (conn *connection) QueryRow(ctx context.Context, sqlText string, params ...
 }
 
 func (conn *connection) Explain(ctx context.Context, sqlText string, full bool) (string, error) {
-	conn.latestSQL = "EXPLAIN " + sqlText
+	conn.SetLatestSql("EXPLAIN " + sqlText)
 	var stmt unsafe.Pointer
 	if err := machAllocStmt(conn.handle, &stmt); err != nil {
 		return "", err
