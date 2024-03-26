@@ -1,9 +1,5 @@
 package mach
 
-/*
-#include <stdlib.h>
-*/
-import "C"
 import (
 	"fmt"
 	"net"

@@ -8,8 +8,7 @@ import (
 	"unsafe"
 
 	_ "github.com/machbase/neo-engine/native"
-	spi "github.com/machbase/neo-spi"
-	"github.com/pkg/errors"
+	"github.com/machbase/neo-server/spi"
 )
 
 /*
@@ -43,7 +42,7 @@ func initialize0(homeDir string, machPort int, flag int, envHandle *unsafe.Point
 	if rt := C.MachInitialize(cstr, C.int(machPort), C.int(flag), envHandle); rt == 0 {
 		return nil
 	} else {
-		return fmt.Errorf("MachInitialize returns %d", rt)
+		return spi.ErrDatabaseReturns("MachInitialize", int(rt))
 	}
 }
 
@@ -55,7 +54,7 @@ func createDatabase0(envHandle unsafe.Pointer) error {
 	if rt := C.MachCreateDB(envHandle); rt == 0 {
 		return nil
 	} else {
-		return fmt.Errorf("MachCreateDB returns %d", rt)
+		return spi.ErrDatabaseReturns("MachCreateDB", int(rt))
 	}
 }
 
@@ -63,7 +62,7 @@ func destroyDatabase0(envHandle unsafe.Pointer) error {
 	if rt := C.MachDestroyDB(envHandle); rt == 0 {
 		return nil
 	} else {
-		return fmt.Errorf("MachDestroyDB returns %d", rt)
+		return spi.ErrDatabaseReturns("MachDestroyDB", int(rt))
 	}
 }
 
@@ -78,7 +77,7 @@ func startup0(envHandle unsafe.Pointer) error {
 		if dbErr != nil {
 			return dbErr
 		} else {
-			return fmt.Errorf("MachStartupDB returns %d", rt)
+			return spi.ErrDatabaseReturns("MachStartupDB", int(rt))
 		}
 	}
 	return nil
@@ -92,7 +91,7 @@ func shutdown0(envHandle unsafe.Pointer) error {
 		if dbErr != nil {
 			return dbErr
 		} else {
-			return fmt.Errorf("MachShutdownDB returns %d", rt)
+			return spi.ErrDatabaseReturns("MachShutdownDB", int(rt))
 		}
 	}
 }
@@ -116,7 +115,7 @@ func machConnect(envHandle unsafe.Pointer, username string, password string, con
 		if dbErr != nil {
 			return dbErr
 		} else {
-			return fmt.Errorf("MachConnect returns %d", rt)
+			return spi.ErrDatabaseReturns("MachConnect", int(rt))
 		}
 	}
 }
@@ -133,7 +132,7 @@ func machConnectTrust(envHandle unsafe.Pointer, username string, conn *unsafe.Po
 		if dbErr != nil {
 			return dbErr
 		} else {
-			return fmt.Errorf("MachConnect returns %d", rt)
+			return spi.ErrDatabaseReturns("MachConnect", int(rt))
 		}
 	}
 }
@@ -146,7 +145,20 @@ func machDisconnect(conn unsafe.Pointer) error {
 		if dbErr != nil {
 			return dbErr
 		} else {
-			return fmt.Errorf("MachDisconnect returns %d", rt)
+			return spi.ErrDatabaseReturns("MachDisconnect", int(rt))
+		}
+	}
+}
+
+func machCancel(conn unsafe.Pointer) error {
+	if rt := C.MachCancel(conn); rt == 0 {
+		return nil
+	} else {
+		dbErr := machError0(conn)
+		if dbErr != nil {
+			return dbErr
+		} else {
+			return spi.ErrDatabaseReturns("MachCancel", int(rt))
 		}
 	}
 }
@@ -155,7 +167,7 @@ func machError0(handle unsafe.Pointer) error {
 	code := C.MachErrorCode(handle)
 	msg := C.MachErrorMsg(handle)
 	if code != 0 && msg != nil {
-		return fmt.Errorf("MACH-ERR %d %s", code, C.GoString(msg))
+		return spi.ErrDatabaseMach(int(code), C.GoString(msg))
 	}
 	return nil
 }
@@ -181,7 +193,7 @@ func machUserAuth(envHandle unsafe.Pointer, username string, password string) (b
 	case 2081:
 		return false, nil
 	default:
-		return false, fmt.Errorf("MachUserAuth returns %d", rt)
+		return false, spi.ErrDatabaseReturns("MachUserAuth", int(rt))
 	}
 }
 
@@ -196,7 +208,7 @@ func machExplain(stmt unsafe.Pointer, full bool) (string, error) {
 		if stmtErr != nil {
 			return "", stmtErr
 		} else {
-			return "", fmt.Errorf("MachExplain returns %d", rt)
+			return "", spi.ErrDatabaseReturns("MachExplain", int(rt))
 		}
 	}
 	return C.GoString(&cstr[0]), nil
@@ -209,7 +221,7 @@ func machAllocStmt(conn unsafe.Pointer, stmt *unsafe.Pointer) error {
 		if dbErr != nil {
 			return dbErr
 		} else {
-			return fmt.Errorf("MachAllocStmt returns %d", rt)
+			return spi.ErrDatabaseReturns("MachAllocStmt", int(rt))
 		}
 	}
 	*stmt = ptr
@@ -222,7 +234,7 @@ func machFreeStmt(stmt unsafe.Pointer) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return fmt.Errorf("MachFreeStmt returns %d", rt)
+			return spi.ErrDatabaseReturns("MachFreeStmt", int(rt))
 		}
 	}
 	return nil
@@ -236,7 +248,7 @@ func machPrepare(stmt unsafe.Pointer, sqlText string) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return fmt.Errorf("MachPrepare returns %d", rt)
+			return spi.ErrDatabaseReturns("MachPrepare", int(rt))
 		}
 	}
 	return nil
@@ -248,7 +260,7 @@ func machExecute(stmt unsafe.Pointer) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return fmt.Errorf("MachExecute returns %d", rt)
+			return spi.ErrDatabaseReturns("MachExecute", int(rt))
 		}
 	}
 	return nil
@@ -260,7 +272,7 @@ func machExecuteClean(stmt unsafe.Pointer) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return fmt.Errorf("MachExecuteClean returns %d", rt)
+			return spi.ErrDatabaseReturns("MachExecuteClean", int(rt))
 		}
 	}
 	return nil
@@ -274,7 +286,7 @@ func machDirectExecute(stmt unsafe.Pointer, sqlText string) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return fmt.Errorf("MachDirectExecute returns %d", rt)
+			return spi.ErrDatabaseReturns("MachDirectExecute", int(rt))
 		}
 	}
 	return nil
@@ -287,7 +299,7 @@ func machStmtType(stmt unsafe.Pointer) (StmtType, error) {
 		if stmtErr != nil {
 			return 0, stmtErr
 		} else {
-			return 0, fmt.Errorf("MachStmtType returns %d", rt)
+			return 0, spi.ErrDatabaseReturns("MachStmtType", int(rt))
 		}
 	}
 	return StmtType(typ), nil
@@ -300,7 +312,7 @@ func machEffectRows(stmt unsafe.Pointer) (int64, error) {
 		if stmtErr != nil {
 			return 0, stmtErr
 		} else {
-			return 0, fmt.Errorf("MachEffectRows returns %d", rt)
+			return 0, spi.ErrDatabaseReturns("MachEffectRows", int(rt))
 		}
 	}
 	return int64(rn), nil
@@ -314,7 +326,7 @@ func machFetch(stmt unsafe.Pointer) (bool, error) {
 		if stmtErr != nil {
 			return false, stmtErr
 		} else {
-			return false, fmt.Errorf("MachFetch returns %d", rt)
+			return false, spi.ErrDatabaseReturns("MachFetch", int(rt))
 		}
 	}
 	return fetchEnd == 0, nil
@@ -326,7 +338,7 @@ func machBindInt32(stmt unsafe.Pointer, idx int, val int32) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return fmt.Errorf("MachBindInt32 idx %d returns %d", idx, rt)
+			return spi.ErrDatabaseReturnsAtIdx("MachBindInt32", idx, int(rt))
 		}
 	}
 	return nil
@@ -338,7 +350,7 @@ func machBindInt64(stmt unsafe.Pointer, idx int, val int64) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return fmt.Errorf("MachBindInt64 idx %d returns %d", idx, rt)
+			return spi.ErrDatabaseReturnsAtIdx("MachBindInt64", idx, int(rt))
 		}
 	}
 	return nil
@@ -350,7 +362,7 @@ func machBindFloat64(stmt unsafe.Pointer, idx int, val float64) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return fmt.Errorf("MachBindDouble idx %d returns %d", idx, rt)
+			return spi.ErrDatabaseReturnsAtIdx("MachBindDouble", idx, int(rt))
 		}
 	}
 	return nil
@@ -364,7 +376,7 @@ func machBindString(stmt unsafe.Pointer, idx int, val string) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return fmt.Errorf("MachBindString idx %d returns %d", idx, rt)
+			return spi.ErrDatabaseReturnsAtIdx("MachBindString", idx, int(rt))
 		}
 	}
 	return nil
@@ -377,7 +389,7 @@ func machBindBinary(stmt unsafe.Pointer, idx int, data []byte) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return fmt.Errorf("MachBindBinary idx %d returns %d", idx, rt)
+			return spi.ErrDatabaseReturnsAtIdx("MachBindBinary", idx, int(rt))
 		}
 	}
 	return nil
@@ -389,7 +401,7 @@ func machBindNull(stmt unsafe.Pointer, idx int) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return fmt.Errorf("MachBindNull returns %d", rt)
+			return spi.ErrDatabaseReturnsAtIdx("MachBindNull", idx, int(rt))
 		}
 	}
 	return nil
@@ -402,7 +414,7 @@ func machColumnCount(stmt unsafe.Pointer) (int, error) {
 		if stmtErr != nil {
 			return 0, stmtErr
 		} else {
-			return 0, fmt.Errorf("MachColumnCount returns %d", rt)
+			return 0, spi.ErrDatabaseReturns("MachColumnCount", int(rt))
 		}
 	}
 	return int(count), nil
@@ -415,13 +427,13 @@ func machColumnInfo(stmt unsafe.Pointer, idx int) (*spi.Column, error) {
 		if stmtErr != nil {
 			return nil, stmtErr
 		} else {
-			return nil, fmt.Errorf("MachColumnInfo returns %d", rt)
+			return nil, spi.ErrDatabaseReturns("MachColumnInfo", int(rt))
 		}
 	}
 
 	typ, err := ColumnTypeString(ColumnType(nfo.mColumnType))
 	if err != nil {
-		return nil, fmt.Errorf("MachColumnInfo %s", err.Error())
+		return nil, spi.ErrDatabaseWrap("MachColumnInfo %s", err)
 	}
 
 	return &spi.Column{
@@ -439,7 +451,7 @@ func machColumnName(stmt unsafe.Pointer, idx int) (string, error) {
 		if stmtErr != nil {
 			return fmt.Sprintf("col-%d", idx), stmtErr
 		} else {
-			return fmt.Sprintf("col-%d", idx), fmt.Errorf("MachColumnName returns %d", rt)
+			return fmt.Sprintf("col-%d", idx), spi.ErrDatabaseReturns("MachColumnName", int(rt))
 		}
 	}
 	return C.GoString(&cstr[0]), nil
@@ -453,7 +465,7 @@ func machColumnType(stmt unsafe.Pointer, idx int) (ColumnType, ColumnSize, error
 		if stmtErr != nil {
 			return 0, 0, stmtErr
 		} else {
-			return 0, 0, fmt.Errorf("MachColumnType idx %d returns %d", idx, rt)
+			return 0, 0, spi.ErrDatabaseReturnsAtIdx("MachColumnType", idx, int(rt))
 		}
 	}
 	return ColumnType(typ), ColumnSize(siz), nil
@@ -466,7 +478,7 @@ func machColumnLength(stmt unsafe.Pointer, idx int) (int, error) {
 		if stmtErr != nil {
 			return 0, stmtErr
 		} else {
-			return 0, fmt.Errorf("MachColumnLength idx %d returns %d", idx, rt)
+			return 0, spi.ErrDatabaseReturnsAtIdx("MachColumnLength", idx, int(rt))
 		}
 	}
 	return int(length), nil
@@ -480,7 +492,7 @@ func machColumnData(stmt unsafe.Pointer, idx int, buf unsafe.Pointer, bufLen int
 		if stmtErr != nil {
 			return false, stmtErr
 		} else {
-			return false, fmt.Errorf("MachColumnData idx %d returns %d", idx, rt)
+			return false, spi.ErrDatabaseReturnsAtIdx("MachColumnData", idx, int(rt))
 		}
 	}
 	return isNull == 0, nil
@@ -495,7 +507,7 @@ func machColumnDataInt16(stmt unsafe.Pointer, idx int) (int16, bool, error) {
 		if stmtErr != nil {
 			return 0, false, stmtErr
 		} else {
-			return 0, false, fmt.Errorf("MachColumnDataInt16 idx %d returns %d", idx, rt)
+			return 0, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataInt16", idx, int(rt))
 		}
 	}
 	return int16(val), isNull == 0, nil
@@ -510,7 +522,7 @@ func machColumnDataInt32(stmt unsafe.Pointer, idx int) (int32, bool, error) {
 		if stmtErr != nil {
 			return 0, false, stmtErr
 		} else {
-			return 0, false, fmt.Errorf("MachColumnDataInt32 idx %d returns %d", idx, rt)
+			return 0, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataInt32", idx, int(rt))
 		}
 	}
 	return int32(val), isNull == 0, nil
@@ -525,7 +537,7 @@ func machColumnDataInt64(stmt unsafe.Pointer, idx int) (int64, bool, error) {
 		if stmtErr != nil {
 			return 0, false, stmtErr
 		} else {
-			return 0, false, fmt.Errorf("MachColumnDataInt64 idx %d returns %d", idx, rt)
+			return 0, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataInt64", idx, int(rt))
 		}
 	}
 	return int64(val), isNull == 0, nil
@@ -540,7 +552,7 @@ func machColumnDataDateTime(stmt unsafe.Pointer, idx int) (time.Time, bool, erro
 		if stmtErr != nil {
 			return time.Time{}, false, stmtErr
 		} else {
-			return time.Time{}, false, fmt.Errorf("MachColumnDataDateTime idx %d returns %d", idx, rt)
+			return time.Time{}, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataDateTime", idx, int(rt))
 		}
 	}
 	return time.Unix(0, int64(val)), isNull == 0, nil
@@ -555,7 +567,7 @@ func machColumnDataFloat32(stmt unsafe.Pointer, idx int) (float32, bool, error) 
 		if stmtErr != nil {
 			return 0, false, stmtErr
 		} else {
-			return 0, false, fmt.Errorf("MachColumnDataFloat idx %d returns %d", idx, rt)
+			return 0, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataFloat", idx, int(rt))
 		}
 	}
 	return float32(val), isNull == 0, nil
@@ -570,7 +582,7 @@ func machColumnDataFloat64(stmt unsafe.Pointer, idx int) (float64, bool, error) 
 		if stmtErr != nil {
 			return 0, false, stmtErr
 		} else {
-			return 0, false, fmt.Errorf("MachColumnDataDouble idx %d returns %d", idx, rt)
+			return 0, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataDouble", idx, int(rt))
 		}
 	}
 	return float64(val), isNull == 0, nil
@@ -586,7 +598,7 @@ func machColumnDataIPv4(stmt unsafe.Pointer, idx int) (net.IP, bool, error) {
 		if stmtErr != nil {
 			return net.IPv6zero, false, stmtErr
 		} else {
-			return net.IPv4zero, false, fmt.Errorf("MachColumnDataIPv4 idx %d returns %d", idx, rt)
+			return net.IPv4zero, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataIPv4", idx, int(rt))
 		}
 	}
 	return net.IP(val[1:]), isNull == 0, nil
@@ -602,7 +614,7 @@ func machColumnDataIPv6(stmt unsafe.Pointer, idx int) (net.IP, bool, error) {
 		if stmtErr != nil {
 			return net.IPv6zero, false, stmtErr
 		} else {
-			return net.IPv6zero, false, fmt.Errorf("MachColumnDataIPv6 idx %d returns %d", idx, rt)
+			return net.IPv6zero, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataIPv6", idx, int(rt))
 		}
 	}
 	return net.IP(val[1:]), isNull == 0, nil
@@ -612,7 +624,7 @@ func machColumnDataIPv6(stmt unsafe.Pointer, idx int) (net.IP, bool, error) {
 func machColumnDataString(stmt unsafe.Pointer, idx int) (string, bool, error) {
 	length, err := machColumnLength(stmt, idx)
 	if err != nil {
-		return "", false, errors.Wrap(err, "machColumnDataString")
+		return "", false, spi.ErrDatabaseWrap("machColumnDataString", err)
 	}
 	if length == 0 {
 		return "", false, nil
@@ -625,7 +637,7 @@ func machColumnDataString(stmt unsafe.Pointer, idx int) (string, bool, error) {
 		if stmtErr != nil {
 			return "", false, stmtErr
 		} else {
-			return "", false, fmt.Errorf("MachColumnDataString idx %d returns %d", idx, rt)
+			return "", false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataString", idx, int(rt))
 		}
 	}
 	return string(buf), isNull == 0, nil
@@ -635,7 +647,7 @@ func machColumnDataString(stmt unsafe.Pointer, idx int) (string, bool, error) {
 func machColumnDataBinary(stmt unsafe.Pointer, idx int) ([]byte, bool, error) {
 	length, err := machColumnLength(stmt, idx)
 	if err != nil {
-		return nil, false, errors.Wrap(err, "machColumnDataString")
+		return nil, false, spi.ErrDatabaseWrap("machColumnDataString", err)
 	}
 	if length == 0 {
 		return []byte{}, false, nil
@@ -648,7 +660,7 @@ func machColumnDataBinary(stmt unsafe.Pointer, idx int) ([]byte, bool, error) {
 		if stmtErr != nil {
 			return nil, false, stmtErr
 		} else {
-			return nil, false, fmt.Errorf("MachColumnDataString idx %d returns %d", idx, rt)
+			return nil, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataString", idx, int(rt))
 		}
 	}
 	return buf, isNull == 0, nil
@@ -662,7 +674,7 @@ func machAppendOpen(stmt unsafe.Pointer, tableName string) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return fmt.Errorf("MachAppendOpen %s returns %d", tableName, rt)
+			return spi.ErrDatabaseReturns("MachAppendOpen", int(rt))
 		}
 	}
 	return nil
@@ -676,7 +688,7 @@ func machAppendClose(stmt unsafe.Pointer) (int64, int64, error) {
 		if stmtErr != nil {
 			return 0, 0, stmtErr
 		} else {
-			return 0, 0, fmt.Errorf("MachAppendClose returns %d", rt)
+			return 0, 0, spi.ErrDatabaseReturns("MachAppendClose", int(rt))
 		}
 	}
 	return int64(successCount), int64(failureCount), nil
@@ -688,8 +700,387 @@ func machAppendData(stmt unsafe.Pointer, values *C.MachEngineAppendParam) error 
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return fmt.Errorf("MachAppendData returns %d", rt)
+			return spi.ErrDatabaseReturns("MachAppendData", int(rt))
 		}
 	}
 	return nil
+}
+
+func (ap *Appender) appendTable0(vals []any) error {
+	if len(ap.columns) == 0 {
+		return fmt.Errorf("table '%s' has no columns", ap.tableName)
+	}
+	if len(ap.columns) != len(vals) {
+		return fmt.Errorf("value count %d, table '%s' requres %d columns to append", len(vals), ap.tableName, len(ap.columns))
+	}
+
+	buffer := make([]C.MachEngineAppendParam, len(ap.columns))
+
+	for i, val := range vals {
+		if val == nil {
+			buffer[i].mIsNull = C.int(1)
+			continue
+		}
+		c := ap.columns[i]
+		switch c.Type {
+		default:
+			return fmt.Errorf("machAppendData unknown column type '%s'", c.Type)
+		case spi.ColumnBufferTypeInt16:
+			switch v := val.(type) {
+			default:
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case uint16:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
+			case *uint16:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(*v)
+			case int16:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
+			case *int16:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(*v)
+			case *float64:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(*v)
+			case float64:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
+			case *float32:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(*v)
+			case float32:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
+			}
+		case spi.ColumnBufferTypeInt32:
+			switch v := val.(type) {
+			default:
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case int16:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case *int16:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
+			case uint16:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case *uint16:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
+			case int32:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case *int32:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
+			case uint32:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case *uint32:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
+			case int:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case *int:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
+			case uint:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case *uint:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
+			case *float64:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
+			case float64:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			case *float32:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(*v)
+			case float32:
+				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
+			}
+		case spi.ColumnBufferTypeInt64:
+			switch v := val.(type) {
+			default:
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case int16:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *int16:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
+			case uint16:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *uint16:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
+			case int32:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *int32:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
+			case uint32:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *uint32:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
+			case int:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *int:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
+			case uint:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *uint:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
+			case int64:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *int64:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
+			case uint64:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *uint64:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
+			case *float64:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
+			case float64:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			case *float32:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(*v)
+			case float32:
+				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
+			}
+		case spi.ColumnBufferTypeFloat:
+			switch v := val.(type) {
+			default:
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case int:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
+			case *int:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(*v)
+			case int16:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
+			case *int16:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(*v)
+			case int32:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
+			case *int32:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(*v)
+			case int64:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
+			case *int64:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(*v)
+			case float32:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
+			case *float32:
+				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(*v)
+			}
+		case spi.ColumnBufferTypeDouble:
+			switch v := val.(type) {
+			default:
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case int:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			case *int:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(*v)
+			case int16:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			case *int16:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(*v)
+			case int32:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			case *int32:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(*v)
+			case int64:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			case *int64:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(*v)
+			case float32:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			case *float32:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(*v)
+			case float64:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
+			case *float64:
+				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(*v)
+			}
+		case spi.ColumnBufferTypeDatetime:
+			(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mDateStr = nil
+			(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mFormatStr = nil
+			switch v := val.(type) {
+			default:
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case time.Time:
+				tv := v.UnixNano()
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
+			case *time.Time:
+				tv := v.UnixNano()
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
+			case int:
+				tv := int64(v)
+				switch ap.timeformat {
+				case "s":
+					tv = tv * 1000000000
+				case "ms":
+					tv = tv * 1000000
+				case "us":
+					tv = tv * 1000
+				case "ns":
+				default:
+					return fmt.Errorf("MachAppendData cannot apply int with %s to %s (%s)", ap.timeformat, c.Name, c.Type)
+				}
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
+			case int16:
+				tv := int64(v)
+				switch ap.timeformat {
+				case "s":
+					tv = tv * 1000000000
+				case "ms":
+					tv = tv * 1000000
+				case "us":
+					tv = tv * 1000
+				case "ns":
+				default:
+					return fmt.Errorf("MachAppendData cannot apply int16 with %s to %s (%s)", ap.timeformat, c.Name, c.Type)
+				}
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
+			case int32:
+				tv := int64(v)
+				switch ap.timeformat {
+				case "s":
+					tv = tv * 1000000000
+				case "ms":
+					tv = tv * 1000000
+				case "us":
+					tv = tv * 1000
+				case "ns":
+				default:
+					return fmt.Errorf("MachAppendData cannot apply int32 with %s to %s (%s)", ap.timeformat, c.Name, c.Type)
+				}
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
+			case int64:
+				tv := int64(v)
+				switch ap.timeformat {
+				case "s":
+					tv = tv * 1000000000
+				case "ms":
+					tv = tv * 1000000
+				case "us":
+					tv = tv * 1000
+				case "ns":
+				default:
+					return fmt.Errorf("MachAppendData cannot apply int64 with %s to %s (%s)", ap.timeformat, c.Name, c.Type)
+				}
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
+			case float64:
+				tv := int64(v)
+				switch ap.timeformat {
+				case "s":
+					tv = tv * 1000000000
+				case "ms":
+					tv = tv * 1000000
+				case "us":
+					tv = tv * 1000
+				case "ns":
+				default:
+					return fmt.Errorf("MachAppendData cannot apply float64 with %s to %s (%s)", ap.timeformat, c.Name, c.Type)
+				}
+				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
+			case string:
+				if len(ap.timeformat) > 0 {
+					cstr := C.CString(v)
+					defer C.free(unsafe.Pointer(cstr))
+					cfmt := C.CString(ap.timeformat)
+					defer C.free(unsafe.Pointer(cfmt))
+					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = -2 // MACH_ENGINE_APPEND_DATETIME_STRING
+					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mDateStr = cstr
+					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mFormatStr = cfmt
+				} else {
+					return fmt.Errorf("MachAppendData cannot apply string without format to %s (%s)", c.Name, c.Type)
+				}
+			case *string:
+				if len(ap.timeformat) > 0 {
+					cstr := C.CString(*v)
+					defer C.free(unsafe.Pointer(cstr))
+					cfmt := C.CString(ap.timeformat)
+					defer C.free(unsafe.Pointer(cfmt))
+					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = -2 // MACH_ENGINE_APPEND_DATETIME_STRING
+					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mDateStr = cstr
+					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mFormatStr = cfmt
+				} else {
+					return fmt.Errorf("MachAppendData cannot apply string without format to %s (%s)", c.Name, c.Type)
+				}
+			}
+		case spi.ColumnBufferTypeIPv4:
+			ip, ok := val.(net.IP)
+			if !ok {
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
+			}
+			if ipv4 := ip.To4(); ipv4 == nil {
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
+			} else {
+				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uchar(net.IPv4len)
+				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddrString = nil
+				for i := 0; i < net.IPv4len; i++ {
+					(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddr[i] = C.uchar(ipv4[i])
+				}
+			}
+		case spi.ColumnBufferTypeIPv6:
+			ip, ok := val.(net.IP)
+			if !ok {
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
+			}
+			if ipv6 := ip.To16(); ipv6 == nil {
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
+			} else {
+				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uchar(net.IPv6len)
+				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddrString = nil
+				for i := 0; i < net.IPv6len; i++ {
+					(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddr[i] = C.uchar(ipv6[i])
+				}
+			}
+		case spi.ColumnBufferTypeString:
+			switch v := val.(type) {
+			default:
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case string:
+				if len(v) == 0 {
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(0)
+				} else {
+					cstr := C.CString(v)
+					defer C.free(unsafe.Pointer(cstr))
+					cstrlen := C.strlen(cstr)
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(cstrlen)
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mData = unsafe.Pointer(cstr)
+				}
+			case *string:
+				if len(*v) == 0 {
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(0)
+				} else {
+					cstr := C.CString(*v)
+					defer C.free(unsafe.Pointer(cstr))
+					cstrlen := C.strlen(cstr)
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(cstrlen)
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mData = unsafe.Pointer(cstr)
+				}
+			}
+		case spi.ColumnBufferTypeBinary:
+			switch v := val.(type) {
+			default:
+				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+			case string:
+				if len(v) == 0 {
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(0)
+				} else {
+					cstr := C.CString(v)
+					defer C.free(unsafe.Pointer(cstr))
+					cstrlen := C.strlen(cstr)
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(cstrlen)
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mData = unsafe.Pointer(cstr)
+				}
+			case *string:
+				if len(*v) == 0 {
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(0)
+				} else {
+					cstr := C.CString(*v)
+					defer C.free(unsafe.Pointer(cstr))
+					cstrlen := C.strlen(cstr)
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(cstrlen)
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mData = unsafe.Pointer(cstr)
+				}
+			case []byte:
+				(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(len(v))
+				if len(v) > 0 {
+					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mData = unsafe.Pointer(&v[0])
+				}
+			}
+		}
+	}
+
+	if ap.closed {
+		return fmt.Errorf("closed appender")
+	}
+	if ap.conn == nil || !ap.conn.Connected() {
+		return fmt.Errorf("invalid connection")
+	}
+	err := machAppendData(ap.stmt, &buffer[0])
+	return err
 }

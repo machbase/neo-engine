@@ -5,9 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	spi "github.com/machbase/neo-spi"
 	"github.com/stretchr/testify/require"
 )
+
+type Explainer interface {
+	// Explain retrieves execution plan of the given SQL statement.
+	Explain(ctx context.Context, sqlText string, full bool) (string, error)
+}
 
 func TestExplain(t *testing.T) {
 	ctx := context.TODO()
@@ -16,7 +20,7 @@ func TestExplain(t *testing.T) {
 		panic(err)
 	}
 	defer conn.Close()
-	explainer := conn.(spi.Explainer)
+	explainer := conn.(Explainer)
 	plan, err := explainer.Explain(ctx, "select * from complex_tag order by time desc", false)
 	require.Nil(t, err)
 	require.True(t, len(plan) > 0)
@@ -32,7 +36,7 @@ func TestExplainFull(t *testing.T) {
 		panic(err)
 	}
 	defer conn.Close()
-	explainer := conn.(spi.Explainer)
+	explainer := conn.(Explainer)
 	plan, err := explainer.Explain(ctx, "select * from complex_tag order by time desc", true)
 	require.Nil(t, err)
 	require.True(t, len(plan) > 0)

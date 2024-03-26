@@ -13,12 +13,17 @@ import (
 	"time"
 
 	mach "github.com/machbase/neo-engine"
-	spi "github.com/machbase/neo-spi"
+	"github.com/machbase/neo-server/spi"
 	"github.com/pkg/errors"
 )
 
 var db spi.Database
 var connectOpts []spi.ConnectOption
+
+type Server interface {
+	Startup() error
+	Shutdown() error
+}
 
 func TestMain(m *testing.M) {
 	var err error
@@ -89,7 +94,7 @@ func TestMain(m *testing.M) {
 	if db == nil {
 		panic("database instance nil")
 	}
-	if mdb, ok := db.(spi.DatabaseServer); ok {
+	if mdb, ok := db.(Server); ok {
 		err = mdb.Startup()
 		if err != nil {
 			panic(err)
@@ -118,7 +123,7 @@ func TestMain(m *testing.M) {
 
 	m.Run()
 
-	if mdb, ok := db.(spi.DatabaseServer); ok {
+	if mdb, ok := db.(Server); ok {
 		mdb.Shutdown()
 	}
 }

@@ -7,14 +7,14 @@ import (
 	"net"
 	"os"
 	"runtime"
-	"sort"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 	"unsafe"
 
-	spi "github.com/machbase/neo-spi"
+	"github.com/machbase/neo-server/spi"
+	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/sony/sonyflake"
 )
 
 type InitOption int
@@ -43,7 +43,11 @@ func InitializeOption(homeDir string, machPort int, opt InitOption) error {
 	}
 	singleton.handle = handle
 	spi.RegisterFactory(FactoryName, func() (spi.Database, error) {
-		return &database{handle: singleton.handle}, nil
+		return &Database{
+			handle: singleton.handle,
+			conns:  cmap.New[*ConnWatcher](),
+			idGen:  sonyflake.NewSonyflake(sonyflake.Settings{}),
+		}, nil
 	})
 	return nil
 }
@@ -70,19 +74,17 @@ type Env struct {
 
 var singleton = Env{}
 
-type database struct {
+type Database struct {
 	handle unsafe.Pointer
+	idGen  *sonyflake.Sonyflake
+	conns  cmap.ConcurrentMap[string, *ConnWatcher]
 }
 
-var _ spi.Database = &database{}
-var _ spi.DatabaseServer = &database{}
-var _ spi.DatabaseAuth = &database{}
-var _ spi.DatabaseAux = &database{}
+var _ spi.Database = &Database{}
 var _ spi.Conn = &connection{}
-var _ spi.Explainer = &connection{}
 
 // implements spi.DatabaseLife interface
-func (db *database) Startup() error {
+func (db *Database) Startup() error {
 	// machbase change the current dir to $HOME during startup process.
 	// Call chdir() for keeping the working dir of the application.
 	cwd, _ := os.Getwd()
@@ -95,17 +97,60 @@ func (db *database) Startup() error {
 }
 
 // implements spi.DatabaseLife interface
-func (db *database) Shutdown() error {
+func (db *Database) Shutdown() error {
 	return shutdown0(db.handle)
 }
 
-func (db *database) Error() error {
+func (db *Database) Error() error {
 	return machError0(db.handle)
 }
 
 // implements spi.DatabaseAuth interface
-func (db *database) UserAuth(username, password string) (bool, error) {
+func (db *Database) UserAuth(username, password string) (bool, error) {
 	return machUserAuth(db.handle, username, password)
+}
+
+func (db *Database) RegisterWatcher(key string, conn *connection) {
+	db.SetWatcher(key, &ConnWatcher{
+		Key:     key,
+		Created: time.Now(),
+		conn:    conn,
+	})
+}
+
+func (db *Database) SetWatcher(key string, cw *ConnWatcher) {
+	db.conns.Set(key, cw)
+}
+
+func (db *Database) GetWatcher(key string) (*ConnWatcher, bool) {
+	return db.conns.Get(key)
+}
+
+func (db *Database) RemoveWatcher(key string) {
+	db.conns.Remove(key)
+}
+
+func (db *Database) ListWatcher(cb func(*ConnWatcher) bool) {
+	if cb == nil {
+		return
+	}
+	var cont = true
+	db.conns.IterCb(func(_ string, v *ConnWatcher) {
+		if !cont {
+			return
+		}
+		cont = cb(v)
+	})
+}
+
+type ConnWatcher struct {
+	Key     string
+	Created time.Time
+	conn    *connection
+}
+
+func (cw *ConnWatcher) LatestSql() (string, time.Time) {
+	return cw.conn.latestSql, cw.conn.latestTime
 }
 
 type connection struct {
@@ -116,7 +161,16 @@ type connection struct {
 	handle      unsafe.Pointer
 	closeOnce   sync.Once
 	closed      bool
-	db          *database
+	db          *Database
+
+	latestTime    time.Time
+	latestSql     string
+	closeCallback func()
+}
+
+func (conn *connection) SetLatestSql(sql string) {
+	conn.latestTime = time.Now()
+	conn.latestSql = sql
 }
 
 func WithPassword(username string, password string) spi.ConnectOption {
@@ -133,8 +187,16 @@ func WithTrustUser(username string) spi.ConnectOption {
 	}
 }
 
-func (db *database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi.Conn, error) {
-	ret := &connection{ctx: ctx, db: db}
+func (db *Database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi.Conn, error) {
+	id, err := db.idGen.NextID()
+	if err != nil {
+		spi.ErrDatabaseConnectID(err.Error())
+	}
+	strId := fmt.Sprintf("%X", id)
+	ret := &connection{
+		ctx: ctx,
+		db:  db,
+	}
 	for _, o := range opts {
 		o(ret)
 	}
@@ -156,6 +218,12 @@ func (db *database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi
 			fmt.Printf("Conn.Connect() from %s#%d\n", file, no)
 		}
 	}
+	ret.closeCallback = func() {
+		ret.SetLatestSql("CLOSE") // 3. set latest sql time
+		db.RemoveWatcher(strId)
+	}
+	db.RegisterWatcher(strId, ret) // 1. set creTime
+	ret.SetLatestSql("CONNECT")    // 2. set latest sql time
 	return ret, nil
 }
 
@@ -170,6 +238,9 @@ func (conn *connection) Close() (err error) {
 		conn.closed = true
 		statz.FreeConn()
 		err = machDisconnect(conn.handle)
+		if conn.closeCallback != nil {
+			conn.closeCallback()
+		}
 	})
 	return
 }
@@ -191,6 +262,7 @@ func (conn *connection) Ping() (time.Duration, error) {
 }
 
 func (conn *connection) Exec(ctx context.Context, sqlText string, params ...any) spi.Result {
+	conn.SetLatestSql(sqlText)
 	var result = &Result{}
 	var stmt unsafe.Pointer
 	if err := machAllocStmt(conn.handle, &stmt); err != nil {
@@ -238,6 +310,7 @@ func (conn *connection) Exec(ctx context.Context, sqlText string, params ...any)
 }
 
 func (conn *connection) Query(ctx context.Context, sqlText string, params ...any) (spi.Rows, error) {
+	conn.SetLatestSql(sqlText)
 	rows := &Rows{
 		sqlText: sqlText,
 	}
@@ -247,9 +320,6 @@ func (conn *connection) Query(ctx context.Context, sqlText string, params ...any
 	if err := machPrepare(rows.stmt, sqlText); err != nil {
 		machFreeStmt(rows.stmt)
 		return nil, err
-	}
-	if DefaultDetective != nil {
-		DefaultDetective.EnlistDetective(rows, sqlText)
 	}
 	for i, p := range params {
 		if err := bind(rows.stmt, i, p); err != nil {
@@ -272,6 +342,7 @@ func (conn *connection) Query(ctx context.Context, sqlText string, params ...any
 }
 
 func (conn *connection) QueryRow(ctx context.Context, sqlText string, params ...any) spi.Row {
+	conn.SetLatestSql(sqlText)
 	var row = &Row{}
 	var stmt unsafe.Pointer
 	statz.AllocStmt()
@@ -367,7 +438,7 @@ func (conn *connection) QueryRow(ctx context.Context, sqlText string, params ...
 		case 9: // MACH_DATA_TYPE_BINARY
 			row.values[i] = make([]byte, siz)
 		default:
-			row.err = fmt.Errorf("QueryRow unsupported type %d", typ)
+			row.err = spi.ErrDatabaseUnsupportedType("QueryRow", int(typ))
 		}
 	}
 	row.err = scan(stmt, row.values...)
@@ -378,6 +449,7 @@ func (conn *connection) QueryRow(ctx context.Context, sqlText string, params ...
 }
 
 func (conn *connection) Explain(ctx context.Context, sqlText string, full bool) (string, error) {
+	conn.SetLatestSql("EXPLAIN " + sqlText)
 	var stmt unsafe.Pointer
 	if err := machAllocStmt(conn.handle, &stmt); err != nil {
 		return "", err
@@ -396,81 +468,6 @@ func (conn *connection) Explain(ctx context.Context, sqlText string, full bool) 
 	return machExplain(stmt, full)
 }
 
-var startupTime = time.Now()
-var BuildVersion spi.Version
-var ServicePorts map[string][]*spi.ServicePort
-
-func (db *database) GetServerInfo() (*spi.ServerInfo, error) {
-	rsp := &spi.ServerInfo{}
-
-	mem := runtime.MemStats{}
-	runtime.ReadMemStats(&mem)
-
-	rsp.Version = spi.Version{
-		Engine:         LinkInfo(),
-		Major:          BuildVersion.Major,
-		Minor:          BuildVersion.Minor,
-		Patch:          BuildVersion.Patch,
-		GitSHA:         BuildVersion.GitSHA,
-		BuildTimestamp: BuildVersion.BuildTimestamp,
-		BuildCompiler:  BuildVersion.BuildCompiler,
-	}
-
-	rsp.Runtime = spi.Runtime{
-		OS:             runtime.GOOS,
-		Arch:           runtime.GOARCH,
-		Pid:            int32(os.Getpid()),
-		UptimeInSecond: int64(time.Since(startupTime).Seconds()),
-		Processes:      int32(runtime.GOMAXPROCS(-1)),
-		Goroutines:     int32(runtime.NumGoroutine()),
-		MemSys:         mem.Sys,
-		MemHeapSys:     mem.HeapSys,
-		MemHeapAlloc:   mem.HeapAlloc,
-		MemHeapInUse:   mem.HeapInuse,
-		MemStackSys:    mem.StackSys,
-		MemStackInUse:  mem.StackInuse,
-	}
-
-	return rsp, nil
-}
-
-func (db *database) GetInflights() ([]*spi.Inflight, error) {
-	return DefaultDetective.InflightsDetective(), nil
-}
-
-func (db *database) GetPostflights() ([]*spi.Postflight, error) {
-	return DefaultDetective.PostflightsDetective(), nil
-}
-
-func (db *database) GetServicePorts(svc string) ([]*spi.ServicePort, error) {
-	ports := []*spi.ServicePort{}
-	for k, s := range ServicePorts {
-		if len(svc) > 0 {
-			if strings.ToLower(svc) != k {
-				continue
-			}
-		}
-		ports = append(ports, s...)
-	}
-	sort.Slice(ports, func(i, j int) bool {
-		if ports[i].Service == ports[j].Service {
-			return ports[i].Address < ports[j].Address
-		}
-		return ports[i].Service < ports[j].Service
-	})
-	return ports, nil
-}
-
-var DefaultDetective Detective
-
-type Detective interface {
-	EnlistDetective(obj any, sqlTextOrTableName string)
-	DelistDetective(any)
-	UpdateDetective(any)
-	InflightsDetective() []*spi.Inflight
-	PostflightsDetective() []*spi.Postflight
-}
-
 type Statz struct {
 	Conns          int64
 	Stmts          int64
@@ -478,6 +475,7 @@ type Statz struct {
 	ConnsInUse     int32
 	StmtsInUse     int32
 	AppendersInUse int32
+	RawConns       int32
 	Debug          bool
 }
 
@@ -514,17 +512,10 @@ func StatzDebug(flag bool) {
 	statz.Debug = flag
 }
 
-func StatzSnapshot() map[string]any {
-	ret := map[string]any{
-		"conns":          statz.ConnsInUse,
-		"conns_used":     statz.Conns,
-		"stmts":          statz.StmtsInUse,
-		"stmts_used":     statz.Stmts,
-		"appenders":      statz.AppendersInUse,
-		"appenders_used": statz.Appenders,
-	}
+func StatzSnapshot() *Statz {
+	ret := statz
 	if singleton.handle != nil {
-		ret["conns_raw"] = machConnectionCount(singleton.handle)
+		ret.RawConns = int32(machConnectionCount(singleton.handle))
 	}
-	return ret
+	return &ret
 }
