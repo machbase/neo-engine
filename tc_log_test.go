@@ -35,7 +35,7 @@ func TestColumns(t *testing.T) {
 	}
 	require.NotNil(t, rows, "no rows selected")
 	defer rows.Close()
-	cols, err := rows.Columns()
+	colNames, colTypes, err := rows.Columns()
 	if err != nil {
 		panic(err)
 	}
@@ -66,17 +66,13 @@ func TestColumns(t *testing.T) {
 		{"DATETIME_NOW", "datetime", 8, 0},
 	}
 	for i, cd := range data {
-		require.Equal(t, cd.name, cols[i].Name, "column[%d] name was %q, want %q", i, cols[i].Name, cd.name)
-		require.Equal(t, cd.typ, cols[i].Type, "column[%d] %q's type was %q, want %q", i, cols[i].Name, cols[i].Type, cd.typ)
-		require.Equal(t, cd.size, cols[i].Size, "column[%d] %q's size was %d, want %d", i, cols[i].Name, cols[i].Size, cd.size)
-		require.Equal(t, cd.length, cols[i].Length, "column[%d] %q's length was %d, want %d", i, cols[i].Name, cols[i].Length, cd.length)
+		require.Equal(t, cd.name, colNames[i], "column[%d] name was %q, want %q", i, colNames[i], cd.name)
+		require.Equal(t, cd.typ, colTypes[i], "column[%d] %q's type was %q, want %q", i, colNames[i], colTypes[i], cd.typ)
 	}
 
-	names := cols.Names()
-	types := cols.Types()
 	for i, cd := range data {
-		require.Equal(t, cd.name, names[i], "column[%d] name was %q, want %q", i, names[i], cd.name)
-		require.Equal(t, cd.typ, types[i], "column[%d] %q's type was %q, want %q", i, names[i], types[i], cd.typ)
+		require.Equal(t, cd.name, colNames[i], "column[%d] name was %q, want %q", i, colNames[i], cd.name)
+		require.Equal(t, cd.typ, colTypes[i], "column[%d] %q's type was %q, want %q", i, colNames[i], colTypes[i], cd.typ)
 	}
 }
 

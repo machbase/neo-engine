@@ -13,12 +13,11 @@ import (
 	"time"
 
 	mach "github.com/machbase/neo-engine"
-	"github.com/machbase/neo-engine/spi"
 	"github.com/pkg/errors"
 )
 
-var db spi.Database
-var connectOpts []spi.ConnectOption
+var db *mach.Database
+var connectOpts []mach.ConnectOption
 
 type Server interface {
 	Startup() error
@@ -87,23 +86,22 @@ func TestMain(m *testing.M) {
 		panic(errors.Wrap(err, "create database"))
 	}
 
-	db, err = spi.NewDatabase()
+	db, err = mach.NewDatabaseNamed(mach.FactoryName)
 	if err != nil {
 		panic(err)
 	}
 	if db == nil {
 		panic("database instance nil")
 	}
-	if mdb, ok := db.(Server); ok {
-		err = mdb.Startup()
-		if err != nil {
-			panic(err)
-		}
+	if err := db.Startup(); err != nil {
+		panic(err)
 	}
+	defer db.Shutdown()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 	defer cancel()
 
-	connectOpts = []spi.ConnectOption{
+	connectOpts = []mach.ConnectOption{
 		mach.WithTrustUser("sys"),
 	}
 
@@ -122,10 +120,6 @@ func TestMain(m *testing.M) {
 	createSimpleTagTable()
 
 	m.Run()
-
-	if mdb, ok := db.(Server); ok {
-		mdb.Shutdown()
-	}
 }
 
 var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))

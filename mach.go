@@ -12,7 +12,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/machbase/neo-engine/spi"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sony/sonyflake"
 )
@@ -42,7 +41,7 @@ func InitializeOption(homeDir string, machPort int, opt InitOption) error {
 		return err
 	}
 	singleton.handle = handle
-	spi.RegisterFactory(FactoryName, func() (spi.Database, error) {
+	RegisterFactory(FactoryName, func() (*Database, error) {
 		return &Database{
 			handle: singleton.handle,
 			conns:  cmap.New[*ConnWatcher](),
@@ -80,10 +79,6 @@ type Database struct {
 	conns  cmap.ConcurrentMap[string, *ConnWatcher]
 }
 
-var _ spi.Database = &Database{}
-var _ spi.Conn = &connection{}
-
-// implements spi.DatabaseLife interface
 func (db *Database) Startup() error {
 	// machbase change the current dir to $HOME during startup process.
 	// Call chdir() for keeping the working dir of the application.
@@ -96,7 +91,6 @@ func (db *Database) Startup() error {
 	return err
 }
 
-// implements spi.DatabaseLife interface
 func (db *Database) Shutdown() error {
 	return shutdown0(db.handle)
 }
@@ -105,12 +99,11 @@ func (db *Database) Error() error {
 	return machError0(db.handle)
 }
 
-// implements spi.DatabaseAuth interface
 func (db *Database) UserAuth(username, password string) (bool, error) {
 	return machUserAuth(db.handle, username, password)
 }
 
-func (db *Database) RegisterWatcher(key string, conn *connection) {
+func (db *Database) RegisterWatcher(key string, conn *Conn) {
 	db.SetWatcher(key, &ConnWatcher{
 		Key:     key,
 		Created: time.Now(),
@@ -146,14 +139,14 @@ func (db *Database) ListWatcher(cb func(*ConnWatcher) bool) {
 type ConnWatcher struct {
 	Key     string
 	Created time.Time
-	conn    *connection
+	conn    *Conn
 }
 
 func (cw *ConnWatcher) LatestSql() (string, time.Time) {
 	return cw.conn.latestSql, cw.conn.latestTime
 }
 
-type connection struct {
+type Conn struct {
 	ctx         context.Context
 	username    string
 	password    string
@@ -168,32 +161,34 @@ type connection struct {
 	closeCallback func()
 }
 
-func (conn *connection) SetLatestSql(sql string) {
+func (conn *Conn) SetLatestSql(sql string) {
 	conn.latestTime = time.Now()
 	conn.latestSql = sql
 }
 
-func WithPassword(username string, password string) spi.ConnectOption {
-	return func(c spi.Conn) {
-		c.(*connection).username = username
-		c.(*connection).password = password
+type ConnectOption func(*Conn)
+
+func WithPassword(username string, password string) ConnectOption {
+	return func(c *Conn) {
+		c.username = username
+		c.password = password
 	}
 }
 
-func WithTrustUser(username string) spi.ConnectOption {
-	return func(c spi.Conn) {
-		c.(*connection).username = username
-		c.(*connection).isTrustUser = true
+func WithTrustUser(username string) ConnectOption {
+	return func(c *Conn) {
+		c.username = username
+		c.isTrustUser = true
 	}
 }
 
-func (db *Database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi.Conn, error) {
+func (db *Database) Connect(ctx context.Context, opts ...ConnectOption) (*Conn, error) {
 	id, err := db.idGen.NextID()
 	if err != nil {
-		return nil, spi.ErrDatabaseConnectID(err.Error())
+		return nil, ErrDatabaseConnectID(err.Error())
 	}
 	strId := fmt.Sprintf("%X", id)
-	ret := &connection{
+	ret := &Conn{
 		ctx: ctx,
 		db:  db,
 	}
@@ -227,7 +222,8 @@ func (db *Database) Connect(ctx context.Context, opts ...spi.ConnectOption) (spi
 	return ret, nil
 }
 
-func (conn *connection) Close() (err error) {
+// Close closes connection
+func (conn *Conn) Close() (err error) {
 	if statz.Debug {
 		_, file, no, ok := runtime.Caller(1)
 		if ok {
@@ -245,7 +241,7 @@ func (conn *connection) Close() (err error) {
 	return
 }
 
-func (conn *connection) Connected() bool {
+func (conn *Conn) Connected() bool {
 	if conn.closed {
 		return false
 	}
@@ -257,11 +253,13 @@ func (conn *connection) Connected() bool {
 	return true
 }
 
-func (conn *connection) Ping() (time.Duration, error) {
+func (conn *Conn) Ping() (time.Duration, error) {
 	return 0, nil
 }
 
-func (conn *connection) Exec(ctx context.Context, sqlText string, params ...any) spi.Result {
+// ExecContext executes SQL statements that does not return result
+// like 'ALTER', 'CREATE TABLE', 'DROP TABLE', ...
+func (conn *Conn) Exec(ctx context.Context, sqlText string, params ...any) *Result {
 	conn.SetLatestSql(sqlText)
 	var result = &Result{}
 	var stmt unsafe.Pointer
@@ -309,7 +307,20 @@ func (conn *connection) Exec(ctx context.Context, sqlText string, params ...any)
 	return result
 }
 
-func (conn *connection) Query(ctx context.Context, sqlText string, params ...any) (spi.Rows, error) {
+// Query executes SQL statements that are expected multipe rows as result.
+// Commonly used to execute 'SELECT * FROM <TABLE>'
+//
+// Rows returned by Query() must be closed to prevent server-side-resource leaks.
+//
+//	ctx, cancelFunc := context.WithTimeout(5*time.Second)
+//	defer cancelFunc()
+//
+//	rows, err := conn.Query(ctx, "select * from my_table where name = ?", my_name)
+//	if err != nil {
+//		panic(err)
+//	}
+//	defer rows.Close()
+func (conn *Conn) Query(ctx context.Context, sqlText string, params ...any) (*Rows, error) {
 	conn.SetLatestSql(sqlText)
 	rows := &Rows{
 		sqlText: sqlText,
@@ -341,7 +352,15 @@ func (conn *connection) Query(ctx context.Context, sqlText string, params ...any
 	return rows, nil
 }
 
-func (conn *connection) QueryRow(ctx context.Context, sqlText string, params ...any) spi.Row {
+// QueryRow executes a SQL statement that expects a single row result.
+//
+//	ctx, cancelFunc := context.WithTimeout(5*time.Second)
+//	defer cancelFunc()
+//
+//	var cnt int
+//	row := conn.QueryRow(ctx, "select count(*) from my_table where name = ?", "my_name")
+//	row.Scan(&cnt)
+func (conn *Conn) QueryRow(ctx context.Context, sqlText string, params ...any) *Row {
 	conn.SetLatestSql(sqlText)
 	var row = &Row{}
 	var stmt unsafe.Pointer
@@ -438,7 +457,7 @@ func (conn *connection) QueryRow(ctx context.Context, sqlText string, params ...
 		case 9: // MACH_DATA_TYPE_BINARY
 			row.values[i] = make([]byte, siz)
 		default:
-			row.err = spi.ErrDatabaseUnsupportedType("QueryRow", int(typ))
+			row.err = ErrDatabaseUnsupportedType("QueryRow", int(typ))
 		}
 	}
 	row.err = scan(stmt, row.values...)
@@ -448,7 +467,7 @@ func (conn *connection) QueryRow(ctx context.Context, sqlText string, params ...
 	return row
 }
 
-func (conn *connection) Explain(ctx context.Context, sqlText string, full bool) (string, error) {
+func (conn *Conn) Explain(ctx context.Context, sqlText string, full bool) (string, error) {
 	conn.SetLatestSql("EXPLAIN " + sqlText)
 	var stmt unsafe.Pointer
 	if err := machAllocStmt(conn.handle, &stmt); err != nil {

@@ -8,11 +8,17 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/machbase/neo-engine/spi"
 	"github.com/pkg/errors"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
+
+type Column struct {
+	Name   string
+	Type   string
+	Size   int
+	Length int
+}
 
 type Result struct {
 	err          error
@@ -118,7 +124,7 @@ func (row *Row) Scan(cols ...any) error {
 	}
 	for i := range cols {
 		if i >= len(row.values) {
-			return spi.ErrDatabaseScanIndex(i, len(row.values))
+			return ErrDatabaseScanIndex(i, len(row.values))
 		}
 		var isNull bool
 		switch v := row.values[i].(type) {
@@ -144,7 +150,7 @@ func (row *Row) Scan(cols ...any) error {
 			if v == nil {
 				cols[i] = nil
 			} else {
-				return spi.ErrDatabaseScanType(fmt.Sprintf("column[%d]", i), v)
+				return ErrDatabaseScanType(fmt.Sprintf("column[%d]", i), v)
 			}
 		}
 		if row.err != nil {
@@ -165,6 +171,7 @@ type Rows struct {
 	fetchError error
 }
 
+// Close release all resources that assigned to the Rows
 func (rows *Rows) Close() error {
 	var err error
 	if rows.stmt != nil {
@@ -176,6 +183,7 @@ func (rows *Rows) Close() error {
 	return err
 }
 
+// IsFetchable returns true if statement that produced this Rows was fetch-able (e.g was select?)
 func (rows *Rows) IsFetchable() bool {
 	return rows.stmtType.IsSelect()
 }
@@ -199,20 +207,22 @@ func (rows *Rows) SetTimeFormat(format string) {
 	rows.timeFormat = format
 }
 
-func (rows *Rows) Columns() (spi.Columns, error) {
+func (rows *Rows) Columns() ([]string, []string, error) {
 	count, err := machColumnCount(rows.stmt)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	ret := make([]*spi.Column, count)
+	names := make([]string, count)
+	types := make([]string, count)
 	for i := 0; i < count; i++ {
 		col, err := machColumnInfo(rows.stmt, i)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		ret[i] = col
+		names[i] = col.Name
+		types[i] = col.Type
 	}
-	return ret, nil
+	return names, types, nil
 }
 
 func (rows *Rows) definedMessage() (string, bool) {
@@ -330,7 +340,7 @@ func (rows *Rows) Fetch() ([]any, bool, error) {
 		case 9: // MACH_DATA_TYPE_BINARY
 			values[i] = []byte{}
 		default:
-			return nil, next, spi.ErrDatabaseUnsupportedType("Fetch", int(typ))
+			return nil, next, ErrDatabaseUnsupportedType("Fetch", int(typ))
 		}
 	}
 	err = scan(rows.stmt, values...)
@@ -340,6 +350,15 @@ func (rows *Rows) Fetch() ([]any, bool, error) {
 	return values, next, nil
 }
 
+// Next returns true if there are at least one more fetchable record remained.
+//
+// rows, _ := db.Query("select name, value from my_table")
+//
+//	for rows.Next(){
+//		var name string
+//		var value float64
+//		rows.Scan(&name, &value)
+//	}
 func (rows *Rows) Next() bool {
 	// the statement is not SELECT
 	if !rows.IsFetchable() {
@@ -357,6 +376,13 @@ func (rows *Rows) FetchError() error {
 	return rows.fetchError
 }
 
+// Scan retrieve values of columns in a row
+//
+//	for rows.Next(){
+//		var name string
+//		var value float64
+//		rows.Scan(&name, &value)
+//	}
 func (rows *Rows) Scan(cols ...any) error {
 	return scan(rows.stmt, cols...)
 }

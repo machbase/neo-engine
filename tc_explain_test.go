@@ -20,8 +20,7 @@ func TestExplain(t *testing.T) {
 		panic(err)
 	}
 	defer conn.Close()
-	explainer := conn.(Explainer)
-	plan, err := explainer.Explain(ctx, "select * from complex_tag order by time desc", false)
+	plan, err := conn.Explain(ctx, "select * from complex_tag order by time desc", false)
 	require.Nil(t, err)
 	require.True(t, len(plan) > 0)
 	require.True(t, strings.HasPrefix(plan, " PROJECT"))
@@ -36,8 +35,7 @@ func TestExplainFull(t *testing.T) {
 		panic(err)
 	}
 	defer conn.Close()
-	explainer := conn.(Explainer)
-	plan, err := explainer.Explain(ctx, "select * from complex_tag order by time desc", true)
+	plan, err := conn.Explain(ctx, "select * from complex_tag order by time desc", true)
 	require.Nil(t, err)
 	require.True(t, len(plan) > 0)
 	require.True(t, strings.Contains(plan, "********"))

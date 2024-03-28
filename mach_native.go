@@ -8,7 +8,6 @@ import (
 	"unsafe"
 
 	_ "github.com/machbase/neo-engine/native"
-	"github.com/machbase/neo-engine/spi"
 )
 
 /*
@@ -42,7 +41,7 @@ func initialize0(homeDir string, machPort int, flag int, envHandle *unsafe.Point
 	if rt := C.MachInitialize(cstr, C.int(machPort), C.int(flag), envHandle); rt == 0 {
 		return nil
 	} else {
-		return spi.ErrDatabaseReturns("MachInitialize", int(rt))
+		return ErrDatabaseReturns("MachInitialize", int(rt))
 	}
 }
 
@@ -54,7 +53,7 @@ func createDatabase0(envHandle unsafe.Pointer) error {
 	if rt := C.MachCreateDB(envHandle); rt == 0 {
 		return nil
 	} else {
-		return spi.ErrDatabaseReturns("MachCreateDB", int(rt))
+		return ErrDatabaseReturns("MachCreateDB", int(rt))
 	}
 }
 
@@ -62,7 +61,7 @@ func destroyDatabase0(envHandle unsafe.Pointer) error {
 	if rt := C.MachDestroyDB(envHandle); rt == 0 {
 		return nil
 	} else {
-		return spi.ErrDatabaseReturns("MachDestroyDB", int(rt))
+		return ErrDatabaseReturns("MachDestroyDB", int(rt))
 	}
 }
 
@@ -77,7 +76,7 @@ func startup0(envHandle unsafe.Pointer) error {
 		if dbErr != nil {
 			return dbErr
 		} else {
-			return spi.ErrDatabaseReturns("MachStartupDB", int(rt))
+			return ErrDatabaseReturns("MachStartupDB", int(rt))
 		}
 	}
 	return nil
@@ -91,7 +90,7 @@ func shutdown0(envHandle unsafe.Pointer) error {
 		if dbErr != nil {
 			return dbErr
 		} else {
-			return spi.ErrDatabaseReturns("MachShutdownDB", int(rt))
+			return ErrDatabaseReturns("MachShutdownDB", int(rt))
 		}
 	}
 }
@@ -115,7 +114,7 @@ func machConnect(envHandle unsafe.Pointer, username string, password string, con
 		if dbErr != nil {
 			return dbErr
 		} else {
-			return spi.ErrDatabaseReturns("MachConnect", int(rt))
+			return ErrDatabaseReturns("MachConnect", int(rt))
 		}
 	}
 }
@@ -132,7 +131,7 @@ func machConnectTrust(envHandle unsafe.Pointer, username string, conn *unsafe.Po
 		if dbErr != nil {
 			return dbErr
 		} else {
-			return spi.ErrDatabaseReturns("MachConnect", int(rt))
+			return ErrDatabaseReturns("MachConnect", int(rt))
 		}
 	}
 }
@@ -145,7 +144,7 @@ func machDisconnect(conn unsafe.Pointer) error {
 		if dbErr != nil {
 			return dbErr
 		} else {
-			return spi.ErrDatabaseReturns("MachDisconnect", int(rt))
+			return ErrDatabaseReturns("MachDisconnect", int(rt))
 		}
 	}
 }
@@ -158,7 +157,7 @@ func machCancel(conn unsafe.Pointer) error {
 		if dbErr != nil {
 			return dbErr
 		} else {
-			return spi.ErrDatabaseReturns("MachCancel", int(rt))
+			return ErrDatabaseReturns("MachCancel", int(rt))
 		}
 	}
 }
@@ -167,7 +166,7 @@ func machError0(handle unsafe.Pointer) error {
 	code := C.MachErrorCode(handle)
 	msg := C.MachErrorMsg(handle)
 	if code != 0 && msg != nil {
-		return spi.ErrDatabaseMach(int(code), C.GoString(msg))
+		return ErrDatabaseMach(int(code), C.GoString(msg))
 	}
 	return nil
 }
@@ -193,7 +192,7 @@ func machUserAuth(envHandle unsafe.Pointer, username string, password string) (b
 	case 2081:
 		return false, nil
 	default:
-		return false, spi.ErrDatabaseReturns("MachUserAuth", int(rt))
+		return false, ErrDatabaseReturns("MachUserAuth", int(rt))
 	}
 }
 
@@ -208,7 +207,7 @@ func machExplain(stmt unsafe.Pointer, full bool) (string, error) {
 		if stmtErr != nil {
 			return "", stmtErr
 		} else {
-			return "", spi.ErrDatabaseReturns("MachExplain", int(rt))
+			return "", ErrDatabaseReturns("MachExplain", int(rt))
 		}
 	}
 	return C.GoString(&cstr[0]), nil
@@ -221,7 +220,7 @@ func machAllocStmt(conn unsafe.Pointer, stmt *unsafe.Pointer) error {
 		if dbErr != nil {
 			return dbErr
 		} else {
-			return spi.ErrDatabaseReturns("MachAllocStmt", int(rt))
+			return ErrDatabaseReturns("MachAllocStmt", int(rt))
 		}
 	}
 	*stmt = ptr
@@ -234,7 +233,7 @@ func machFreeStmt(stmt unsafe.Pointer) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return spi.ErrDatabaseReturns("MachFreeStmt", int(rt))
+			return ErrDatabaseReturns("MachFreeStmt", int(rt))
 		}
 	}
 	return nil
@@ -248,7 +247,7 @@ func machPrepare(stmt unsafe.Pointer, sqlText string) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return spi.ErrDatabaseReturns("MachPrepare", int(rt))
+			return ErrDatabaseReturns("MachPrepare", int(rt))
 		}
 	}
 	return nil
@@ -260,7 +259,7 @@ func machExecute(stmt unsafe.Pointer) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return spi.ErrDatabaseReturns("MachExecute", int(rt))
+			return ErrDatabaseReturns("MachExecute", int(rt))
 		}
 	}
 	return nil
@@ -272,7 +271,7 @@ func machExecuteClean(stmt unsafe.Pointer) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return spi.ErrDatabaseReturns("MachExecuteClean", int(rt))
+			return ErrDatabaseReturns("MachExecuteClean", int(rt))
 		}
 	}
 	return nil
@@ -286,7 +285,7 @@ func machDirectExecute(stmt unsafe.Pointer, sqlText string) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return spi.ErrDatabaseReturns("MachDirectExecute", int(rt))
+			return ErrDatabaseReturns("MachDirectExecute", int(rt))
 		}
 	}
 	return nil
@@ -299,7 +298,7 @@ func machStmtType(stmt unsafe.Pointer) (StmtType, error) {
 		if stmtErr != nil {
 			return 0, stmtErr
 		} else {
-			return 0, spi.ErrDatabaseReturns("MachStmtType", int(rt))
+			return 0, ErrDatabaseReturns("MachStmtType", int(rt))
 		}
 	}
 	return StmtType(typ), nil
@@ -312,7 +311,7 @@ func machEffectRows(stmt unsafe.Pointer) (int64, error) {
 		if stmtErr != nil {
 			return 0, stmtErr
 		} else {
-			return 0, spi.ErrDatabaseReturns("MachEffectRows", int(rt))
+			return 0, ErrDatabaseReturns("MachEffectRows", int(rt))
 		}
 	}
 	return int64(rn), nil
@@ -326,7 +325,7 @@ func machFetch(stmt unsafe.Pointer) (bool, error) {
 		if stmtErr != nil {
 			return false, stmtErr
 		} else {
-			return false, spi.ErrDatabaseReturns("MachFetch", int(rt))
+			return false, ErrDatabaseReturns("MachFetch", int(rt))
 		}
 	}
 	return fetchEnd == 0, nil
@@ -338,7 +337,7 @@ func machBindInt32(stmt unsafe.Pointer, idx int, val int32) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return spi.ErrDatabaseReturnsAtIdx("MachBindInt32", idx, int(rt))
+			return ErrDatabaseReturnsAtIdx("MachBindInt32", idx, int(rt))
 		}
 	}
 	return nil
@@ -350,7 +349,7 @@ func machBindInt64(stmt unsafe.Pointer, idx int, val int64) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return spi.ErrDatabaseReturnsAtIdx("MachBindInt64", idx, int(rt))
+			return ErrDatabaseReturnsAtIdx("MachBindInt64", idx, int(rt))
 		}
 	}
 	return nil
@@ -362,7 +361,7 @@ func machBindFloat64(stmt unsafe.Pointer, idx int, val float64) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return spi.ErrDatabaseReturnsAtIdx("MachBindDouble", idx, int(rt))
+			return ErrDatabaseReturnsAtIdx("MachBindDouble", idx, int(rt))
 		}
 	}
 	return nil
@@ -376,7 +375,7 @@ func machBindString(stmt unsafe.Pointer, idx int, val string) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return spi.ErrDatabaseReturnsAtIdx("MachBindString", idx, int(rt))
+			return ErrDatabaseReturnsAtIdx("MachBindString", idx, int(rt))
 		}
 	}
 	return nil
@@ -389,7 +388,7 @@ func machBindBinary(stmt unsafe.Pointer, idx int, data []byte) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return spi.ErrDatabaseReturnsAtIdx("MachBindBinary", idx, int(rt))
+			return ErrDatabaseReturnsAtIdx("MachBindBinary", idx, int(rt))
 		}
 	}
 	return nil
@@ -401,7 +400,7 @@ func machBindNull(stmt unsafe.Pointer, idx int) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return spi.ErrDatabaseReturnsAtIdx("MachBindNull", idx, int(rt))
+			return ErrDatabaseReturnsAtIdx("MachBindNull", idx, int(rt))
 		}
 	}
 	return nil
@@ -414,29 +413,29 @@ func machColumnCount(stmt unsafe.Pointer) (int, error) {
 		if stmtErr != nil {
 			return 0, stmtErr
 		} else {
-			return 0, spi.ErrDatabaseReturns("MachColumnCount", int(rt))
+			return 0, ErrDatabaseReturns("MachColumnCount", int(rt))
 		}
 	}
 	return int(count), nil
 }
 
-func machColumnInfo(stmt unsafe.Pointer, idx int) (*spi.Column, error) {
+func machColumnInfo(stmt unsafe.Pointer, idx int) (*Column, error) {
 	var nfo C.MachEngineColumnInfo
 	if rt := C.MachColumnInfo(stmt, C.int(idx), &nfo); rt != 0 {
 		stmtErr := machError0(stmt)
 		if stmtErr != nil {
 			return nil, stmtErr
 		} else {
-			return nil, spi.ErrDatabaseReturns("MachColumnInfo", int(rt))
+			return nil, ErrDatabaseReturns("MachColumnInfo", int(rt))
 		}
 	}
 
-	typ, err := ColumnTypeString(ColumnType(nfo.mColumnType))
+	typ, err := NativeColumnTypeString(NativeColumnType(nfo.mColumnType))
 	if err != nil {
-		return nil, spi.ErrDatabaseWrap("MachColumnInfo %s", err)
+		return nil, ErrDatabaseWrap("MachColumnInfo %s", err)
 	}
 
-	return &spi.Column{
+	return &Column{
 		Name:   C.GoString(&nfo.mColumnName[0]),
 		Type:   typ,
 		Size:   int(nfo.mColumnSize),
@@ -451,13 +450,13 @@ func machColumnName(stmt unsafe.Pointer, idx int) (string, error) {
 		if stmtErr != nil {
 			return fmt.Sprintf("col-%d", idx), stmtErr
 		} else {
-			return fmt.Sprintf("col-%d", idx), spi.ErrDatabaseReturns("MachColumnName", int(rt))
+			return fmt.Sprintf("col-%d", idx), ErrDatabaseReturns("MachColumnName", int(rt))
 		}
 	}
 	return C.GoString(&cstr[0]), nil
 }
 
-func machColumnType(stmt unsafe.Pointer, idx int) (ColumnType, ColumnSize, error) {
+func machColumnType(stmt unsafe.Pointer, idx int) (NativeColumnType, NativeColumnSize, error) {
 	var typ C.int = 0
 	var siz C.int = 0
 	if rt := C.MachColumnType(stmt, C.int(idx), &typ, &siz); rt != 0 {
@@ -465,10 +464,10 @@ func machColumnType(stmt unsafe.Pointer, idx int) (ColumnType, ColumnSize, error
 		if stmtErr != nil {
 			return 0, 0, stmtErr
 		} else {
-			return 0, 0, spi.ErrDatabaseReturnsAtIdx("MachColumnType", idx, int(rt))
+			return 0, 0, ErrDatabaseReturnsAtIdx("MachColumnType", idx, int(rt))
 		}
 	}
-	return ColumnType(typ), ColumnSize(siz), nil
+	return NativeColumnType(typ), NativeColumnSize(siz), nil
 }
 
 func machColumnLength(stmt unsafe.Pointer, idx int) (int, error) {
@@ -478,7 +477,7 @@ func machColumnLength(stmt unsafe.Pointer, idx int) (int, error) {
 		if stmtErr != nil {
 			return 0, stmtErr
 		} else {
-			return 0, spi.ErrDatabaseReturnsAtIdx("MachColumnLength", idx, int(rt))
+			return 0, ErrDatabaseReturnsAtIdx("MachColumnLength", idx, int(rt))
 		}
 	}
 	return int(length), nil
@@ -492,7 +491,7 @@ func machColumnData(stmt unsafe.Pointer, idx int, buf unsafe.Pointer, bufLen int
 		if stmtErr != nil {
 			return false, stmtErr
 		} else {
-			return false, spi.ErrDatabaseReturnsAtIdx("MachColumnData", idx, int(rt))
+			return false, ErrDatabaseReturnsAtIdx("MachColumnData", idx, int(rt))
 		}
 	}
 	return isNull == 0, nil
@@ -507,7 +506,7 @@ func machColumnDataInt16(stmt unsafe.Pointer, idx int) (int16, bool, error) {
 		if stmtErr != nil {
 			return 0, false, stmtErr
 		} else {
-			return 0, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataInt16", idx, int(rt))
+			return 0, false, ErrDatabaseReturnsAtIdx("MachColumnDataInt16", idx, int(rt))
 		}
 	}
 	return int16(val), isNull == 0, nil
@@ -522,7 +521,7 @@ func machColumnDataInt32(stmt unsafe.Pointer, idx int) (int32, bool, error) {
 		if stmtErr != nil {
 			return 0, false, stmtErr
 		} else {
-			return 0, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataInt32", idx, int(rt))
+			return 0, false, ErrDatabaseReturnsAtIdx("MachColumnDataInt32", idx, int(rt))
 		}
 	}
 	return int32(val), isNull == 0, nil
@@ -537,7 +536,7 @@ func machColumnDataInt64(stmt unsafe.Pointer, idx int) (int64, bool, error) {
 		if stmtErr != nil {
 			return 0, false, stmtErr
 		} else {
-			return 0, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataInt64", idx, int(rt))
+			return 0, false, ErrDatabaseReturnsAtIdx("MachColumnDataInt64", idx, int(rt))
 		}
 	}
 	return int64(val), isNull == 0, nil
@@ -552,7 +551,7 @@ func machColumnDataDateTime(stmt unsafe.Pointer, idx int) (time.Time, bool, erro
 		if stmtErr != nil {
 			return time.Time{}, false, stmtErr
 		} else {
-			return time.Time{}, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataDateTime", idx, int(rt))
+			return time.Time{}, false, ErrDatabaseReturnsAtIdx("MachColumnDataDateTime", idx, int(rt))
 		}
 	}
 	return time.Unix(0, int64(val)), isNull == 0, nil
@@ -567,7 +566,7 @@ func machColumnDataFloat32(stmt unsafe.Pointer, idx int) (float32, bool, error) 
 		if stmtErr != nil {
 			return 0, false, stmtErr
 		} else {
-			return 0, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataFloat", idx, int(rt))
+			return 0, false, ErrDatabaseReturnsAtIdx("MachColumnDataFloat", idx, int(rt))
 		}
 	}
 	return float32(val), isNull == 0, nil
@@ -582,7 +581,7 @@ func machColumnDataFloat64(stmt unsafe.Pointer, idx int) (float64, bool, error) 
 		if stmtErr != nil {
 			return 0, false, stmtErr
 		} else {
-			return 0, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataDouble", idx, int(rt))
+			return 0, false, ErrDatabaseReturnsAtIdx("MachColumnDataDouble", idx, int(rt))
 		}
 	}
 	return float64(val), isNull == 0, nil
@@ -598,7 +597,7 @@ func machColumnDataIPv4(stmt unsafe.Pointer, idx int) (net.IP, bool, error) {
 		if stmtErr != nil {
 			return net.IPv6zero, false, stmtErr
 		} else {
-			return net.IPv4zero, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataIPv4", idx, int(rt))
+			return net.IPv4zero, false, ErrDatabaseReturnsAtIdx("MachColumnDataIPv4", idx, int(rt))
 		}
 	}
 	return net.IP(val[1:]), isNull == 0, nil
@@ -614,7 +613,7 @@ func machColumnDataIPv6(stmt unsafe.Pointer, idx int) (net.IP, bool, error) {
 		if stmtErr != nil {
 			return net.IPv6zero, false, stmtErr
 		} else {
-			return net.IPv6zero, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataIPv6", idx, int(rt))
+			return net.IPv6zero, false, ErrDatabaseReturnsAtIdx("MachColumnDataIPv6", idx, int(rt))
 		}
 	}
 	return net.IP(val[1:]), isNull == 0, nil
@@ -624,7 +623,7 @@ func machColumnDataIPv6(stmt unsafe.Pointer, idx int) (net.IP, bool, error) {
 func machColumnDataString(stmt unsafe.Pointer, idx int) (string, bool, error) {
 	length, err := machColumnLength(stmt, idx)
 	if err != nil {
-		return "", false, spi.ErrDatabaseWrap("machColumnDataString", err)
+		return "", false, ErrDatabaseWrap("machColumnDataString", err)
 	}
 	if length == 0 {
 		return "", false, nil
@@ -637,7 +636,7 @@ func machColumnDataString(stmt unsafe.Pointer, idx int) (string, bool, error) {
 		if stmtErr != nil {
 			return "", false, stmtErr
 		} else {
-			return "", false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataString", idx, int(rt))
+			return "", false, ErrDatabaseReturnsAtIdx("MachColumnDataString", idx, int(rt))
 		}
 	}
 	return string(buf), isNull == 0, nil
@@ -647,7 +646,7 @@ func machColumnDataString(stmt unsafe.Pointer, idx int) (string, bool, error) {
 func machColumnDataBinary(stmt unsafe.Pointer, idx int) ([]byte, bool, error) {
 	length, err := machColumnLength(stmt, idx)
 	if err != nil {
-		return nil, false, spi.ErrDatabaseWrap("machColumnDataString", err)
+		return nil, false, ErrDatabaseWrap("machColumnDataString", err)
 	}
 	if length == 0 {
 		return []byte{}, false, nil
@@ -660,7 +659,7 @@ func machColumnDataBinary(stmt unsafe.Pointer, idx int) ([]byte, bool, error) {
 		if stmtErr != nil {
 			return nil, false, stmtErr
 		} else {
-			return nil, false, spi.ErrDatabaseReturnsAtIdx("MachColumnDataString", idx, int(rt))
+			return nil, false, ErrDatabaseReturnsAtIdx("MachColumnDataString", idx, int(rt))
 		}
 	}
 	return buf, isNull == 0, nil
@@ -674,7 +673,7 @@ func machAppendOpen(stmt unsafe.Pointer, tableName string) error {
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return spi.ErrDatabaseReturns("MachAppendOpen", int(rt))
+			return ErrDatabaseReturns("MachAppendOpen", int(rt))
 		}
 	}
 	return nil
@@ -688,7 +687,7 @@ func machAppendClose(stmt unsafe.Pointer) (int64, int64, error) {
 		if stmtErr != nil {
 			return 0, 0, stmtErr
 		} else {
-			return 0, 0, spi.ErrDatabaseReturns("MachAppendClose", int(rt))
+			return 0, 0, ErrDatabaseReturns("MachAppendClose", int(rt))
 		}
 	}
 	return int64(successCount), int64(failureCount), nil
@@ -700,7 +699,7 @@ func machAppendData(stmt unsafe.Pointer, values *C.MachEngineAppendParam) error 
 		if stmtErr != nil {
 			return stmtErr
 		} else {
-			return spi.ErrDatabaseReturns("MachAppendData", int(rt))
+			return ErrDatabaseReturns("MachAppendData", int(rt))
 		}
 	}
 	return nil
@@ -725,7 +724,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 		switch c.Type {
 		default:
 			return fmt.Errorf("machAppendData unknown column type '%s'", c.Type)
-		case spi.ColumnBufferTypeInt16:
+		case ColumnBufferTypeInt16:
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
@@ -746,7 +745,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 			case float32:
 				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
 			}
-		case spi.ColumnBufferTypeInt32:
+		case ColumnBufferTypeInt32:
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
@@ -783,7 +782,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 			case float32:
 				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
 			}
-		case spi.ColumnBufferTypeInt64:
+		case ColumnBufferTypeInt64:
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
@@ -828,7 +827,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 			case float32:
 				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
 			}
-		case spi.ColumnBufferTypeFloat:
+		case ColumnBufferTypeFloat:
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
@@ -853,7 +852,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 			case *float32:
 				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(*v)
 			}
-		case spi.ColumnBufferTypeDouble:
+		case ColumnBufferTypeDouble:
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
@@ -882,7 +881,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 			case *float64:
 				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(*v)
 			}
-		case spi.ColumnBufferTypeDatetime:
+		case ColumnBufferTypeDatetime:
 			(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mDateStr = nil
 			(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mFormatStr = nil
 			switch v := val.(type) {
@@ -989,7 +988,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 					return fmt.Errorf("MachAppendData cannot apply string without format to %s (%s)", c.Name, c.Type)
 				}
 			}
-		case spi.ColumnBufferTypeIPv4:
+		case ColumnBufferTypeIPv4:
 			ip, ok := val.(net.IP)
 			if !ok {
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
@@ -1003,7 +1002,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 					(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddr[i] = C.uchar(ipv4[i])
 				}
 			}
-		case spi.ColumnBufferTypeIPv6:
+		case ColumnBufferTypeIPv6:
 			ip, ok := val.(net.IP)
 			if !ok {
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
@@ -1017,7 +1016,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 					(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddr[i] = C.uchar(ipv6[i])
 				}
 			}
-		case spi.ColumnBufferTypeString:
+		case ColumnBufferTypeString:
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
@@ -1042,7 +1041,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mData = unsafe.Pointer(cstr)
 				}
 			}
-		case spi.ColumnBufferTypeBinary:
+		case ColumnBufferTypeBinary:
 			switch v := val.(type) {
 			default:
 				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
