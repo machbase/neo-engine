@@ -6,11 +6,20 @@ import (
 	"strings"
 	"time"
 	"unsafe"
-
-	"github.com/machbase/neo-engine/spi"
 )
 
-func (conn *connection) Appender(ctx context.Context, tableName string, opts ...spi.AppenderOption) (spi.Appender, error) {
+type AppenderOption func(*Appender)
+
+// Appender creates a new Appender for the given table.
+// Appender should be closed as soon as finshing work, otherwise it may cause server side resource leak.
+//
+//	ctx, cancelFunc := context.WithTimeout(5*time.Second)
+//	defer cancelFunc()
+//
+//	app, _ := conn.Appender(ctx, "MYTABLE")
+//	defer app.Close()
+//	app.Append("name", time.Now(), 3.14)
+func (conn *Conn) Appender(ctx context.Context, tableName string, opts ...AppenderOption) (*Appender, error) {
 	appender := &Appender{}
 	appender.conn = conn
 	appender.tableName = strings.ToUpper(tableName)
@@ -35,7 +44,7 @@ func (conn *connection) Appender(ctx context.Context, tableName string, opts ...
 		if typ < 0 || typ > 6 {
 			return nil, fmt.Errorf("table '%s' not found", tableName)
 		}
-		appender.tableType = spi.TableType(typ)
+		appender.tableType = TableType(typ)
 	}
 	if err := machAllocStmt(conn.handle, &appender.stmt); err != nil {
 		return nil, err
@@ -52,7 +61,7 @@ func (conn *connection) Appender(ctx context.Context, tableName string, opts ...
 		machFreeStmt(appender.stmt)
 		return nil, err
 	}
-	appender.columns = make([]*spi.Column, colCount)
+	appender.columns = make([]*Column, colCount)
 	for i := 0; i < colCount; i++ {
 		nfo, err := machColumnInfo(appender.stmt, i)
 		if err != nil {
@@ -63,20 +72,18 @@ func (conn *connection) Appender(ctx context.Context, tableName string, opts ...
 	return appender, nil
 }
 
-func AppenderTimeformat(timeformat string) spi.AppenderOption {
-	return func(a spi.Appender) {
-		if apd, ok := a.(*Appender); ok {
-			apd.timeformat = timeformat
-		}
+func AppenderTimeformat(timeformat string) AppenderOption {
+	return func(a *Appender) {
+		a.timeformat = timeformat
 	}
 }
 
 type Appender struct {
-	conn      *connection
+	conn      *Conn
 	stmt      unsafe.Pointer
 	tableName string
-	tableType spi.TableType
-	columns   []*spi.Column
+	tableType TableType
+	columns   []*Column
 	closed    bool
 
 	successCount int64
@@ -111,28 +118,25 @@ func (ap *Appender) TableName() string {
 	return ap.tableName
 }
 
-func (ap *Appender) Columns() (spi.Columns, error) {
+func (ap *Appender) Columns() ([]string, []string, error) {
 	cols := ap.columns
-	result := make([]*spi.Column, len(cols))
+	names := make([]string, len(cols))
+	types := make([]string, len(cols))
 	for i := range cols {
-		result[i] = &spi.Column{
-			Name:   cols[i].Name,
-			Type:   cols[i].Type,
-			Size:   cols[i].Size,
-			Length: cols[i].Length,
-		}
+		names[i] = cols[i].Name
+		types[i] = cols[i].Type
 	}
-	return result, nil
+	return names, types, nil
 }
 
-func (ap *Appender) TableType() spi.TableType {
+func (ap *Appender) TableType() TableType {
 	return ap.tableType
 }
 
 func (ap *Appender) Append(values ...any) error {
-	if ap.tableType == spi.TagTableType {
+	if ap.tableType == TagTableType {
 		return ap.appendTable0(values)
-	} else if ap.tableType == spi.LogTableType {
+	} else if ap.tableType == LogTableType {
 		colsWithTime := append([]any{time.Time{}}, values...)
 		return ap.appendTable0(colsWithTime)
 	} else {
@@ -141,10 +145,10 @@ func (ap *Appender) Append(values ...any) error {
 }
 
 func (ap *Appender) AppendWithTimestamp(ts time.Time, cols ...any) error {
-	if ap.tableType == spi.LogTableType {
+	if ap.tableType == LogTableType {
 		colsWithTime := append([]any{ts}, cols...)
 		return ap.appendTable0(colsWithTime)
-	} else if ap.tableType == spi.TagTableType {
+	} else if ap.tableType == TagTableType {
 		colsWithTime := append([]any{cols[0], ts}, cols[1:]...)
 		return ap.appendTable0(colsWithTime)
 	} else {
