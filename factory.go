@@ -1,11 +1,11 @@
-package spi
+package mach
 
 import (
 	"errors"
 	"fmt"
 )
 
-type FactoryFunc func() (Database, error)
+type FactoryFunc func() (*Database, error)
 
 var factories = map[string]FactoryFunc{}
 var defaultFactoryName string
@@ -19,7 +19,7 @@ func RegisterDefaultFactory(name string, f FactoryFunc) {
 	defaultFactoryName = name
 }
 
-func NewDatabase() (Database, error) {
+func NewDatabase() (*Database, error) {
 	if len(defaultFactoryName) > 0 {
 		if f, ok := factories[defaultFactoryName]; ok {
 			return f()
@@ -34,7 +34,7 @@ func NewDatabase() (Database, error) {
 	return nil, errors.New("no database factory found")
 }
 
-func NewDatabaseNamed(name string) (Database, error) {
+func NewDatabaseNamed(name string) (*Database, error) {
 	if f, ok := factories[name]; ok {
 		return f()
 	} else {
