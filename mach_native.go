@@ -707,10 +707,10 @@ func machAppendData(stmt unsafe.Pointer, values *C.MachEngineAppendParam) error 
 
 func (ap *Appender) appendTable0(vals []any) error {
 	if len(ap.columns) == 0 {
-		return fmt.Errorf("table '%s' has no columns", ap.tableName)
+		return ErrDatabaseNoColumns(ap.tableName)
 	}
 	if len(ap.columns) != len(vals) {
-		return fmt.Errorf("value count %d, table '%s' requres %d columns to append", len(vals), ap.tableName, len(ap.columns))
+		return ErrDatabaseLengthOfColumns(ap.tableName, len(ap.columns), len(vals))
 	}
 
 	buffer := make([]C.MachEngineAppendParam, len(ap.columns))
@@ -723,11 +723,11 @@ func (ap *Appender) appendTable0(vals []any) error {
 		c := ap.columns[i]
 		switch c.Type {
 		default:
-			return fmt.Errorf("machAppendData unknown column type '%s'", c.Type)
+			return ErrDatabaseAppendUnknownType(c.Type)
 		case ColumnBufferTypeInt16:
 			switch v := val.(type) {
 			default:
-				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+				return ErrDatabaseAppendWrongType(v, c.Name, c.Type)
 			case uint16:
 				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
 			case *uint16:
@@ -748,7 +748,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 		case ColumnBufferTypeInt32:
 			switch v := val.(type) {
 			default:
-				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+				return ErrDatabaseAppendWrongType(v, c.Name, c.Type)
 			case int16:
 				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
 			case *int16:
@@ -785,7 +785,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 		case ColumnBufferTypeInt64:
 			switch v := val.(type) {
 			default:
-				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+				return ErrDatabaseAppendWrongType(v, c.Name, c.Type)
 			case int16:
 				*(*C.longlong)(unsafe.Pointer(&buffer[i].mData[0])) = C.longlong(v)
 			case *int16:
@@ -830,7 +830,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 		case ColumnBufferTypeFloat:
 			switch v := val.(type) {
 			default:
-				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+				return ErrDatabaseAppendWrongType(v, c.Name, c.Type)
 			case int:
 				*(*C.float)(unsafe.Pointer(&buffer[i].mData[0])) = C.float(v)
 			case *int:
@@ -855,7 +855,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 		case ColumnBufferTypeDouble:
 			switch v := val.(type) {
 			default:
-				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+				return ErrDatabaseAppendWrongType(v, c.Name, c.Type)
 			case int:
 				*(*C.double)(unsafe.Pointer(&buffer[i].mData[0])) = C.double(v)
 			case *int:
@@ -886,7 +886,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 			(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mFormatStr = nil
 			switch v := val.(type) {
 			default:
-				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+				return ErrDatabaseAppendWrongTimeValueType(fmt.Sprintf("%T", v), ap.timeformat, c.Name, c.Type)
 			case time.Time:
 				tv := v.UnixNano()
 				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
@@ -904,7 +904,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 					tv = tv * 1000
 				case "ns":
 				default:
-					return fmt.Errorf("MachAppendData cannot apply int with %s to %s (%s)", ap.timeformat, c.Name, c.Type)
+					return ErrDatabaseAppendWrongTimeValueType("int", ap.timeformat, c.Name, c.Type)
 				}
 				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
 			case int16:
@@ -918,7 +918,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 					tv = tv * 1000
 				case "ns":
 				default:
-					return fmt.Errorf("MachAppendData cannot apply int16 with %s to %s (%s)", ap.timeformat, c.Name, c.Type)
+					return ErrDatabaseAppendWrongTimeValueType("int16", ap.timeformat, c.Name, c.Type)
 				}
 				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
 			case int32:
@@ -932,7 +932,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 					tv = tv * 1000
 				case "ns":
 				default:
-					return fmt.Errorf("MachAppendData cannot apply int32 with %s to %s (%s)", ap.timeformat, c.Name, c.Type)
+					return ErrDatabaseAppendWrongTimeValueType("int32", ap.timeformat, c.Name, c.Type)
 				}
 				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
 			case int64:
@@ -946,7 +946,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 					tv = tv * 1000
 				case "ns":
 				default:
-					return fmt.Errorf("MachAppendData cannot apply int64 with %s to %s (%s)", ap.timeformat, c.Name, c.Type)
+					return ErrDatabaseAppendWrongTimeValueType("int64", ap.timeformat, c.Name, c.Type)
 				}
 				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
 			case float64:
@@ -960,7 +960,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 					tv = tv * 1000
 				case "ns":
 				default:
-					return fmt.Errorf("MachAppendData cannot apply float64 with %s to %s (%s)", ap.timeformat, c.Name, c.Type)
+					return ErrDatabaseAppendWrongTimeValueType("float64", ap.timeformat, c.Name, c.Type)
 				}
 				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
 			case string:
@@ -973,7 +973,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mDateStr = cstr
 					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mFormatStr = cfmt
 				} else {
-					return fmt.Errorf("MachAppendData cannot apply string without format to %s (%s)", c.Name, c.Type)
+					return ErrDatabaseAppendWrongTimeStringType(c.Name, c.Type)
 				}
 			case *string:
 				if len(ap.timeformat) > 0 {
@@ -985,16 +985,16 @@ func (ap *Appender) appendTable0(vals []any) error {
 					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mDateStr = cstr
 					(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mFormatStr = cfmt
 				} else {
-					return fmt.Errorf("MachAppendData cannot apply string without format to %s (%s)", c.Name, c.Type)
+					return ErrDatabaseAppendWrongTimeStringType(c.Name, c.Type)
 				}
 			}
 		case ColumnBufferTypeIPv4:
 			ip, ok := val.(net.IP)
 			if !ok {
-				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
+				return ErrDatabaseAppendWrongType(val, c.Name, c.Type)
 			}
 			if ipv4 := ip.To4(); ipv4 == nil {
-				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
+				return ErrDatabaseAppendWrongType(val, c.Name, c.Type)
 			} else {
 				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uchar(net.IPv4len)
 				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddrString = nil
@@ -1005,10 +1005,10 @@ func (ap *Appender) appendTable0(vals []any) error {
 		case ColumnBufferTypeIPv6:
 			ip, ok := val.(net.IP)
 			if !ok {
-				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
+				return ErrDatabaseAppendWrongType(val, c.Name, c.Type)
 			}
 			if ipv6 := ip.To16(); ipv6 == nil {
-				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", val, c.Name, c.Type)
+				return ErrDatabaseAppendWrongType(val, c.Name, c.Type)
 			} else {
 				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uchar(net.IPv6len)
 				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddrString = nil
@@ -1019,7 +1019,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 		case ColumnBufferTypeString:
 			switch v := val.(type) {
 			default:
-				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+				return ErrDatabaseAppendWrongType(v, c.Name, c.Type)
 			case string:
 				if len(v) == 0 {
 					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(0)
@@ -1044,7 +1044,7 @@ func (ap *Appender) appendTable0(vals []any) error {
 		case ColumnBufferTypeBinary:
 			switch v := val.(type) {
 			default:
-				return fmt.Errorf("MachAppendData cannot apply %T to %s (%s)", v, c.Name, c.Type)
+				return ErrDatabaseAppendWrongType(v, c.Name, c.Type)
 			case string:
 				if len(v) == 0 {
 					(*C.MachEngineAppendVarStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uint(0)
@@ -1075,10 +1075,10 @@ func (ap *Appender) appendTable0(vals []any) error {
 	}
 
 	if ap.closed {
-		return fmt.Errorf("closed appender")
+		return ErrDatabaseClosedAppender
 	}
 	if ap.conn == nil || !ap.conn.Connected() {
-		return fmt.Errorf("invalid connection")
+		return ErrDatabaseNoConnection
 	}
 	err := machAppendData(ap.stmt, &buffer[0])
 	return err

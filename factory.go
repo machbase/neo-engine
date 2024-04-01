@@ -1,10 +1,5 @@
 package mach
 
-import (
-	"errors"
-	"fmt"
-)
-
 type FactoryFunc func() (*Database, error)
 
 var factories = map[string]FactoryFunc{}
@@ -31,13 +26,13 @@ func NewDatabase() (*Database, error) {
 			return f()
 		}
 	}
-	return nil, errors.New("no database factory found")
+	return nil, ErrDatabaseNoFactory
 }
 
 func NewDatabaseNamed(name string) (*Database, error) {
 	if f, ok := factories[name]; ok {
 		return f()
 	} else {
-		return nil, fmt.Errorf("database factory '%s' not found", name)
+		return nil, ErrDatabaseFactoryNotFound(name)
 	}
 }

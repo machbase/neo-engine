@@ -8,7 +8,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/pkg/errors"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
@@ -294,7 +293,7 @@ func (rows *Rows) Fetch() ([]any, bool, error) {
 
 	next, err := machFetch(rows.stmt)
 	if err != nil {
-		return nil, next, errors.Wrap(err, "Fetch")
+		return nil, next, ErrDatabaseFetch(err)
 	}
 	if !next {
 		return nil, false, nil
@@ -309,7 +308,7 @@ func (rows *Rows) Fetch() ([]any, bool, error) {
 	for i := range values {
 		typ, _, err := machColumnType(rows.stmt, i)
 		if err != nil {
-			return nil, next, errors.Wrap(err, "Fetch")
+			return nil, next, ErrDatabaseFetch(err)
 		}
 		switch typ {
 		case 0: // MACH_DATA_TYPE_INT16
@@ -391,12 +390,12 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 	for i, c := range cols {
 		typ, _ /*size*/, err := machColumnType(stmt, i)
 		if err != nil {
-			return errors.Wrap(err, "Scan")
+			return ErrDatabaseScan(err)
 		}
 		switch typ {
 		case 0: // MACH_DATA_TYPE_INT16
 			if v, nonNull, err := machColumnDataInt16(stmt, i); err != nil {
-				return errors.Wrap(err, "Scan int16")
+				return ErrDatabaseScanTypeName("int16", err)
 			} else if nonNull {
 				if err = ScanInt16(v, c); err != nil {
 					return err
@@ -406,7 +405,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			}
 		case 1: // MACH_DATA_TYPE_INT32
 			if v, nonNull, err := machColumnDataInt32(stmt, i); err != nil {
-				return errors.Wrap(err, "Scan int32")
+				return ErrDatabaseScanTypeName("int32", err)
 			} else if nonNull {
 				if err = ScanInt32(v, c); err != nil {
 					return err
@@ -416,7 +415,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			}
 		case 2: // MACH_DATA_TYPE_INT64
 			if v, nonNull, err := machColumnDataInt64(stmt, i); err != nil {
-				return errors.Wrap(err, "Scan int64")
+				return ErrDatabaseScanTypeName("int64", err)
 			} else if nonNull {
 				if err = ScanInt64(v, c); err != nil {
 					return err
@@ -426,7 +425,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			}
 		case 3: // MACH_DATA_TYPE_DATETIME
 			if v, nonNull, err := machColumnDataDateTime(stmt, i); err != nil {
-				return errors.Wrap(err, "Scan datetime")
+				return ErrDatabaseScanTypeName("datetime", err)
 			} else if nonNull {
 				if err = ScanDateTime(v, c); err != nil {
 					return err
@@ -436,7 +435,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			}
 		case 4: // MACH_DATA_TYPE_FLOAT
 			if v, nonNull, err := machColumnDataFloat32(stmt, i); err != nil {
-				return errors.Wrap(err, "Scan float32")
+				return ErrDatabaseScanTypeName("float32", err)
 			} else if nonNull {
 				if err = ScanFloat32(v, c); err != nil {
 					return err
@@ -446,7 +445,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			}
 		case 5: // MACH_DATA_TYPE_DOUBLE
 			if v, nonNull, err := machColumnDataFloat64(stmt, i); err != nil {
-				return errors.Wrap(err, "Scan float32")
+				return ErrDatabaseScanTypeName("float32", err)
 			} else if nonNull {
 				if err = ScanFloat64(v, c); err != nil {
 					return err
@@ -456,7 +455,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			}
 		case 6: // MACH_DATA_TYPE_IPV4
 			if v, nonNull, err := machColumnDataIPv4(stmt, i); err != nil {
-				return errors.Wrap(err, "Scan IPv4")
+				return ErrDatabaseScanTypeName("IPv4", err)
 			} else if nonNull {
 				if err = ScanIP(v, c); err != nil {
 					return err
@@ -466,7 +465,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			}
 		case 7: // MACH_DATA_TYPE_IPV6
 			if v, nonNull, err := machColumnDataIPv6(stmt, i); err != nil {
-				return errors.Wrap(err, "Scan IPv4")
+				return ErrDatabaseScanTypeName("IPv4", err)
 			} else if nonNull {
 				if err = ScanIP(v, c); err != nil {
 					return err
@@ -476,7 +475,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			}
 		case 8: // MACH_DATA_TYPE_STRING
 			if v, nonNull, err := machColumnDataString(stmt, i); err != nil {
-				return errors.Wrap(err, "Scan string")
+				return ErrDatabaseScanTypeName("string", err)
 			} else if nonNull {
 				if err = ScanString(v, c); err != nil {
 					return err
@@ -486,7 +485,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 			}
 		case 9: // MACH_DATA_TYPE_BINARY
 			if v, nonNull, err := machColumnDataBinary(stmt, i); err != nil {
-				return errors.Wrap(err, "Scan binary")
+				return ErrDatabaseScanTypeName("binary", err)
 			} else if nonNull {
 				if err = ScanBytes(v, c); err != nil {
 					return err
@@ -495,7 +494,7 @@ func scan(stmt unsafe.Pointer, cols ...any) error {
 				cols[i] = nil
 			}
 		default:
-			return fmt.Errorf("MachGetColumnData unsupported type %T", c)
+			return ErrDatabaseScanUnsupportedType(c)
 		}
 	}
 	return nil
