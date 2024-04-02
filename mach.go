@@ -103,47 +103,77 @@ func (db *Database) UserAuth(username, password string) (bool, error) {
 	return machUserAuth(db.handle, username, password)
 }
 
-func (db *Database) RegisterWatcher(key string, conn *Conn) {
-	db.SetWatcher(key, &ConnWatcher{
-		Key:     key,
-		Created: time.Now(),
-		conn:    conn,
+func (db *Database) RegisterWatcher(id string, conn *Conn) {
+	db.SetWatcher(id, &ConnWatcher{
+		id:          id,
+		createdTime: time.Now(),
+		conn:        conn,
 	})
 }
 
-func (db *Database) SetWatcher(key string, cw *ConnWatcher) {
-	db.conns.Set(key, cw)
+func (db *Database) SetWatcher(id string, cw *ConnWatcher) {
+	db.conns.Set(id, cw)
 }
 
-func (db *Database) GetWatcher(key string) (*ConnWatcher, bool) {
-	return db.conns.Get(key)
+func (db *Database) GetWatcher(id string) (*ConnState, bool) {
+	w, ok := db.conns.Get(id)
+	if ok {
+		return w.ConnState(), true
+	} else {
+		return nil, false
+	}
 }
 
-func (db *Database) RemoveWatcher(key string) {
-	db.conns.Remove(key)
+func (db *Database) RemoveWatcher(id string) {
+	db.conns.Remove(id)
 }
 
-func (db *Database) ListWatcher(cb func(*ConnWatcher) bool) {
+func (db *Database) ListWatcher(cb func(*ConnState) bool) {
 	if cb == nil {
 		return
 	}
 	var cont = true
-	db.conns.IterCb(func(_ string, v *ConnWatcher) {
+	db.conns.IterCb(func(_ string, cw *ConnWatcher) {
 		if !cont {
 			return
 		}
+		v := cw.ConnState()
 		cont = cb(v)
 	})
 }
 
-type ConnWatcher struct {
-	Key     string
-	Created time.Time
-	conn    *Conn
+func (db *Database) KillConnection(id string) error {
+	if cw, ok := db.conns.Get(id); ok {
+		if cw.conn != nil {
+			return machCancel(cw.conn.handle)
+		}
+	}
+	return nil
 }
 
-func (cw *ConnWatcher) LatestSql() (string, time.Time) {
-	return cw.conn.latestSql, cw.conn.latestTime
+type ConnWatcher struct {
+	id          string
+	createdTime time.Time
+	conn        *Conn
+}
+
+type ConnState struct {
+	Id          string
+	CreatedTime time.Time
+	LatestTime  time.Time
+	LatestSql   string
+}
+
+func (cw *ConnWatcher) ConnState() *ConnState {
+	ret := &ConnState{
+		Id:          cw.id,
+		CreatedTime: cw.createdTime,
+	}
+	if cw.conn != nil {
+		ret.LatestTime = cw.conn.latestTime
+		ret.LatestSql = cw.conn.latestSql
+	}
+	return ret
 }
 
 type Conn struct {
