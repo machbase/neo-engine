@@ -103,20 +103,19 @@ func (db *Database) UserAuth(username, password string) (bool, error) {
 	return machUserAuth(db.handle, username, password)
 }
 
-func (db *Database) RegisterWatcher(id string, conn *Conn) {
-	db.SetWatcher(id, &ConnWatcher{
-		id:          id,
+func (db *Database) RegisterWatcher(key string, conn *Conn) {
+	db.SetWatcher(key, &ConnWatcher{
 		createdTime: time.Now(),
 		conn:        conn,
 	})
 }
 
-func (db *Database) SetWatcher(id string, cw *ConnWatcher) {
-	db.conns.Set(id, cw)
+func (db *Database) SetWatcher(key string, cw *ConnWatcher) {
+	db.conns.Set(key, cw)
 }
 
-func (db *Database) GetWatcher(id string) (*ConnState, bool) {
-	w, ok := db.conns.Get(id)
+func (db *Database) GetWatcher(key string) (*ConnState, bool) {
+	w, ok := db.conns.Get(key)
 	if ok {
 		return w.ConnState(), true
 	} else {
@@ -124,8 +123,8 @@ func (db *Database) GetWatcher(id string) (*ConnState, bool) {
 	}
 }
 
-func (db *Database) RemoveWatcher(id string) {
-	db.conns.Remove(id)
+func (db *Database) RemoveWatcher(key string) {
+	db.conns.Remove(key)
 }
 
 func (db *Database) ListWatcher(cb func(*ConnState) bool) {
@@ -152,7 +151,6 @@ func (db *Database) KillConnection(id string) error {
 }
 
 type ConnWatcher struct {
-	id          string
 	createdTime time.Time
 	conn        *Conn
 }
@@ -166,10 +164,10 @@ type ConnState struct {
 
 func (cw *ConnWatcher) ConnState() *ConnState {
 	ret := &ConnState{
-		Id:          cw.id,
 		CreatedTime: cw.createdTime,
 	}
 	if cw.conn != nil {
+		ret.Id = cw.conn.id
 		ret.LatestTime = cw.conn.latestTime
 		ret.LatestSql = cw.conn.latestSql
 	}
@@ -186,6 +184,7 @@ type Conn struct {
 	closed      bool
 	db          *Database
 
+	id            string
 	latestTime    time.Time
 	latestSql     string
 	closeCallback func()
@@ -213,11 +212,6 @@ func WithTrustUser(username string) ConnectOption {
 }
 
 func (db *Database) Connect(ctx context.Context, opts ...ConnectOption) (*Conn, error) {
-	id, err := db.idGen.NextID()
-	if err != nil {
-		return nil, ErrDatabaseConnectID(err.Error())
-	}
-	strId := fmt.Sprintf("%X", id)
 	ret := &Conn{
 		ctx: ctx,
 		db:  db,
@@ -236,6 +230,17 @@ func (db *Database) Connect(ctx context.Context, opts ...ConnectOption) (*Conn, 
 		}
 	}
 	ret.handle = handle
+
+	if id, err := machSessionID(ret.handle); err == nil {
+		ret.id = fmt.Sprintf("%d", id)
+	} else {
+		id, err := db.idGen.NextID()
+		if err != nil {
+			return nil, ErrDatabaseConnectID(err.Error())
+		}
+		ret.id = fmt.Sprintf("%X", id)
+	}
+
 	statz.AllocConn()
 	if statz.Debug {
 		_, file, no, ok := runtime.Caller(1)
@@ -245,10 +250,10 @@ func (db *Database) Connect(ctx context.Context, opts ...ConnectOption) (*Conn, 
 	}
 	ret.closeCallback = func() {
 		ret.SetLatestSql("CLOSE") // 3. set latest sql time
-		db.RemoveWatcher(strId)
+		db.RemoveWatcher(ret.id)
 	}
-	db.RegisterWatcher(strId, ret) // 1. set creTime
-	ret.SetLatestSql("CONNECT")    // 2. set latest sql time
+	db.RegisterWatcher(ret.id, ret) // 1. set creTime
+	ret.SetLatestSql("CONNECT")     // 2. set latest sql time
 	return ret, nil
 }
 

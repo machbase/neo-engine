@@ -332,5 +332,7 @@ int MachAppendClose(void* aMachStmt,
  */
 int MachAppendData(void* aMachStmt, MachEngineAppendParam* aAppendParamArr);
 
+unsigned long long MachSessionID(void* aConHandle);
+
 #endif
 

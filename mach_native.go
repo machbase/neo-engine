@@ -162,6 +162,11 @@ func machCancel(conn unsafe.Pointer) error {
 	}
 }
 
+func machSessionID(conn unsafe.Pointer) (uint64, error) {
+	rt := C.MachSessionID(conn)
+	return uint64(rt), nil
+}
+
 func machError0(handle unsafe.Pointer) error {
 	code := C.MachErrorCode(handle)
 	msg := C.MachErrorMsg(handle)
