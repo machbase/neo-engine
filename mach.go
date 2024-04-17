@@ -67,6 +67,10 @@ func ExistsDatabase() bool {
 	return existsDatabase0(singleton.handle)
 }
 
+func RestoreDatabase(path string) error {
+	return restoreDatabase0(singleton.handle, path)
+}
+
 type Env struct {
 	handle unsafe.Pointer
 }

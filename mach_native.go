@@ -70,6 +70,16 @@ func existsDatabase0(envHandle unsafe.Pointer) bool {
 	return rt == 1
 }
 
+func restoreDatabase0(envHandle unsafe.Pointer, dbPath string) error {
+	cstr := C.CString(dbPath)
+	defer C.free(unsafe.Pointer(cstr))
+	if rt := C.MachRestoreDB(envHandle, cstr); rt == 0 {
+		return nil
+	} else {
+		return ErrDatabaseReturns("MachRestoreDB", int(rt))
+	}
+}
+
 func startup0(envHandle unsafe.Pointer) error {
 	if rt := C.MachStartupDB(envHandle); rt != 0 {
 		dbErr := machError0(envHandle)
