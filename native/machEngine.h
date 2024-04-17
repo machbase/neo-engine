@@ -122,6 +122,8 @@ int MachDestroyDB(void* aEnvHandle);
  */
 int MachIsDBCreated(void* aEnvHandle);
 
+int MachRestoreDB(void* aEnvHandle, char* aDBPath);
+
 /**
  * @brief startup machbase DB
  */
