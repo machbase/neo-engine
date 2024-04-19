@@ -39,7 +39,7 @@ func (conn *Conn) Appender(ctx context.Context, tableName string, opts ...Append
 		row := qcon.QueryRow(ctx, "select type from M$SYS_TABLES where name = ?", appender.tableName)
 		var typ int32 = -1
 		if err := row.Scan(&typ); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("table '%s' not found, %s", tableName, err.Error())
 		}
 		if typ < 0 || typ > 6 {
 			return nil, fmt.Errorf("table '%s' not found", tableName)
