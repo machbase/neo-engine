@@ -1,6 +1,4 @@
-
-[![CI linux-amd64](https://github.com/machbase/neo-engine/actions/workflows/ci-linux-amd64.yml/badge.svg)](https://github.com/machbase/neo-engine/actions/workflows/ci-linux-amd64.yml)
-[![CI darwin-amd64](https://github.com/machbase/neo-engine/actions/workflows/ci-darwin-amd64.yml/badge.svg)](https://github.com/machbase/neo-engine/actions/workflows/ci-darwin-amd64.yml)
+[![CI](https://github.com/machbase/neo-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/machbase/neo-engine/actions/workflows/ci.yml)
 
 # neo-engine
 
@@ -15,7 +13,7 @@ go get -u github.com/machbase/neo-engine
 ## Supporting platforms
 
 | OS       | ARCH          | SUPPORT     |
-|:---------|:--------------|-------------|
+|:---------|:--------------|:-----------:|
 | Linux    | amd64         | O           |
 |          | arm64         | O           |
 |          | arm (32bit)   | O           |
