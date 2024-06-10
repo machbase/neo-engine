@@ -1,6 +1,6 @@
 module github.com/machbase/neo-engine
 
-go 1.20
+go 1.21
 
 require (
 	github.com/magefile/mage v1.15.0
@@ -8,8 +8,8 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sony/sonyflake v1.2.0
 	github.com/stretchr/testify v1.9.0
-	golang.org/x/sys v0.18.0
-	golang.org/x/text v0.14.0
+	golang.org/x/sys v0.21.0
+	golang.org/x/text v0.16.0
 )
 
 require (
