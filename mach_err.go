@@ -34,7 +34,7 @@ var ErrDatabaseNoColumns = func(table string) error {
 	return fmt.Errorf("table '%s' has no columns", table)
 }
 var ErrDatabaseLengthOfColumns = func(table string, expectColumns int, actualColumns int) error {
-	return fmt.Errorf("value count %d, table '%s' requres %d columns to append", actualColumns, table, expectColumns)
+	return fmt.Errorf("value count %d, table '%s' requires %d columns to append", actualColumns, table, expectColumns)
 }
 var ErrDatabaseAppendUnknownType = func(typ string) error {
 	return fmt.Errorf("MachAppendData unknown column type '%s'", typ)
