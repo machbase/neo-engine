@@ -130,10 +130,11 @@ func (env *Env) SetTimeLocation(tz *time.Location) {
 type Conn struct {
 	env    *Env
 	handle C.SQLHANDLE
+	ctx    context.Context
 }
 
-func (env *Env) Connect() (*Conn, error) {
-	conn := &Conn{env: env}
+func (env *Env) Connect(ctx context.Context) (*Conn, error) {
+	conn := &Conn{env: env, ctx: ctx}
 	if v := C.SQLAllocConnect(env.handle, &conn.handle); v != 0 {
 		return nil, fmt.Errorf("CLI_ERR SQLAllocConnect %d", v)
 	}

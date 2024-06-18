@@ -26,7 +26,7 @@ func main() {
 	defer env.Close()
 
 	// 2. Connect
-	conn, err := env.Connect()
+	conn, err := env.Connect(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -70,7 +70,7 @@ func main() {
 	conn.Close()
 
 	// 6. New Connection
-	conn, err = env.Connect()
+	conn, err = env.Connect(ctx)
 	if err != nil {
 		panic(err)
 	}
