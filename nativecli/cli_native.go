@@ -743,6 +743,15 @@ func (col *ColumnType) getData(stmt *Stmt) (*ColumnValue, error) {
 			ret.Type = "long"
 			ret.Value = raw
 		}()
+	case C.SQL_INTEGER: // 32-bit signed integer
+		raw := int(0)
+		valueType = C.SQL_C_SLONG
+		valueBuffer = unsafe.Pointer(&raw)
+		valueBufferLen = int(unsafe.Sizeof(raw))
+		defer func() {
+			ret.Type = "int"
+			ret.Value = raw
+		}()
 	case C.SQL_BINARY: // fixed-length binary data
 		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
 	case C.SQL_BIT: // 1-bit binary data
@@ -760,8 +769,6 @@ func (col *ColumnType) getData(stmt *Stmt) (*ColumnValue, error) {
 	case C.SQL_FLOAT: // Single precision floating point number
 		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
 	case C.SQL_GUID: // Globally unique identifier
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_INTEGER: // 32-bit signed integer
 		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
 	case C.SQL_LONGVARBINARY: // Variable-length binary data
 		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
@@ -976,6 +983,7 @@ type Appender struct {
 	ctx                  context.Context
 	stmt                 *Stmt
 	tableName            string
+	tableType            int // 0: LogTable, 6: TagTableType
 	columns              []*ColumnType
 	errorCheckCount      int
 	prependValueProvider func() []any
@@ -996,14 +1004,27 @@ func WithPrependValuesProvider(valueProvider func() []any) AppenderOption {
 }
 
 func (conn *Conn) AppendOpen(ctx context.Context, tableName string, options ...AppenderOption) (*Appender, error) {
-	stmt, err := conn.NewStmt()
-	if err != nil {
-		return nil, err
-	}
 	tableName = strings.ToUpper(tableName)
 	apd := &Appender{ctx: ctx, tableName: tableName}
 	for _, opt := range options {
 		opt(apd)
+	}
+
+	stmt, err := conn.NewStmt()
+	if err != nil {
+		return nil, err
+	}
+	if row := stmt.conn.QueryRowContext(ctx, "select type from M$SYS_TABLES where name = ?", tableName); row.Err() != nil {
+		stmt.Close()
+		return nil, row.Err()
+	} else {
+		row.Scan(&apd.tableType)
+		stmt.Close()
+	}
+
+	stmt, err = conn.NewStmt()
+	if err != nil {
+		return nil, err
 	}
 	if rows, err := stmt.conn.QueryContext(ctx, fmt.Sprintf("select * from %s limit 1", tableName)); err != nil {
 		stmt.Close()
@@ -1061,7 +1082,7 @@ func (apd *Appender) Append(values ...any) error {
 		values = append(apd.prependValueProvider(), values...)
 	}
 	if len(values) != len(apd.columns) {
-		return fmt.Errorf("ERROR column count mismatch %d != %d", len(values), len(apd.columns))
+		return fmt.Errorf("ERROR Append column count mismatch, expect: %d, actual: %d", len(apd.columns), len(values))
 	}
 	params := make([]C.machbaseAppendParam, len(values))
 	for i, col := range apd.columns {
@@ -1087,7 +1108,7 @@ func (apd *Appender) Append(values ...any) error {
 				*(*C.double)(unsafe.Pointer(&pv[0])) = C.double(val)
 			}
 		default:
-			return fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
+			return fmt.Errorf("ERROR Append unsupported type %d of column #%d (%+v)", col.sqlType, col.colNum, col)
 		}
 	}
 	if v := C.SQLAppendDataV2(apd.stmt.handle, &params[0]); v != 0 {
