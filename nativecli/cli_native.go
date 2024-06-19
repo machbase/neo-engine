@@ -17,6 +17,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net"
 	"reflect"
 	"strings"
 	"time"
@@ -120,7 +121,7 @@ func (env *Env) Close() error {
 }
 
 func (env *Env) Error() *Error {
-	return sqlError0(env.handle, nil, nil)
+	return sqlError0(env.handle, nil, nil, "Env")
 }
 
 func (env *Env) SetTimeLocation(tz *time.Location) {
@@ -198,11 +199,14 @@ func (conn *Conn) ExecContext(ctx context.Context, query string, args ...any) (*
 	if v := C.SQLExecute(stmt.handle); v != 0 {
 		return nil, stmt.raiseError("SQLExecute", v)
 	}
-	return &Result{}, ErrUnspported
+	ret := &Result{}
+	C.SQLRowCount(stmt.handle, (*C.SQLLEN)(&ret.rowsAffected))
+	return ret, nil
 }
 
 type Result struct {
-	message string
+	message      string
+	rowsAffected int64
 }
 
 func (rs *Result) String() string {
@@ -222,7 +226,7 @@ func (rs *Result) LastInsertId() (int64, error) {
 // update, insert, or delete. Not every database or database
 // driver may support this.
 func (rs *Result) RowsAffected() (int64, error) {
-	return 0, ErrUnspported
+	return rs.rowsAffected, nil
 }
 
 func (conn *Conn) QueryRowContext(ctx context.Context, query string, args ...any) *Row {
@@ -427,7 +431,7 @@ func (rs *Rows) Scan(dest ...any) error {
 }
 
 func (conn *Conn) raiseError(fname string, rv C.short) error {
-	if sqlerr := sqlError0(conn.env.handle, conn.handle, nil); sqlerr != nil {
+	if sqlerr := sqlError0(conn.env.handle, conn.handle, nil, fname); sqlerr != nil {
 		return sqlerr
 	} else {
 		return fmt.Errorf("ERR %s %d", fname, rv)
@@ -455,7 +459,7 @@ func (stmt *Stmt) Close() error {
 }
 
 func (stmt *Stmt) Bind(colNum int, val any) error {
-	var pcbValue C.long
+	var sLen C.long
 	var cType C.short
 	var valPtr unsafe.Pointer
 	var sqlType C.short
@@ -472,15 +476,70 @@ func (stmt *Stmt) Bind(colNum int, val any) error {
 		cType = C.SQL_C_SSHORT
 		sqlType = C.SQL_SMALLINT
 		valPtr = unsafe.Pointer(&v)
+	case int32:
+		cType = C.SQL_C_SLONG
+		sqlType = C.SQL_INTEGER
+		valPtr = unsafe.Pointer(&v)
+	case int64:
+		cType = C.SQL_C_SBIGINT
+		sqlType = C.SQL_BIGINT
+		valPtr = unsafe.Pointer(&v)
+	case float32:
+		cType = C.SQL_C_FLOAT
+		sqlType = C.SQL_FLOAT
+		valPtr = unsafe.Pointer(&v)
+	case float64:
+		cType = C.SQL_C_DOUBLE
+		sqlType = C.SQL_DOUBLE
+		valPtr = unsafe.Pointer(&v)
 	case string:
 		cType = C.SQL_C_CHAR
 		sqlType = C.SQL_VARCHAR
 		bstr := []byte(v)
 		valPtr = unsafe.Pointer(&bstr[0])
 		cbValueMax = C.long(len(bstr))
-		pcbValue = C.long(len(bstr))
+		sLen = C.long(len(bstr))
+	case []byte:
+		cType = C.SQL_C_BINARY
+		sqlType = C.SQL_BINARY
+		valPtr = unsafe.Pointer(&v[0])
+		cbValueMax = C.long(len(v))
+		sLen = C.long(len(v))
+	case time.Time:
+		cType = C.SQL_C_TIMESTAMP
+		sqlType = C.SQL_TYPE_TIMESTAMP
+		ts := C.SQL_TIMESTAMP_STRUCT{
+			year:     C.SQLSMALLINT(v.Year()),
+			month:    C.SQLUSMALLINT(v.Month()),
+			day:      C.SQLUSMALLINT(v.Day()),
+			hour:     C.SQLUSMALLINT(v.Hour()),
+			minute:   C.SQLUSMALLINT(v.Minute()),
+			second:   C.SQLUSMALLINT(v.Second()),
+			fraction: C.SQLUINTEGER(v.Nanosecond()),
+		}
+		valPtr = unsafe.Pointer(&ts)
+	case net.IP:
+		if v4 := v.To4(); v4 != nil {
+			cType = C.SQL_C_CHAR
+			sqlType = C.SQL_IPV4
+			cbValueMax = C.long(15)
+			bstr := []byte(v4.String())
+			fmt.Println("ipv6", v4.String())
+			sLen = C.long(len(bstr))
+			valPtr = unsafe.Pointer(&bstr[0])
+		} else if v6 := v.To16(); v6 != nil {
+			cType = C.SQL_C_CHAR
+			sqlType = C.SQL_IPV6
+			cbValueMax = C.long(45)
+			bstr := []byte(v6.String())
+			fmt.Println("ipv6", v6.String())
+			sLen = C.long(len(bstr))
+			valPtr = unsafe.Pointer(&bstr[0])
+		} else {
+			return errors.New("ERROR Bind unsupported IP type")
+		}
 	default:
-		return fmt.Errorf("ERROR unsupported type %T", val)
+		return fmt.Errorf("ERROR Bind unsupported type %T", val)
 	}
 	if v := C.SQLBindParameter(
 		stmt.handle,          // statement
@@ -492,7 +551,7 @@ func (stmt *Stmt) Bind(colNum int, val any) error {
 		ibScale,              // ibScale
 		C.SQLPOINTER(valPtr), // rgbValue
 		cbValueMax,           // cbValueMax
-		&pcbValue,            // pcbValue
+		&sLen,                // pcbValue
 	); v != C.SQL_SUCCESS && v != C.SQL_SUCCESS_WITH_INFO {
 		return stmt.raiseError("SQLBindParameter", v)
 	}
@@ -533,7 +592,7 @@ func (stmt *Stmt) DescribeCol(colNum int) (*ColumnType, error) {
 }
 
 func (stmt *Stmt) raiseError(fname string, rv C.short) error {
-	if sqlerr := sqlError0(stmt.conn.env.handle, stmt.conn.handle, stmt.handle); sqlerr != nil {
+	if sqlerr := sqlError0(stmt.conn.env.handle, stmt.conn.handle, stmt.handle, fname); sqlerr != nil {
 		return sqlerr
 	} else {
 		return fmt.Errorf("ERR %s %d", fname, rv)
@@ -705,16 +764,6 @@ func (col *ColumnType) getData(stmt *Stmt) (*ColumnValue, error) {
 	}
 
 	switch col.sqlType {
-	case C.SQL_VARCHAR:
-		raw := C.malloc(C.size_t(col.size))
-		valueType = C.SQL_C_CHAR
-		valueBuffer = unsafe.Pointer(raw)
-		valueBufferLen = col.size
-		defer func() {
-			ret.Type = "string"
-			ret.Value = C.GoString((*C.char)(valueBuffer))
-			C.free(raw)
-		}()
 	case C.SQL_TYPE_TIMESTAMP:
 		raw := C.SQL_TIMESTAMP_STRUCT{}
 		valueType = C.SQL_C_TIMESTAMP
@@ -725,6 +774,15 @@ func (col *ColumnType) getData(stmt *Stmt) (*ColumnValue, error) {
 			ret.Value = time.Date(int(raw.year), time.Month(raw.month), int(raw.day),
 				int(raw.hour), int(raw.minute), int(raw.second), 0, stmt.conn.env.tz)
 		}()
+	case C.SQL_FLOAT: // Single precision floating point number
+		raw := float32(0)
+		valueType = C.SQL_C_FLOAT
+		valueBuffer = unsafe.Pointer(&raw)
+		valueBufferLen = int(unsafe.Sizeof(raw))
+		defer func() {
+			ret.Type = "float"
+			ret.Value = raw
+		}()
 	case C.SQL_DOUBLE:
 		raw := float64(0)
 		valueType = C.SQL_C_DOUBLE
@@ -732,6 +790,15 @@ func (col *ColumnType) getData(stmt *Stmt) (*ColumnValue, error) {
 		valueBufferLen = int(unsafe.Sizeof(raw))
 		defer func() {
 			ret.Type = "double"
+			ret.Value = raw
+		}()
+	case C.SQL_SMALLINT: // 16-bit signed integer
+		raw := int16(0)
+		valueType = C.SQL_C_SSHORT
+		valueBuffer = unsafe.Pointer(&raw)
+		valueBufferLen = int(unsafe.Sizeof(raw))
+		defer func() {
+			ret.Type = "short"
 			ret.Value = raw
 		}()
 	case C.SQL_BIGINT: // 64-bit signed integer
@@ -752,50 +819,110 @@ func (col *ColumnType) getData(stmt *Stmt) (*ColumnValue, error) {
 			ret.Type = "int"
 			ret.Value = raw
 		}()
+	case C.SQL_IPV4:
+		raw := [16]byte{}
+		valueType = C.SQL_C_CHAR
+		valueBuffer = unsafe.Pointer(&raw)
+		valueBufferLen = int(unsafe.Sizeof(raw))
+		defer func() {
+			ret.Type = "ipv4"
+			if ind == -1 {
+				ret.Value = nil
+			} else {
+				ret.Value = net.ParseIP(string(raw[:ind]))
+			}
+		}()
+	case C.SQL_IPV6:
+		raw := [45]byte{}
+		valueType = C.SQL_C_CHAR
+		valueBuffer = unsafe.Pointer(&raw)
+		valueBufferLen = int(unsafe.Sizeof(raw))
+		defer func() {
+			ret.Type = "ipv6"
+			if ind == -1 {
+				ret.Value = nil
+			} else {
+				ret.Value = net.ParseIP(string(raw[:ind]))
+			}
+		}()
+	case C.SQL_VARCHAR:
+		raw := make([]byte, col.size)
+		valueType = C.SQL_C_BINARY
+		valueBuffer = unsafe.Pointer(&raw[0])
+		valueBufferLen = col.size
+		defer func() {
+			ret.Type = "varchar"
+			if ind == -1 {
+				ret.Value = nil
+			} else {
+				ret.Value = string(raw[0:ind])
+			}
+		}()
+	case C.SQL_TEXT:
+		raw := make([]byte, col.size)
+		valueType = C.SQL_C_BINARY
+		valueBuffer = unsafe.Pointer(&raw[0])
+		valueBufferLen = col.size
+		defer func() {
+			ret.Type = "text"
+			if ind == -1 {
+				ret.Value = nil
+			} else {
+				ret.Value = string(raw[0:ind])
+			}
+		}()
+	case C.SQL_JSON:
+		raw := make([]byte, col.size)
+		valueType = C.SQL_C_BINARY
+		valueBuffer = unsafe.Pointer(&raw[0])
+		valueBufferLen = col.size
+		defer func() {
+			ret.Type = "json"
+			if ind == -1 {
+				ret.Value = nil
+			} else {
+				ret.Value = string(raw[0:ind])
+			}
+		}()
+	case C.SQL_CLOB:
+		raw := make([]byte, col.size)
+		valueType = C.SQL_C_BINARY
+		valueBuffer = unsafe.Pointer(&raw[0])
+		valueBufferLen = col.size
+		defer func() {
+			ret.Type = "clob"
+			if ind == -1 {
+				ret.Value = nil
+			} else {
+				ret.Value = raw[0:ind]
+			}
+		}()
+	case C.SQL_BLOB:
+		raw := make([]byte, col.size)
+		valueType = C.SQL_C_BINARY
+		valueBuffer = unsafe.Pointer(&raw[0])
+		valueBufferLen = col.size
+		defer func() {
+			ret.Type = "blob"
+			if ind == -1 {
+				ret.Value = nil
+			} else {
+				ret.Value = raw[0:ind]
+			}
+		}()
 	case C.SQL_BINARY: // fixed-length binary data
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_BIT: // 1-bit binary data
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_CHAR: //	Character string
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_C_SLONG: // 32-bit signed integer
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_C_SSHORT: // 16-bit signed integer
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_DATE: // Date
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_DECIMAL: // Fixed precision and scale number
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_FLOAT: // Single precision floating point number
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_GUID: // Globally unique identifier
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_LONGVARBINARY: // Variable-length binary data
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_LONGVARCHAR: // Variable-length character data
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_NUMERIC: // Fixed precision and scale number
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_SMALLINT: // 16-bit signed integer
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_TIME: // Time
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_TIMESTAMP: // Date and time
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_TYPE_DATE: // Date
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_TYPE_TIME: // Time
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_TINYINT: // 8-bit signed integer
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_VARBINARY: // Variable-length binary data
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_WCHAR: // Unicode character string
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_WLONGVARCHAR: // Variable-length Unicode character data
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
-	case C.SQL_WVARCHAR: // Variable-length Unicode character data
-		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
+		raw := make([]byte, col.size)
+		valueType = C.SQL_C_BINARY
+		valueBuffer = unsafe.Pointer(&raw[0])
+		valueBufferLen = col.size
+		defer func() {
+			ret.Type = "binary"
+			if ind == -1 {
+				ret.Value = nil
+			} else {
+				ret.Value = raw[0:ind]
+			}
+		}()
 	default:
 		return nil, fmt.Errorf("ERROR unsupported type %d of column #%d", col.sqlType, col.colNum)
 	}
@@ -955,6 +1082,17 @@ func (cv *ColumnValue) Scan(dest any) error {
 		default:
 			return ErrCannotConvertValue(src, dst)
 		}
+	case float32:
+		switch dst := dest.(type) {
+		case *float32:
+			*dst = src
+		case *float64:
+			*dst = float64(src)
+		case *string:
+			*dst = fmt.Sprintf("%f", src)
+		default:
+			return ErrCannotConvertValue(src, dst)
+		}
 	case float64:
 		switch dst := dest.(type) {
 		case *float64:
@@ -970,6 +1108,15 @@ func (cv *ColumnValue) Scan(dest any) error {
 			*dst = src
 		case *string:
 			*dst = hex.EncodeToString(src)
+		default:
+			return ErrCannotConvertValue(src, dst)
+		}
+	case net.IP:
+		switch dst := dest.(type) {
+		case *net.IP:
+			*dst = src
+		case *string:
+			*dst = src.String()
 		default:
 			return ErrCannotConvertValue(src, dst)
 		}
@@ -1010,29 +1157,18 @@ func (conn *Conn) AppendOpen(ctx context.Context, tableName string, options ...A
 		opt(apd)
 	}
 
-	stmt, err := conn.NewStmt()
-	if err != nil {
+	if rows, err := conn.QueryContext(ctx, fmt.Sprintf("select * from %s limit 1", tableName)); err != nil {
 		return nil, err
+	} else {
+		apd.columns = make([]*ColumnType, len(rows.columns))
+		copy(apd.columns, rows.columns)
+		rows.Close()
 	}
-	if row := stmt.conn.QueryRowContext(ctx, "select type from M$SYS_TABLES where name = ?", tableName); row.Err() != nil {
-		stmt.Close()
+
+	if row := conn.QueryRowContext(ctx, "select type from M$SYS_TABLES where name = ?", tableName); row.Err() != nil {
 		return nil, row.Err()
 	} else {
 		row.Scan(&apd.tableType)
-		stmt.Close()
-	}
-
-	stmt, err = conn.NewStmt()
-	if err != nil {
-		return nil, err
-	}
-	if rows, err := stmt.conn.QueryContext(ctx, fmt.Sprintf("select * from %s limit 1", tableName)); err != nil {
-		stmt.Close()
-		return nil, err
-	} else {
-		apd.columns = append(apd.columns, rows.columns...)
-		rows.Close()
-		stmt.Close()
 	}
 
 	if stmt, err := conn.NewStmt(); err != nil {
@@ -1070,7 +1206,7 @@ func (apd *Appender) Close() (int64, int64, error) {
 }
 
 func (apd *Appender) raiseError(fname string, rv C.short) error {
-	if sqlerr := sqlError0(apd.stmt.conn.env.handle, apd.stmt.conn.handle, apd.stmt.handle); sqlerr != nil {
+	if sqlerr := sqlError0(apd.stmt.conn.env.handle, apd.stmt.conn.handle, apd.stmt.handle, fname); sqlerr != nil {
 		return sqlerr
 	} else {
 		return fmt.Errorf("CLI_ERR %s %d", fname, rv)
@@ -1088,7 +1224,117 @@ func (apd *Appender) Append(values ...any) error {
 	for i, col := range apd.columns {
 		pv := &params[i]
 		switch col.sqlType {
-		case C.SQL_VARCHAR:
+		case C.SQL_TYPE_TIMESTAMP:
+			switch val := values[i].(type) {
+			case time.Time:
+				((*C.machbaseAppendDateTimeStruct)(unsafe.Pointer(&pv[0]))).mTime = C.longlong(val.UnixNano())
+			}
+		case C.SQL_SMALLINT:
+			switch val := values[i].(type) {
+			case int8:
+				*(*C.short)(unsafe.Pointer(&pv[0])) = C.short(int16(val))
+			case int16:
+				*(*C.short)(unsafe.Pointer(&pv[0])) = C.short(int16(val))
+			case int32:
+				*(*C.short)(unsafe.Pointer(&pv[0])) = C.short(int16(val))
+			case int64:
+				*(*C.short)(unsafe.Pointer(&pv[0])) = C.short(int16(val))
+			case int:
+				*(*C.short)(unsafe.Pointer(&pv[0])) = C.short(int16(val))
+			default:
+				return ErrAppendTypeNotImplement("SQL_SMALLINT", col.colNum, col.name, val)
+			}
+		case C.SQL_INTEGER:
+			switch val := values[i].(type) {
+			case int8:
+				*(*C.int)(unsafe.Pointer(&pv[0])) = C.int(int(val))
+			case int16:
+				*(*C.int)(unsafe.Pointer(&pv[0])) = C.int(int(val))
+			case int32:
+				*(*C.int)(unsafe.Pointer(&pv[0])) = C.int(int(val))
+			case int64:
+				*(*C.int)(unsafe.Pointer(&pv[0])) = C.int(int(val))
+			case int:
+				*(*C.int)(unsafe.Pointer(&pv[0])) = C.int(int(val))
+			default:
+				return ErrAppendTypeNotImplement("SQL_SMALLINT", col.colNum, col.name, val)
+			}
+		case C.SQL_BIGINT:
+			switch val := values[i].(type) {
+			case int8:
+				*(*C.long)(unsafe.Pointer(&pv[0])) = C.long(int64(val))
+			case int16:
+				*(*C.long)(unsafe.Pointer(&pv[0])) = C.long(int64(val))
+			case int32:
+				*(*C.long)(unsafe.Pointer(&pv[0])) = C.long(int64(val))
+			case int64:
+				*(*C.long)(unsafe.Pointer(&pv[0])) = C.long(int64(val))
+			case int:
+				*(*C.long)(unsafe.Pointer(&pv[0])) = C.long(int64(val))
+			default:
+				return ErrAppendTypeNotImplement("SQL_BIGINT", col.colNum, col.name, val)
+			}
+		case C.SQL_FLOAT:
+			switch val := values[i].(type) {
+			case float32:
+				*(*C.float)(unsafe.Pointer(&pv[0])) = C.float(val)
+			case float64:
+				*(*C.float)(unsafe.Pointer(&pv[0])) = C.float(val)
+			default:
+				return ErrAppendTypeNotImplement("SQL_FLOAT", col.colNum, col.name, val)
+			}
+		case C.SQL_DOUBLE:
+			switch val := values[i].(type) {
+			case float32:
+				*(*C.double)(unsafe.Pointer(&pv[0])) = C.double(val)
+			case float64:
+				*(*C.double)(unsafe.Pointer(&pv[0])) = C.double(val)
+			default:
+				return ErrAppendTypeNotImplement("SQL_DOUBLE", col.colNum, col.name, val)
+			}
+		case C.SQL_IPV4:
+			var addr net.IP
+			switch val := values[i].(type) {
+			case net.IP:
+				addr = val
+			case string:
+				addr = net.ParseIP(val)
+			case []byte:
+				addr = net.IP(val)
+			default:
+				return ErrAppendTypeNotImplement("SQL_IPV4", col.colNum, col.name, val)
+			}
+			if v4 := addr.To4(); v4 != nil {
+				for i := 0; i < 4; i++ {
+					(*C.machbaseAppendIPStruct)(unsafe.Pointer(&pv[0])).mAddr[i] = C.uchar(v4[i])
+				}
+				(*C.machbaseAppendIPStruct)(unsafe.Pointer(&pv[0])).mLength = C.uchar(4)
+				(*C.machbaseAppendIPStruct)(unsafe.Pointer(&pv[0])).mAddrString = nil
+			} else {
+				return errors.New("ERROR Append unsupported IPv4 type")
+			}
+		case C.SQL_IPV6:
+			var addr net.IP
+			switch val := values[i].(type) {
+			case net.IP:
+				addr = val
+			case string:
+				addr = net.ParseIP(val)
+			case []byte:
+				addr = net.IP(val)
+			default:
+				return ErrAppendTypeNotImplement("SQL_IPV6", col.colNum, col.name, val)
+			}
+			if v6 := addr.To16(); v6 != nil {
+				for i := 0; i < 16; i++ {
+					(*C.machbaseAppendIPStruct)(unsafe.Pointer(&pv[0])).mAddr[i] = C.uchar(v6[i])
+				}
+				(*C.machbaseAppendIPStruct)(unsafe.Pointer(&pv[0])).mLength = C.uchar(6)
+				(*C.machbaseAppendIPStruct)(unsafe.Pointer(&pv[0])).mAddrString = nil
+			} else {
+				return errors.New("ERROR Append unsupported IPv6 type")
+			}
+		case C.SQL_VARCHAR, C.SQL_TEXT, C.SQL_CLOB, C.SQL_JSON:
 			switch val := values[i].(type) {
 			case string:
 				cstr := C.CString(val)
@@ -1096,19 +1342,28 @@ func (apd *Appender) Append(values ...any) error {
 				defer C.free(unsafe.Pointer(cstr))
 				((*C.machbaseAppendVarStruct)(unsafe.Pointer(&pv[0]))).mData = unsafe.Pointer(cstr)
 				((*C.machbaseAppendVarStruct)(unsafe.Pointer(&pv[0]))).mLength = C.uint(cstrLen)
+			case []byte:
+				((*C.machbaseAppendVarStruct)(unsafe.Pointer(&pv[0]))).mData = unsafe.Pointer(&val[0])
+				((*C.machbaseAppendVarStruct)(unsafe.Pointer(&pv[0]))).mLength = C.uint(len(val))
+			default:
+				return ErrAppendTypeNotImplement("SQL_VARCHAR", col.colNum, col.name, val)
 			}
-		case C.SQL_TYPE_TIMESTAMP:
+		case C.SQL_BINARY:
 			switch val := values[i].(type) {
-			case time.Time:
-				((*C.machbaseAppendDateTimeStruct)(unsafe.Pointer(&pv[0]))).mTime = C.longlong(val.UnixNano())
-			}
-		case C.SQL_DOUBLE:
-			switch val := values[i].(type) {
-			case float64:
-				*(*C.double)(unsafe.Pointer(&pv[0])) = C.double(val)
+			case string:
+				cstr := C.CString(val)
+				cstrLen := C.strlen(cstr)
+				defer C.free(unsafe.Pointer(cstr))
+				((*C.machbaseAppendVarStruct)(unsafe.Pointer(&pv[0]))).mData = unsafe.Pointer(cstr)
+				((*C.machbaseAppendVarStruct)(unsafe.Pointer(&pv[0]))).mLength = C.uint(cstrLen)
+			case []byte:
+				((*C.machbaseAppendVarStruct)(unsafe.Pointer(&pv[0]))).mData = unsafe.Pointer(&val[0])
+				((*C.machbaseAppendVarStruct)(unsafe.Pointer(&pv[0]))).mLength = C.uint(len(val))
+			default:
+				return ErrAppendTypeNotImplement("SQL_Text", col.colNum, col.name, val)
 			}
 		default:
-			return fmt.Errorf("ERROR Append unsupported type %d of column #%d (%+v)", col.sqlType, col.colNum, col)
+			return fmt.Errorf("ERROR Append unimplemented for type %d of column #%d (%+v)", col.sqlType, col.colNum, col)
 		}
 	}
 	if v := C.SQLAppendDataV2(apd.stmt.handle, &params[0]); v != 0 {
@@ -1121,9 +1376,10 @@ type Error struct {
 	code     int
 	message  string
 	sqlState string
+	caller   string
 }
 
-func sqlError0(env C.SQLHANDLE, conn C.SQLHANDLE, stmt C.SQLHANDLE) *Error {
+func sqlError0(env C.SQLHANDLE, conn C.SQLHANDLE, stmt C.SQLHANDLE, caller string) *Error {
 	sErrorMsg := make([]C.uchar, C.SQL_MAX_MESSAGE_LENGTH+1)
 	sSqlState := make([]C.uchar, C.SQL_SQLSTATE_SIZE+1)
 	var sNativeError C.int
@@ -1138,6 +1394,7 @@ func sqlError0(env C.SQLHANDLE, conn C.SQLHANDLE, stmt C.SQLHANDLE) *Error {
 			code:     int(sNativeError),
 			message:  string(sErrorMsg[0:sMsgLength]),
 			sqlState: state,
+			caller:   caller,
 		}
 	}
 	return nil
@@ -1145,9 +1402,9 @@ func sqlError0(env C.SQLHANDLE, conn C.SQLHANDLE, stmt C.SQLHANDLE) *Error {
 
 func (e *Error) Error() string {
 	if e.sqlState == "" {
-		return fmt.Sprintf("SQLERR-%d %s", e.code, e.message)
+		return fmt.Sprintf("SQLERR-%d %s caused by %s", e.code, e.message, e.caller)
 	} else {
-		return fmt.Sprintf("SQLERR-%d %s %s", e.code, e.sqlState, e.message)
+		return fmt.Sprintf("SQLERR-%d %s %s caused by %s", e.code, e.sqlState, e.message, e.caller)
 	}
 }
 
@@ -1158,3 +1415,6 @@ func (e *Error) String() string {
 var ErrUnspported = errors.New("unsupported")
 var ErrNoRows = errors.New("no rows in result set")
 var ErrCannotConvertValue = func(from, to any) error { return fmt.Errorf("cannot convert value from %T to %T", from, to) }
+var ErrAppendTypeNotImplement = func(typ string, colNum int, colName string, val any) error {
+	return fmt.Errorf("Append not implemented for type %s of column #%d %q from %T", typ, colNum, colName, val)
+}
