@@ -259,17 +259,17 @@ func (rows *Rows) Message() string {
 			return msg
 		}
 		return "system altered."
-	} else if stmtType == 512 {
+	} else if stmtType.IsSelect() {
 		verb = "selected."
-	} else if stmtType == 513 {
+	} else if stmtType.IsInsert() {
 		verb = "inserted."
-	} else if stmtType >= 514 && stmtType <= 517 {
+	} else if stmtType.IsDelete() {
 		verb = "deleted."
-	} else if stmtType == 518 {
+	} else if stmtType.IsInsertSelect() {
 		verb = "select and inserted."
-	} else if stmtType == 519 {
+	} else if stmtType.IsUpdate() {
 		verb = "updated."
-	} else if stmtType >= 521 && stmtType <= 523 {
+	} else if stmtType.IsExecRollup() {
 		return "rollup executed."
 	} else {
 		return fmt.Sprintf("executed (%d).", stmtType)

@@ -284,10 +284,11 @@ func NativeColumnTypeString(typ NativeColumnType) (string, error) {
 // * ALTER SYSTEM: 256-511
 // * SELECT: 512
 // * INSERT: 513
-// * DELETE: 514-517
-// * INSERT_SELECT: 518
-// * UPDATE: 519
-// * EXEC_ROLLUP: 521-523
+// * DELETE: 514-518
+// * INSERT_SELECT: 519
+// * UPDATE: 520
+// * EXEC_ROLLUP: 522-524
+
 type StmtType int
 
 func (typ StmtType) IsSelect() bool {
@@ -303,89 +304,21 @@ func (typ StmtType) IsAlterSystem() bool {
 }
 
 func (typ StmtType) IsInsert() bool {
-	return typ == 513 || typ == 516
+	return typ == 513
 }
 
 func (typ StmtType) IsDelete() bool {
-	return typ >= 514 && typ <= 515
+	return typ >= 514 && typ <= 518
+}
+
+func (typ StmtType) IsInsertSelect() bool {
+	return typ == 519
 }
 
 func (typ StmtType) IsUpdate() bool {
-	return typ == 517
+	return typ == 520
 }
 
-/*
-	func ParseColumnValue(str string, ctype ColumnType, tz *time.Location, timeformat string) (any, error) {
-		switch ctype {
-		case Int16ColumnType:
-			return strconv.ParseInt(str, 10, 16)
-		case Uint16ColumnType:
-			return strconv.ParseUint(str, 10, 16)
-		case Int32ColumnType:
-			return strconv.ParseInt(str, 10, 32)
-		case Uint32ColumnType:
-			return strconv.ParseUint(str, 10, 32)
-		case Int64ColumnType:
-			return strconv.ParseInt(str, 10, 64)
-		case Uint64ColumnType:
-			return strconv.ParseUint(str, 10, 64)
-		case Float32ColumnType:
-			return strconv.ParseFloat(str, 32)
-		case Float64ColumnType:
-			return strconv.ParseFloat(str, 64)
-		case VarcharColumnType:
-			return str, nil
-		case TextColumnType:
-			return str, nil
-		case ClobColumnType:
-			return str, nil
-		case BlobColumnType:
-			return str, nil
-		case BinaryColumnType:
-			return str, nil
-		case DatetimeColumnType:
-			switch timeformat {
-			case "ns":
-				v, err := strconv.ParseInt(str, 10, 64)
-				if err != nil {
-					return nil, err
-				}
-				return time.Unix(0, v), nil
-			case "ms":
-				v, err := strconv.ParseInt(str, 10, 64)
-				if err != nil {
-					return nil, err
-				}
-				return time.Unix(0, v*int64(time.Millisecond)), nil
-			case "us":
-				v, err := strconv.ParseInt(str, 10, 64)
-				if err != nil {
-					return nil, err
-				}
-				return time.Unix(0, v*int64(time.Microsecond)), nil
-			case "s":
-				v, err := strconv.ParseInt(str, 10, 64)
-				if err != nil {
-					return nil, err
-				}
-				return time.Unix(v, 0), nil
-			default:
-				return time.ParseInLocation(timeformat, str, tz)
-			}
-		case IpV4ColumnType:
-			if ip := net.ParseIP(str); ip != nil {
-				return ip, nil
-			} else {
-				return nil, fmt.Errorf("unable to parse as ip address %s", str)
-			}
-		case IpV6ColumnType:
-			if ip := net.ParseIP(str); ip != nil {
-				return ip, nil
-			} else {
-				return nil, fmt.Errorf("unable to parse as ip address %s", str)
-			}
-		default:
-			return nil, fmt.Errorf("unknown column type %d", ctype)
-		}
-	}
-*/
+func (typ StmtType) IsExecRollup() bool {
+	return typ >= 522 && typ <= 524
+}
