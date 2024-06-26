@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 	"unsafe"
@@ -1223,11 +1224,22 @@ func (apd *Appender) Append(values ...any) error {
 	params := make([]C.machbaseAppendParam, len(values))
 	for i, col := range apd.columns {
 		pv := &params[i]
+		if values[i] == nil {
+			continue
+		}
 		switch col.sqlType {
 		case C.SQL_TYPE_TIMESTAMP:
 			switch val := values[i].(type) {
 			case time.Time:
 				((*C.machbaseAppendDateTimeStruct)(unsafe.Pointer(&pv[0]))).mTime = C.longlong(val.UnixNano())
+			case int64:
+				((*C.machbaseAppendDateTimeStruct)(unsafe.Pointer(&pv[0]))).mTime = C.longlong(val)
+			case string:
+				if t, err := strconv.ParseInt(val, 10, 64); err == nil {
+					((*C.machbaseAppendDateTimeStruct)(unsafe.Pointer(&pv[0]))).mTime = C.longlong(t)
+				} else {
+					return ErrAppendTypeNotImplement("SQL_TYPE_TIMESTAMP", col.colNum, col.name, val)
+				}
 			}
 		case C.SQL_SMALLINT:
 			switch val := values[i].(type) {
