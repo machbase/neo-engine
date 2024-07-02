@@ -145,13 +145,19 @@ func (db *Database) ListWatcher(cb func(*ConnState) bool) {
 	})
 }
 
-func (db *Database) KillConnection(id string) error {
+func (db *Database) KillConnection(id string, force bool) error {
 	if cw, ok := db.conns.Get(id); ok {
-		if cw.conn != nil {
-			return machCancel(cw.conn.handle)
+		if cw.conn == nil {
+			return ErrDatabaseConnectionInvalid(id)
 		}
+		if force {
+			return cw.conn.Close()
+		} else {
+			return cw.conn.Cancel()
+		}
+	} else {
+		return ErrDatabaseConnectionNotFound(id)
 	}
-	return nil
 }
 
 type ConnWatcher struct {
@@ -278,6 +284,13 @@ func (conn *Conn) Close() (err error) {
 		}
 	})
 	return
+}
+
+func (conn *Conn) Cancel() error {
+	if err := machCancel(conn.handle); err != nil {
+		return err
+	}
+	return conn.Close()
 }
 
 func (conn *Conn) Connected() bool {

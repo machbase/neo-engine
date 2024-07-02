@@ -79,3 +79,11 @@ var ErrDatabaseScanIndex = func(idx int, len int) error {
 var ErrDatabaseFetch = func(err error) error {
 	return we.Wrap(err, "fetch")
 }
+
+var ErrDatabaseConnectionNotFound = func(name string) error {
+	return fmt.Errorf("connection '%s' not found", name)
+}
+
+var ErrDatabaseConnectionInvalid = func(name string) error {
+	return fmt.Errorf("invalid connection '%s'", name)
+}
