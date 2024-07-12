@@ -8,5 +8,7 @@ fi
 
 echo "cp $MACHBASEDEV_HOME/mm/src/include/machEngine.h ./machEngine.h"
 cp $MACHBASEDEV_HOME/mm/src/include/machEngine.h ./machEngine.h
+echo "cp $MACHBASEDEV_HOME/ux/src/include/machcli.h ./machcli.h"
+cp $MACHBASEDEV_HOME/ux/src/include/machcli.h ./machcli.h
 echo "cp $MACHBASEDEV_HOME/machbase_home/lib/libmachengine.a ./libmachengine_standard_$1_$2.a"
 cp $MACHBASEDEV_HOME/machbase_home/lib/libmachengine.a ./libmachengine_standard_$1_$2.a
