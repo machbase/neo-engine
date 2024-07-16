@@ -157,9 +157,9 @@ typedef void (*MachCLIAppendErrorCallback)(void* aStmtHandle,
                                            long  aErrorBufLen,
                                            char* aRowBuf,
                                            long  aRowBufLen);
-int MachCLIAppendOpen(void      * aStmt,
-                      nbp_char_t* aTableName,
-                      int         aErrorCheckCount);
+int MachCLIAppendOpen(void* aStmt,
+                      char* aTableName,
+                      int   aErrorCheckCount);
 int MachCLIAppendData(void              * aStmt,
                       MachCLIAppendParam* aData);
 int MachCLIAppendClose(void     * aStmt,
