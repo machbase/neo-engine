@@ -38,8 +38,12 @@ func main() {
 	}
 	defer rows.Close()
 
+	descs := rows.ColumnDescriptions()
+	for _, desc := range descs {
+		fmt.Println(">> column name:", desc.Name, "type:", desc.Type)
+	}
 	var name string
-	var ts string // or use time.Time
+	var ts int64 // can use time.Time, string, int64
 	var value float64
 	for rows.Next() {
 		if err := rows.Scan(&name, &ts, &value); err != nil {

@@ -1277,11 +1277,11 @@ func cliBindCol(stmt unsafe.Pointer, columnNo int, columnType int, buf unsafe.Po
 }
 
 type CliColumnDesc struct {
-	Name      string
-	Type      SqlType
-	Precision int
-	Scale     int
-	Nullable  bool
+	Name     string
+	Type     SqlType
+	Size     int
+	Scale    int
+	Nullable bool
 }
 
 func cliDescribeCol(stmt unsafe.Pointer, columnNo int) (CliColumnDesc, error) {
@@ -1292,7 +1292,7 @@ func cliDescribeCol(stmt unsafe.Pointer, columnNo int) (CliColumnDesc, error) {
 	if rt := C.MachCLIDescribeCol(stmt, C.int(columnNo), &name[0], nameSize, &nameLen, &dataType, &colSize, &scale, &nullable); rt == 0 {
 		ret.Name = C.GoStringN(&name[0], nameLen)
 		ret.Type = SqlType(dataType)
-		ret.Precision = int(colSize)
+		ret.Size = int(colSize)
 		ret.Scale = int(scale)
 		ret.Nullable = nullable == 1
 		return ret, nil
@@ -1322,7 +1322,6 @@ func cliAppendOpen(stmt unsafe.Pointer, tableName string, errCheckCount int) err
 
 func cliAppendData(stmt unsafe.Pointer, descs []CliColumnDesc, args []any) error {
 	if len(descs) != len(args) {
-		fmt.Println(">>>>>", descs[0].Name, descs[0].Type, args[0])
 		return ErrParamCount(len(descs), len(args))
 	}
 

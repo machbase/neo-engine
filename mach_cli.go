@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 	"unsafe"
@@ -23,6 +24,33 @@ const (
 	MACHCLI_SQL_TYPE_STRING   SqlType = 8
 	MACHCLI_SQL_TYPE_BINARY   SqlType = 9
 )
+
+func (st SqlType) String() string {
+	switch st {
+	case MACHCLI_SQL_TYPE_INT16:
+		return "INT16"
+	case MACHCLI_SQL_TYPE_INT32:
+		return "INT32"
+	case MACHCLI_SQL_TYPE_INT64:
+		return "INT64"
+	case MACHCLI_SQL_TYPE_DATETIME:
+		return "DATETIME"
+	case MACHCLI_SQL_TYPE_FLOAT:
+		return "FLOAT"
+	case MACHCLI_SQL_TYPE_DOUBLE:
+		return "DOUBLE"
+	case MACHCLI_SQL_TYPE_IPV4:
+		return "IPV4"
+	case MACHCLI_SQL_TYPE_IPV6:
+		return "IPV6"
+	case MACHCLI_SQL_TYPE_STRING:
+		return "STRING"
+	case MACHCLI_SQL_TYPE_BINARY:
+		return "BINARY"
+	default:
+		return fmt.Sprintf("UNKNOWN(%d)", st)
+	}
+}
 
 type CType int
 
@@ -53,6 +81,8 @@ func WithTimeLocation(loc *time.Location) CliOption {
 	}
 }
 
+// WithTimeformat sets the time format for the time.Time type.
+// The default format is "2006-01-02 15:04:05".
 func WithTimeformat(fmt string) CliOption {
 	return func(c *CliEnv) {
 		c.timeformat = fmt
@@ -114,7 +144,7 @@ func errorWithCause(obj any, cause error) error {
 			}
 			return fmt.Errorf("MACHCLI ERR-%d, %s", code, msg)
 		} else {
-			return fmt.Errorf("MACHCLI ERR-%d, %s, %s", code, msg, cause.Error())
+			return fmt.Errorf("MACHCLI ERR-%d, %s", code, msg)
 		}
 	}
 }
@@ -196,26 +226,32 @@ func (c *CliConn) Error() error {
 	return errorWithCause(c, nil)
 }
 
-func (c *CliConn) ExecDirectContext(ctx context.Context, query string) error {
-	if err := cliExecDirect(c.handle, query); err == nil {
-		return nil
-	} else {
-		return errorWithCause(c, err)
-	}
-}
+// func (c *CliConn) ExecDirectContext(ctx context.Context, query string) error {
+// 	if err := cliExecDirect(c.handle, query); err == nil {
+// 		return nil
+// 	} else {
+// 		return errorWithCause(c, err)
+// 	}
+// }
 
 func (c *CliConn) ExecContext(ctx context.Context, query string, args ...any) (*CliResult, error) {
 	stmt, err := c.NewStmt()
 	if err != nil {
 		return nil, err
 	}
+	defer stmt.Close()
 
-	if err := cliPrepare(stmt.handle, query); err != nil {
-		stmt.Close()
-		return nil, errorWithCause(c, err)
+	if err := stmt.prepare(query); err != nil {
+		return nil, err
+	}
+	if err := stmt.bindParams(args...); err != nil {
+		return nil, err
+	}
+	if err := stmt.execute(); err != nil {
+		return nil, err
 	}
 
-	return nil, ErrNotImplemented("ExecContext")
+	return &CliResult{}, nil
 }
 
 func (c *CliConn) QueryRowContext(ctx context.Context, query string, args ...any) *CliRow {
@@ -426,21 +462,26 @@ func (stmt *CliStmt) bindParams(args ...any) error {
 }
 
 type CliResult struct {
-	message      string
-	rowsAffected int64
+	message string
+	// rowsAffected int64
 }
 
 func (rs *CliResult) String() string {
 	return rs.message
 }
 
-func (rs *CliResult) RowsAffected() int64 {
-	return rs.rowsAffected
+func (rs *CliResult) LastInsertId() (int64, error) {
+	return 0, ErrNotImplemented("LastInsertId")
+}
+
+func (rs *CliResult) RowsAffected() (int64, error) {
+	return 0, ErrNotImplemented("RowsAffected")
+	// return rs.rowsAffected, nil
 }
 
 func (c *CliConn) PrepareContext(ctx context.Context, query string) (*CliStmt, error) {
 	ret := &CliStmt{
-		env: c.env,
+		conn: c,
 	}
 	if err := cliAllocStmt(c.handle, &ret.handle); err == nil {
 		return ret, nil
@@ -452,7 +493,7 @@ func (c *CliConn) PrepareContext(ctx context.Context, query string) (*CliStmt, e
 func (c *CliConn) NewStmt() (*CliStmt, error) {
 	ret := &CliStmt{}
 	if err := cliAllocStmt(c.handle, &ret.handle); err == nil {
-		ret.env = c.env
+		ret.conn = c
 		return ret, nil
 	} else {
 		return nil, errorWithCause(c, err)
@@ -461,7 +502,7 @@ func (c *CliConn) NewStmt() (*CliStmt, error) {
 
 type CliStmt struct {
 	handle      unsafe.Pointer
-	env         *CliEnv
+	conn        *CliConn
 	columnDescs []CliColumnDesc
 }
 
@@ -583,8 +624,8 @@ func (stmt *CliStmt) fetch() ([]any, bool, error) {
 				row[i] = net.IP(v)
 			}
 		case MACHCLI_SQL_TYPE_STRING:
-			var v = make([]byte, desc.Precision)
-			if n, err := cliGetData(stmt.handle, i, MACHCLI_C_TYPE_CHAR, unsafe.Pointer(&v[0]), desc.Precision); err != nil {
+			var v = make([]byte, desc.Size)
+			if n, err := cliGetData(stmt.handle, i, MACHCLI_C_TYPE_CHAR, unsafe.Pointer(&v[0]), desc.Size); err != nil {
 				return nil, end, errorWithCause(stmt, err)
 			} else if n == -1 {
 				row[i] = nil
@@ -592,7 +633,14 @@ func (stmt *CliStmt) fetch() ([]any, bool, error) {
 				row[i] = string(v[0:n])
 			}
 		case MACHCLI_SQL_TYPE_BINARY:
-			return row, end, ErrNotImplemented("CliStmt.Fetch MACHCLI_SQL_TYPE_BINARY")
+			var v = make([]byte, desc.Size)
+			if n, err := cliGetData(stmt.handle, i, MACHCLI_C_TYPE_CHAR, unsafe.Pointer(&v[0]), desc.Size); err != nil {
+				return nil, end, errorWithCause(stmt, err)
+			} else if n == -1 {
+				row[i] = nil
+			} else {
+				row[i] = v[0:n]
+			}
 		}
 	}
 	return row, end, nil
@@ -654,6 +702,10 @@ func (r *CliRows) Row() []any {
 	return r.row
 }
 
+func (r *CliRows) ColumnDescriptions() []CliColumnDesc {
+	return r.stmt.columnDescs
+}
+
 func (r *CliRows) Scan(dest ...any) error {
 	if len(dest) > len(r.row) {
 		return ErrParamCount(len(r.row), len(dest))
@@ -662,7 +714,7 @@ func (r *CliRows) Scan(dest ...any) error {
 		if d == nil {
 			continue
 		}
-		if err := scanConvert(r.row[i], d, r.stmt.env); err != nil {
+		if err := scanConvert(r.row[i], d, r.stmt.conn.env); err != nil {
 			return err
 		}
 	}
@@ -674,68 +726,68 @@ func scanConvert(src, dst any, env *CliEnv) error {
 		dst = nil
 		return nil
 	}
-	switch src.(type) {
+	switch sv := src.(type) {
 	case int16:
 		switch dv := dst.(type) {
 		case *int16:
-			*dv = src.(int16)
+			*dv = sv
 			return nil
 		case *int32:
-			*dv = int32(src.(int16))
+			*dv = int32(sv)
 			return nil
 		case *int64:
-			*dv = int64(src.(int16))
+			*dv = int64(sv)
 			return nil
 		case *int:
-			*dv = int(src.(int16))
+			*dv = int(sv)
 			return nil
 		}
 	case int32:
 		switch dv := dst.(type) {
 		case *int16:
-			*dv = int16(src.(int32))
+			*dv = int16(sv)
 			return nil
 		case *int32:
-			*dv = src.(int32)
+			*dv = sv
 			return nil
 		case *int64:
-			*dv = int64(src.(int32))
+			*dv = int64(sv)
 			return nil
 		case *int:
-			*dv = int(src.(int32))
+			*dv = int(sv)
 			return nil
 		}
 	case int64:
 		switch dv := dst.(type) {
 		case *int16:
-			*dv = int16(src.(int64))
+			*dv = int16(sv)
 			return nil
 		case *int32:
-			*dv = int32(src.(int64))
+			*dv = int32(sv)
 			return nil
 		case *int64:
-			*dv = src.(int64)
+			*dv = sv
 			return nil
 		case *int:
-			*dv = int(src.(int64))
+			*dv = int(sv)
 			return nil
 		}
 	case float64:
 		switch dv := dst.(type) {
 		case *float32:
-			*dv = float32(src.(float64))
+			*dv = float32(sv)
 			return nil
 		case *float64:
-			*dv = src.(float64)
+			*dv = sv
 			return nil
 		}
 	case float32:
 		switch dv := dst.(type) {
 		case *float32:
-			*dv = src.(float32)
+			*dv = sv
 			return nil
 		case *float64:
-			*dv = float64(src.(float32))
+			*dv = float64(sv)
 			return nil
 		}
 	case string:
@@ -747,13 +799,39 @@ func scanConvert(src, dst any, env *CliEnv) error {
 	case time.Time:
 		switch dv := dst.(type) {
 		case *time.Time:
-			*dv = src.(time.Time)
+			*dv = sv
 			return nil
 		case *int64:
-			*dv = src.(time.Time).UnixNano()
+			switch env.timeformat {
+			case "us":
+				*dv = sv.UnixNano() / 1000
+			case "ms":
+				*dv = sv.UnixNano() / 1000_000
+			case "s":
+				*dv = sv.Unix()
+			default:
+				*dv = sv.UnixNano()
+			}
 			return nil
 		case *string:
-			*dv = src.(time.Time).In(env.tz).Format(env.timeformat)
+			switch env.timeformat {
+			case "ns":
+				*dv = strconv.FormatInt(sv.UnixNano(), 10)
+			case "us":
+				*dv = strconv.FormatInt(sv.UnixNano()/1000, 10)
+			case "ms":
+				*dv = strconv.FormatInt(sv.UnixNano()/1000_000, 10)
+			case "s":
+				*dv = strconv.FormatInt(sv.Unix(), 10)
+			default:
+				*dv = sv.In(env.tz).Format(env.timeformat)
+			}
+			return nil
+		}
+	case []byte:
+		switch dv := dst.(type) {
+		case *[]byte:
+			*dv = src.([]byte)
 			return nil
 		}
 	}
@@ -782,6 +860,7 @@ func (c *CliConn) Appender(tableName string, opts ...CliAppenderOption) (*CliApp
 		return nil, err
 	}
 
+	// XXX
 	// TODO temporary solution to skip the first column
 	stmt.columnDescs = make([]CliColumnDesc, num-1)
 	for i := 0; i < num; i++ {
@@ -794,7 +873,6 @@ func (c *CliConn) Appender(tableName string, opts ...CliAppenderOption) (*CliApp
 			stmt.Close()
 			return nil, err
 		}
-		fmt.Printf("desc: %#v\n", desc)
 		stmt.columnDescs[i-1] = desc
 	}
 
@@ -820,6 +898,10 @@ func (a *CliAppender) Close() (int64, int64, error) {
 	if success, fail, err := cliAppendClose(a.stmt.handle); err == nil {
 		return success, fail, nil
 	} else {
+		c := a.stmt.conn
+		if err := a.stmt.Close(); err != nil {
+			return success, fail, errorWithCause(c, err)
+		}
 		return success, fail, errorWithCause(a.stmt, err)
 	}
 }

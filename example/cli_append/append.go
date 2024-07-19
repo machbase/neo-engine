@@ -38,17 +38,18 @@ func main() {
 		panic(err)
 	}
 
+	count := 10000
+	ts := time.Now().Add(time.Duration(time.Duration(-1*count) * time.Second))
 	for i := 0; i < 10000; i++ {
 		if i%1000 == 0 {
 			if err := appender.Flush(); err != nil {
 				panic(err)
 			}
 		}
-		if err := appender.Append(tagName, time.Now(), i); err != nil {
+		if err := appender.Append(tagName, ts.Add(time.Duration(i)*time.Second), i); err != nil {
 			panic(err)
 		}
 	}
-	appender.Flush()
 	s, f, err := appender.Close()
 	if err != nil {
 		panic(err)
