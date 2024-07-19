@@ -39,14 +39,18 @@ func (conn *Conn) Appender(ctx context.Context, tableName string, opts ...Append
 		row := qcon.QueryRow(ctx, "select type from M$SYS_TABLES where name = ?", appender.tableName)
 		var typ int32 = -1
 		if err := row.Scan(&typ); err != nil {
-			return nil, fmt.Errorf("table '%s' not found, %s", tableName, err.Error())
+			if err.Error() == "sql: no rows in result set" {
+				return nil, fmt.Errorf("table '%s' not found", appender.tableName)
+			} else {
+				return nil, fmt.Errorf("table '%s' not found, %s", appender.tableName, err.Error())
+			}
 		}
 		if typ < 0 || typ > 6 {
 			return nil, fmt.Errorf("table '%s' not found", tableName)
 		}
 		appender.tableType = TableType(typ)
 	}
-	if err := machAllocStmt(conn.handle, &appender.stmt); err != nil {
+	if err := machAllocStmt(appender.conn.handle, &appender.stmt); err != nil {
 		return nil, err
 	}
 	if err := machAppendOpen(appender.stmt, tableName); err != nil {
