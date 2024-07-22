@@ -226,13 +226,13 @@ func (c *CliConn) Error() error {
 	return errorWithCause(c, nil)
 }
 
-// func (c *CliConn) ExecDirectContext(ctx context.Context, query string) error {
-// 	if err := cliExecDirect(c.handle, query); err == nil {
-// 		return nil
-// 	} else {
-// 		return errorWithCause(c, err)
-// 	}
-// }
+func (c *CliConn) ExecDirectContext(ctx context.Context, query string) error {
+	if err := cliExecDirect(c.handle, query); err == nil {
+		return nil
+	} else {
+		return errorWithCause(c, err)
+	}
+}
 
 func (c *CliConn) ExecContext(ctx context.Context, query string, args ...any) (*CliResult, error) {
 	stmt, err := c.NewStmt()

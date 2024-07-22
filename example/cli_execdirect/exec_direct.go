@@ -31,13 +31,19 @@ func main() {
 	}
 	defer conn.Close()
 
-	// err = conn.ExecDirectContext(ctx, fmt.Sprintf(`
-	// 	create tag table if not exists %s (
-	// 		name     varchar(200) primary key,
-	// 		time     datetime basetime,
-	// 		value    double summarized
-	// )`, tableName))
+	// Use ExecContext
 	_, err = conn.ExecContext(ctx, fmt.Sprintf(`
+		create tag table if not exists %s (
+			name     varchar(200) primary key,
+			time     datetime basetime,
+			value    double summarized
+	)`, tableName))
+	if err != nil {
+		panic(err)
+	}
+
+	// Use ExecDirectContext
+	err = conn.ExecDirectContext(ctx, fmt.Sprintf(`
 		create tag table if not exists %s (
 			name     varchar(200) primary key,
 			time     datetime basetime,
