@@ -227,7 +227,12 @@ func (c *CliConn) Error() error {
 }
 
 func (c *CliConn) ExecDirectContext(ctx context.Context, query string) error {
-	if err := cliExecDirect(c.handle, query); err == nil {
+	stmt, err := c.NewStmt()
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	if err := cliExecDirect(stmt.handle, query); err == nil {
 		return nil
 	} else {
 		return errorWithCause(c, err)
