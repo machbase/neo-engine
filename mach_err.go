@@ -87,3 +87,22 @@ var ErrDatabaseConnectionNotFound = func(name string) error {
 var ErrDatabaseConnectionInvalid = func(name string) error {
 	return fmt.Errorf("invalid connection '%s'", name)
 }
+
+var ErrUnspported = errors.New("unsupported")
+var ErrNoRows = errors.New("no rows in result set")
+var ErrCannotConvertValue = func(from, to any) error {
+	return fmt.Errorf("cannot convert value from %T to %T", from, to)
+}
+var ErrParamCount = func(expect int, actual int) error {
+	return fmt.Errorf("params required %d, but got %d", expect, actual)
+}
+var ErrAppendTypeNotImplement = func(typ string, colNum int, colName string, val any) error {
+	return fmt.Errorf("Append not implemented for type %s of column #%d %q from %T", typ, colNum, colName, val)
+}
+var ErrDatabaseBindUnknownType = func(paramNo int, sqlType SqlType) error {
+	return fmt.Errorf("bind unknown type at column %d sql_type:%d", paramNo, sqlType)
+}
+var ErrDatabaseBindWrongType = func(paramNo int, sqlType SqlType, value any) error {
+	return fmt.Errorf("bind wrong type at column %d sql_type:%d value:%T", paramNo, sqlType, value)
+}
+var ErrNotImplemented = func(name string) error { return fmt.Errorf("not implemented %s", name) }
