@@ -1342,7 +1342,7 @@ func cliAppendData(stmt unsafe.Pointer, descs []CliColumnDesc, args []any) error
 			}
 		case MACHCLI_SQL_TYPE_INT32:
 			if args[i] == nil {
-				x := 0x80000000 // MACHCLI_APPEND_INTEGER_NULL
+				x := uint32(0x80000000) // MACHCLI_APPEND_INTEGER_NULL
 				*(*C.int)(unsafe.Pointer(&data[i])) = C.int(x)
 			} else {
 				switch value := args[i].(type) {
