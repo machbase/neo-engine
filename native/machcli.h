@@ -118,6 +118,9 @@ int MachCLIGetData(void* aStmt,
                    int   aBufferSize,
                    long* aResultLen);
 
+int MachCLIRowCount(void     * aStmt,
+                    long long* aRowCount);
+
 int MachCLIBindParam(void* aStmt,
                      int   aParamNo,
                      int   aCType,
@@ -162,6 +165,9 @@ int MachCLIAppendOpen(void* aStmt,
                       int   aErrorCheckCount);
 int MachCLIAppendData(void              * aStmt,
                       MachCLIAppendParam* aData);
+int MachCLIAppendDataByTime(void              * aStmt,
+                            long long           aTime,
+                            MachCLIAppendParam* aData);
 int MachCLIAppendClose(void     * aStmt,
                        long long* aSuccessCount,
                        long long* aFailureCount);
