@@ -848,7 +848,7 @@ func (col *ColumnType) getData(stmt *Stmt) (*ColumnValue, error) {
 		}()
 	case C.SQL_VARCHAR:
 		raw := make([]byte, col.size)
-		valueType = C.SQL_C_BINARY
+		valueType = C.SQL_C_CHAR
 		valueBuffer = unsafe.Pointer(&raw[0])
 		valueBufferLen = col.size
 		defer func() {
@@ -861,7 +861,7 @@ func (col *ColumnType) getData(stmt *Stmt) (*ColumnValue, error) {
 		}()
 	case C.SQL_TEXT:
 		raw := make([]byte, col.size)
-		valueType = C.SQL_C_BINARY
+		valueType = C.SQL_C_CHAR
 		valueBuffer = unsafe.Pointer(&raw[0])
 		valueBufferLen = col.size
 		defer func() {
