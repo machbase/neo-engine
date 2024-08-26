@@ -276,6 +276,11 @@ func (conn *Conn) Close() (err error) {
 		}
 	}
 	conn.closeOnce.Do(func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("Recovered in Conn.Close", r)
+			}
+		}()
 		conn.closed = true
 		statz.FreeConn()
 		err = machDisconnect(conn.handle)
