@@ -12,13 +12,20 @@ jobs:
   build-test:
     strategy:
       matrix:
-        platform: [macos-14, macos-13, ubuntu-20.04, windows]
+        platform:
+          - macos-14
+          - macos-13
+          - ubuntu-20.04
+          - ubuntu-22.04
+          - ubuntu-24.04
+          - windows-2019
+#          - windows-2022
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install MingW64
-        if: matrix.platform == 'windows'
+        if: startsWith(matrix.platform, 'windows')
         uses: msys2/setup-msys2@v2
         with:
           msystem: mingw64
@@ -28,7 +35,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
-          check-latest: false
+          check-latest: true
           cache: false
       - name: Test
         run: go run mage.go test
