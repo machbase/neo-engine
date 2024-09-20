@@ -129,11 +129,11 @@ func errorWithCause(obj any, cause error) error {
 	}
 	var code int
 	var msg string
-	if reerr := cliError(handle, handleType, &code, &msg); reerr != nil {
+	if reErr := cliError(handle, handleType, &code, &msg); reErr != nil {
 		if cause == nil {
-			return fmt.Errorf("MACHCLI Fail to get error, %s", reerr.Error())
+			return fmt.Errorf("MACHCLI Fail to get error, %s", reErr.Error())
 		} else {
-			return fmt.Errorf("MACHCLI Fail to get error code of %s, %s", cause.Error(), reerr.Error())
+			return fmt.Errorf("MACHCLI Fail to get error code of %s, %s", cause.Error(), reErr.Error())
 		}
 	} else if msg == "" {
 		return cause
@@ -442,9 +442,9 @@ func (stmt *CliStmt) bindParams(args ...any) error {
 			switch val := arg.(type) {
 			case string:
 				cType = MACHCLI_C_TYPE_CHAR
-				bstr := []byte(val)
-				value = (unsafe.Pointer)(&bstr[0])
-				valueLen = len(bstr)
+				bStr := []byte(val)
+				value = (unsafe.Pointer)(&bStr[0])
+				valueLen = len(bStr)
 			default:
 				return ErrDatabaseBindWrongType(paramNo, pd.Type, value)
 			}

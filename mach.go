@@ -364,7 +364,7 @@ func (conn *Conn) Exec(ctx context.Context, sqlText string, params ...any) *Resu
 	return result
 }
 
-// Query executes SQL statements that are expected multipe rows as result.
+// Query executes SQL statements that are expected multiple rows as result.
 // Commonly used to execute 'SELECT * FROM <TABLE>'
 //
 // Rows returned by Query() must be closed to prevent server-side-resource leaks.

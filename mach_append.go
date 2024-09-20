@@ -11,12 +11,12 @@ import (
 type AppenderOption func(*Appender)
 
 // Appender creates a new Appender for the given table.
-// Appender should be closed as soon as finshing work, otherwise it may cause server side resource leak.
+// Appender should be closed as soon as finishing work, otherwise it may cause server side resource leak.
 //
 //	ctx, cancelFunc := context.WithTimeout(5*time.Second)
 //	defer cancelFunc()
 //
-//	app, _ := conn.Appender(ctx, "MYTABLE")
+//	app, _ := conn.Appender(ctx, "MY_TABLE")
 //	defer app.Close()
 //	app.Append("name", time.Now(), 3.14)
 func (conn *Conn) Appender(ctx context.Context, tableName string, opts ...AppenderOption) (*Appender, error) {
@@ -32,11 +32,11 @@ func (conn *Conn) Appender(ctx context.Context, tableName string, opts ...Append
 	// table type
 	// make a new internal connection to avoid MACH-ERR 2118
 	// MACH-ERR 2118 Lock object was already initialized. (Do not use select and append simultaneously in single session.)
-	if qcon, err := conn.db.Connect(ctx, WithTrustUser("sys")); err != nil {
+	if queryCon, err := conn.db.Connect(ctx, WithTrustUser("sys")); err != nil {
 		return nil, err
 	} else {
-		defer qcon.Close()
-		row := qcon.QueryRow(ctx, "select type from M$SYS_TABLES where name = ?", appender.tableName)
+		defer queryCon.Close()
+		row := queryCon.QueryRow(ctx, "select type from M$SYS_TABLES where name = ?", appender.tableName)
 		var typ int32 = -1
 		if err := row.Scan(&typ); err != nil {
 			if err.Error() == "sql: no rows in result set" {
@@ -144,7 +144,7 @@ func (ap *Appender) Append(values ...any) error {
 		colsWithTime := append([]any{time.Time{}}, values...)
 		return ap.appendTable0(colsWithTime)
 	} else {
-		return fmt.Errorf("%s is not appendable table", ap.tableName)
+		return fmt.Errorf("%s can not be appended", ap.tableName)
 	}
 }
 

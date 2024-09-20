@@ -88,7 +88,7 @@ var ErrDatabaseConnectionInvalid = func(name string) error {
 	return fmt.Errorf("invalid connection '%s'", name)
 }
 
-var ErrUnspported = errors.New("unsupported")
+var ErrUnsupported = errors.New("unsupported")
 var ErrNoRows = errors.New("no rows in result set")
 var ErrCannotConvertValue = func(from, to any) error {
 	return fmt.Errorf("cannot convert value from %T to %T", from, to)

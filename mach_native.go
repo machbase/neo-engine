@@ -1221,9 +1221,9 @@ func cliFetch(stmt unsafe.Pointer) (bool, error) {
 }
 
 // returns the length of the actual data
-func cliGetData(stmt unsafe.Pointer, columnNo int, ctype CType, buf unsafe.Pointer, bufLen int) (int64, error) {
+func cliGetData(stmt unsafe.Pointer, columnNo int, cType CType, buf unsafe.Pointer, bufLen int) (int64, error) {
 	var resultLen C.long
-	if rt := C.MachCLIGetData(stmt, C.int(columnNo), C.int(ctype), buf, C.int(bufLen), &resultLen); rt != 0 {
+	if rt := C.MachCLIGetData(stmt, C.int(columnNo), C.int(cType), buf, C.int(bufLen), &resultLen); rt != 0 {
 		return 0, ErrDatabaseReturnsAtIdx("MachCLIGetData", columnNo, int(rt))
 	}
 	return int64(resultLen), nil
@@ -1469,7 +1469,7 @@ func cliAppendFlush(stmt unsafe.Pointer) error {
 	}
 }
 
-type CLIAppendErrorCallback func(smtm unsafe.Pointer, errCode int, errMsg string, buf []byte)
+type CLIAppendErrorCallback func(stmt unsafe.Pointer, errCode int, errMsg string, buf []byte)
 
 var cliAppendErrorCallbacks map[string]CLIAppendErrorCallback
 
@@ -1502,8 +1502,8 @@ func cliSetConnectAppendFlush(conn unsafe.Pointer, opt int) error {
 	}
 }
 
-func cliSetStmtAppendInterval(stmt unsafe.Pointer, intervalMilliSec int) error {
-	if rt := C.MachCLISetStmtAppendInterval(stmt, C.int(intervalMilliSec)); rt == 0 {
+func cliSetStmtAppendInterval(stmt unsafe.Pointer, intervalMilliseconds int) error {
+	if rt := C.MachCLISetStmtAppendInterval(stmt, C.int(intervalMilliseconds)); rt == 0 {
 		return nil
 	} else {
 		return ErrDatabaseReturns("MachCLISetStmtAppendInterval", int(rt))
