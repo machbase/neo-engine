@@ -7,11 +7,8 @@ import (
 	we "github.com/pkg/errors"
 )
 
-var ErrDatabaseNoFactory = errors.New("no database factory found")
+var ErrDatabaseNotInitialized = errors.New("database not initialized")
 
-var ErrDatabaseFactoryNotFound = func(name string) error {
-	return fmt.Errorf("database factory '%s' not found", name)
-}
 var ErrDatabaseMach = func(code int, msg string) error {
 	return fmt.Errorf("MACH-ERR %d %s", code, msg)
 }
