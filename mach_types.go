@@ -117,42 +117,63 @@ func ColumnTypeString(typ ColumnType) string {
 	}
 }
 
+const (
+	DB_COLUMN_TYPE_SHORT    = "short"
+	DB_COLUMN_TYPE_USHORT   = "ushort"
+	DB_COLUMN_TYPE_INTEGER  = "integer"
+	DB_COLUMN_TYPE_UINTEGER = "uinteger"
+	DB_COLUMN_TYPE_LONG     = "long"
+	DB_COLUMN_TYPE_ULONG    = "ulong"
+	DB_COLUMN_TYPE_FLOAT    = "float"
+	DB_COLUMN_TYPE_DOUBLE   = "double"
+	DB_COLUMN_TYPE_DATETIME = "datetime"
+	DB_COLUMN_TYPE_VARCHAR  = "varchar"
+	DB_COLUMN_TYPE_IPV4     = "ipv4"
+	DB_COLUMN_TYPE_IPV6     = "ipv6"
+	DB_COLUMN_TYPE_TEXT     = "text"
+	DB_COLUMN_TYPE_CLOB     = "clob"
+	DB_COLUMN_TYPE_BLOB     = "blob"
+	DB_COLUMN_TYPE_BINARY   = "binary"
+	DB_COLUMN_TYPE_JSON     = "json"
+)
+
+// ColumnTypeStringNative converts ColumnType into native type string
 func ColumnTypeStringNative(typ ColumnType) string {
 	switch typ {
 	case Int16ColumnType:
-		return "short"
+		return DB_COLUMN_TYPE_SHORT
 	case Uint16ColumnType:
-		return "ushort"
+		return DB_COLUMN_TYPE_USHORT
 	case Int32ColumnType:
-		return "integer"
+		return DB_COLUMN_TYPE_INTEGER
 	case Uint32ColumnType:
-		return "uinteger"
+		return DB_COLUMN_TYPE_UINTEGER
 	case Int64ColumnType:
-		return "long"
+		return DB_COLUMN_TYPE_LONG
 	case Uint64ColumnType:
-		return "ulong"
+		return DB_COLUMN_TYPE_ULONG
 	case Float32ColumnType:
-		return "float"
+		return DB_COLUMN_TYPE_FLOAT
 	case Float64ColumnType:
-		return "double"
+		return DB_COLUMN_TYPE_DOUBLE
 	case VarcharColumnType:
-		return "varchar"
+		return DB_COLUMN_TYPE_VARCHAR
 	case TextColumnType:
-		return "text"
+		return DB_COLUMN_TYPE_TEXT
 	case ClobColumnType:
-		return "clob"
+		return DB_COLUMN_TYPE_CLOB
 	case BlobColumnType:
-		return "blob"
+		return DB_COLUMN_TYPE_BLOB
 	case BinaryColumnType:
-		return "binary"
+		return DB_COLUMN_TYPE_BINARY
 	case DatetimeColumnType:
-		return "datetime"
+		return DB_COLUMN_TYPE_DATETIME
 	case IpV4ColumnType:
-		return "ipv4"
+		return DB_COLUMN_TYPE_IPV4
 	case IpV6ColumnType:
-		return "ipv6"
+		return DB_COLUMN_TYPE_IPV6
 	case JsonColumnType:
-		return "json"
+		return DB_COLUMN_TYPE_JSON
 	default:
 		return fmt.Sprintf("undef-%d", typ)
 	}
