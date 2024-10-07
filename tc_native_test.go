@@ -75,7 +75,7 @@ func TestMain(m *testing.M) {
 		panic(errors.Wrap(err, "machbase.conf"))
 	}
 
-	mach.InitializeOption(homepath, machPort, initOption)
+	mach.Initialize(homepath, machPort, initOption)
 
 	if mach.ExistsDatabase() {
 		if err = mach.DestroyDatabase(); err != nil {
@@ -86,7 +86,7 @@ func TestMain(m *testing.M) {
 		panic(errors.Wrap(err, "create database"))
 	}
 
-	db, err = mach.NewDatabaseNamed(mach.FactoryName)
+	db, err = mach.NewDatabase()
 	if err != nil {
 		panic(err)
 	}

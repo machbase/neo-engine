@@ -27,60 +27,81 @@ const (
 	OPT_SIGHANDLER_SIGINT_OFF InitOption = 0x2
 )
 
-const FactoryName = "machbase-engine"
-
-func Initialize(homeDir string, machPort int) error {
-	return InitializeOption(homeDir, machPort, OPT_SIGHANDLER_OFF)
-}
-
-func InitializeOption(homeDir string, machPort int, opt InitOption) error {
+func Initialize(homeDir string, machPort int, opt InitOption) error {
 	homeDir = translateCodePage(homeDir)
 	var handle unsafe.Pointer
 	err := initialize0(homeDir, machPort, int(opt), &handle)
 	if err != nil {
 		return err
 	}
-	singleton.handle = handle
-	RegisterFactory(FactoryName, func() (*Database, error) {
-		return &Database{
-			handle: singleton.handle,
-			conns:  cmap.New[*ConnWatcher](),
-			idGen:  sonyflake.NewSonyflake(sonyflake.Settings{}),
-		}, nil
-	})
+	singletonEnv.handle = handle
 	return nil
 }
 
 func Finalize() {
-	finalize0(singleton.handle)
+	singletonEnv.Lock()
+	defer singletonEnv.Unlock()
+	if singletonEnv.handle != nil {
+		finalize0(singletonEnv.handle)
+	}
 }
 
 func DestroyDatabase() error {
-	return destroyDatabase0(singleton.handle)
+	singletonEnv.Lock()
+	defer singletonEnv.Unlock()
+	if singletonEnv.handle == nil {
+		return ErrDatabaseNotInitialized
+	}
+	return destroyDatabase0(singletonEnv.handle)
 }
 
 func CreateDatabase() error {
-	return createDatabase0(singleton.handle)
+	singletonEnv.Lock()
+	defer singletonEnv.Unlock()
+	if singletonEnv.handle == nil {
+		return ErrDatabaseNotInitialized
+	}
+	return createDatabase0(singletonEnv.handle)
 }
 
 func ExistsDatabase() bool {
-	return existsDatabase0(singleton.handle)
+	singletonEnv.Lock()
+	defer singletonEnv.Unlock()
+	if singletonEnv.handle == nil {
+		return false
+	}
+	return existsDatabase0(singletonEnv.handle)
 }
 
 func RestoreDatabase(path string) error {
-	return restoreDatabase0(singleton.handle, path)
+	return restoreDatabase0(singletonEnv.handle, path)
 }
 
 type Env struct {
+	sync.Mutex
 	handle unsafe.Pointer
 }
 
-var singleton = Env{}
+var singletonEnv = Env{}
+var singletonDatabase *Database
 
 type Database struct {
 	handle unsafe.Pointer
 	idGen  *sonyflake.Sonyflake
 	conns  cmap.ConcurrentMap[string, *ConnWatcher]
+}
+
+func NewDatabase() (*Database, error) {
+	singletonEnv.Lock()
+	defer singletonEnv.Unlock()
+	if singletonDatabase == nil {
+		singletonDatabase = &Database{
+			handle: singletonEnv.handle,
+			conns:  cmap.New[*ConnWatcher](),
+			idGen:  sonyflake.NewSonyflake(sonyflake.Settings{}),
+		}
+	}
+	return singletonDatabase, nil
 }
 
 func (db *Database) Startup() error {
@@ -590,8 +611,8 @@ func StatzDebug(flag bool) {
 
 func StatzSnapshot() *Statz {
 	ret := statz
-	if singleton.handle != nil {
-		ret.RawConns = int32(machConnectionCount(singleton.handle))
+	if singletonEnv.handle != nil {
+		ret.RawConns = int32(machConnectionCount(singletonEnv.handle))
 	}
 	return &ret
 }
