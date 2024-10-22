@@ -1,5 +1,3 @@
-//go:build mage
-
 package main
 
 import (
@@ -23,6 +21,15 @@ func Test() error {
 		fmt.Println(lines[len(lines)-1])
 	}
 	fmt.Println("Test done.")
+	return nil
+}
+
+func Bench() error {
+	mg.Deps(CheckTmp)
+	if err := sh.RunV("go", "test", "-benchmem", "-run", "^$", "-bench", "^Benchmark.*$", "github.com/machbase/neo-engine", "-timeout", "60s", "-v"); err != nil {
+		return err
+	}
+	fmt.Println("Benchmark done.")
 	return nil
 }
 
