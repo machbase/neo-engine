@@ -956,8 +956,8 @@ func (ab *AppendBuffer) Append(vals ...any) error {
 			} else {
 				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uchar(net.IPv4len)
 				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddrString = nil
-				for i := 0; i < net.IPv4len; i++ {
-					(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddr[i] = C.uchar(ipv4[i])
+				for n := 0; n < net.IPv4len; n++ {
+					(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddr[n] = C.uchar(ipv4[n])
 				}
 			}
 		case "ipv6":
@@ -970,8 +970,8 @@ func (ab *AppendBuffer) Append(vals ...any) error {
 			} else {
 				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uchar(net.IPv6len)
 				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddrString = nil
-				for i := 0; i < net.IPv6len; i++ {
-					(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddr[i] = C.uchar(ipv6[i])
+				for n := 0; n < net.IPv6len; n++ {
+					(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddr[n] = C.uchar(ipv6[n])
 				}
 			}
 		case "varchar", "string", "json", "text":
