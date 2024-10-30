@@ -1130,10 +1130,10 @@ func CliExecute(stmt unsafe.Pointer) error {
 	}
 }
 
-func CliExecDirect(conn unsafe.Pointer, query string) error {
+func CliExecDirect(stmt unsafe.Pointer, query string) error {
 	cstr := C.CString(query)
 	defer C.free(unsafe.Pointer(cstr))
-	if rt := C.MachCLIExecDirect(conn, cstr); rt == 0 {
+	if rt := C.MachCLIExecDirect(stmt, cstr); rt == 0 {
 		return nil
 	} else {
 		return ErrDatabaseReturns("MachCLIExecDirect", int(rt))
