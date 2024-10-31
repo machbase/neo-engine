@@ -1112,25 +1112,13 @@ func CliFreeStmt(stmt unsafe.Pointer) error {
 	}
 }
 
-type CliStmtPrepared struct {
-	sqlCString *C.char
-}
-
-func CliCliStmtPreparedClose(stmt *CliStmtPrepared) {
-	if stmt.sqlCString != nil {
-		C.free(unsafe.Pointer(stmt.sqlCString))
-		stmt.sqlCString = nil
+func CliPrepare(stmt unsafe.Pointer, query string) error {
+	sqlCString := C.CString(query)
+	defer C.free(unsafe.Pointer(sqlCString))
+	if rt := C.MachCLIPrepare(stmt, sqlCString); rt != 0 {
+		return ErrDatabaseReturns("MachCLIPrepare", int(rt))
 	}
-}
-
-func CliPrepare(stmt unsafe.Pointer, query string) (*CliStmtPrepared, error) {
-	ret := &CliStmtPrepared{}
-	ret.sqlCString = C.CString(query)
-	if rt := C.MachCLIPrepare(stmt, ret.sqlCString); rt != 0 {
-		CliCliStmtPreparedClose(ret)
-		return nil, ErrDatabaseReturns("MachCLIPrepare", int(rt))
-	}
-	return ret, nil
+	return nil
 }
 
 func CliExecute(stmt unsafe.Pointer) error {
@@ -1142,13 +1130,12 @@ func CliExecute(stmt unsafe.Pointer) error {
 }
 
 func CliExecDirect(stmt unsafe.Pointer, query string) error {
-	cstr := C.CString(query)
-	defer C.free(unsafe.Pointer(cstr))
-	if rt := C.MachCLIExecDirect(stmt, cstr); rt == 0 {
-		return nil
-	} else {
+	sqlCString := C.CString(query)
+	defer C.free(unsafe.Pointer(sqlCString))
+	if rt := C.MachCLIExecDirect(stmt, sqlCString); rt != 0 {
 		return ErrDatabaseReturns("MachCLIExecDirect", int(rt))
 	}
+	return nil
 }
 
 func CliCancel(stmt unsafe.Pointer) error {
