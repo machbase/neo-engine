@@ -1112,14 +1112,25 @@ func CliFreeStmt(stmt unsafe.Pointer) error {
 	}
 }
 
-func CliPrepare(stmt unsafe.Pointer, query string) error {
-	cstr := C.CString(query)
-	defer C.free(unsafe.Pointer(cstr))
-	if rt := C.MachCLIPrepare(stmt, cstr); rt == 0 {
-		return nil
-	} else {
-		return ErrDatabaseReturns("MachCLIPrepare", int(rt))
+type CliStmtPrepared struct {
+	sqlCString *C.char
+}
+
+func CliCliStmtPreparedClose(stmt *CliStmtPrepared) {
+	if stmt.sqlCString != nil {
+		C.free(unsafe.Pointer(stmt.sqlCString))
+		stmt.sqlCString = nil
 	}
+}
+
+func CliPrepare(stmt unsafe.Pointer, query string) (*CliStmtPrepared, error) {
+	ret := &CliStmtPrepared{}
+	ret.sqlCString = C.CString(query)
+	if rt := C.MachCLIPrepare(stmt, ret.sqlCString); rt != 0 {
+		CliCliStmtPreparedClose(ret)
+		return nil, ErrDatabaseReturns("MachCLIPrepare", int(rt))
+	}
+	return ret, nil
 }
 
 func CliExecute(stmt unsafe.Pointer) error {
