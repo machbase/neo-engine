@@ -1164,6 +1164,15 @@ func CliCancel(stmt unsafe.Pointer) error {
 	}
 }
 
+func CliRowCount(stmt unsafe.Pointer) (int64, error) {
+	var count C.longlong
+	if rt := C.MachCLIRowCount(stmt, &count); rt == 0 {
+		return int64(count), nil
+	} else {
+		return 0, ErrDatabaseReturns("MachCLIRowCount", int(rt))
+	}
+}
+
 // returns true if it reaches the end of fetch
 func CliFetch(stmt unsafe.Pointer) (bool, error) {
 	var end C.int
