@@ -1229,7 +1229,7 @@ func CliNumParam(stmt unsafe.Pointer) (int, error) {
 }
 
 // returns the length of the actual data
-func CliBindCol(stmt unsafe.Pointer, columnNo int, columnType int, buf unsafe.Pointer, bufLen int) (int64, error) {
+func CliBindCol(stmt unsafe.Pointer, columnNo int, columnType CType, buf unsafe.Pointer, bufLen int) (int64, error) {
 	var resultLen C.long
 	if rt := C.MachCLIBindCol(stmt, C.int(columnNo), C.int(columnType), buf, C.int(bufLen), &resultLen); rt == 0 {
 		return int64(resultLen), nil
