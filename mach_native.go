@@ -749,6 +749,14 @@ func (ab *AppendBuffer) Append(vals ...any) error {
 				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
 			case *int16:
 				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(*v)
+			case uint32:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
+			case *uint32:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(*v)
+			case int32:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
+			case *int32:
+				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(*v)
 			case *float64:
 				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(*v)
 			case float64:
@@ -947,32 +955,42 @@ func (ab *AppendBuffer) Append(vals ...any) error {
 				// 	}
 			}
 		case "ipv4":
-			ip, ok := val.(net.IP)
-			if !ok {
+			var ipv4 net.IP
+			switch ip := val.(type) {
+			default:
 				return ErrDatabaseAppendWrongType(val, cName, cType)
-			}
-			if ipv4 := ip.To4(); ipv4 == nil {
-				return ErrDatabaseAppendWrongType(val, cName, cType)
-			} else {
-				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uchar(net.IPv4len)
-				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddrString = nil
-				for n := 0; n < net.IPv4len; n++ {
-					(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddr[n] = C.uchar(ipv4[n])
+			case net.IP:
+				if ipv4 = ip.To4(); ipv4 == nil {
+					return ErrDatabaseAppendWrongType(val, cName, cType)
 				}
+			case string:
+				if ipv4 = net.ParseIP(ip).To4(); ipv4 == nil {
+					return ErrDatabaseAppendWrongType(val, cName, cType)
+				}
+			}
+			(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uchar(net.IPv4len)
+			(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddrString = nil
+			for n := 0; n < net.IPv4len; n++ {
+				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddr[n] = C.uchar(ipv4[n])
 			}
 		case "ipv6":
-			ip, ok := val.(net.IP)
-			if !ok {
+			var ipv6 net.IP
+			switch ip := val.(type) {
+			default:
 				return ErrDatabaseAppendWrongType(val, cName, cType)
-			}
-			if ipv6 := ip.To16(); ipv6 == nil {
-				return ErrDatabaseAppendWrongType(val, cName, cType)
-			} else {
-				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uchar(net.IPv6len)
-				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddrString = nil
-				for n := 0; n < net.IPv6len; n++ {
-					(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddr[n] = C.uchar(ipv6[n])
+			case net.IP:
+				if ipv6 = ip.To16(); ipv6 == nil {
+					return ErrDatabaseAppendWrongType(val, cName, cType)
 				}
+			case string:
+				if ipv6 = net.ParseIP(ip).To16(); ipv6 == nil {
+					return ErrDatabaseAppendWrongType(val, cName, cType)
+				}
+			}
+			(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mLength = C.uchar(net.IPv6len)
+			(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddrString = nil
+			for n := 0; n < net.IPv6len; n++ {
+				(*C.MachEngineAppendIPStruct)(unsafe.Pointer(&buffer[i].mData[0])).mAddr[n] = C.uchar(ipv6[n])
 			}
 		case "varchar", "string", "json", "text":
 			switch v := val.(type) {
