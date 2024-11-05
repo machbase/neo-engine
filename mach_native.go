@@ -1218,6 +1218,22 @@ func CliGetData(stmt unsafe.Pointer, columnNo int, cType CType, buf unsafe.Point
 	return int64(resultLen), nil
 }
 
+type CliBindColData struct {
+	Type      CType
+	Buf       unsafe.Pointer
+	BufLen    int
+	resultLen C.long // can not use int64 because arm32 can not convert int64 to C.long
+}
+
+// returns the length of the actual data
+func CliBindCol(stmt unsafe.Pointer, columnNo int, data *CliBindColData) error {
+	if rt := C.MachCLIBindCol(stmt, C.int(columnNo), C.int(data.Type), data.Buf, C.int(data.BufLen), &data.resultLen); rt == 0 {
+		return nil
+	} else {
+		return ErrDatabaseReturnsAtIdx("MachCLIBindCol", columnNo, int(rt))
+	}
+}
+
 func CliBindParam(stmt unsafe.Pointer, paramNo int, cType CType, sqlType SqlType, value unsafe.Pointer, valueLen int) error {
 	if rt := C.MachCLIBindParam(stmt, C.int(paramNo), C.int(cType), C.int(sqlType), value, C.int(valueLen)); rt != 0 {
 		return ErrDatabaseReturnsAtIdx("MachCLIBindParam", paramNo, int(rt))
@@ -1252,22 +1268,6 @@ func CliNumParam(stmt unsafe.Pointer) (int, error) {
 		return int(num), nil
 	} else {
 		return 0, ErrDatabaseReturns("MachCLINumParam", int(rt))
-	}
-}
-
-type CliBindColData struct {
-	Type      CType
-	Buf       unsafe.Pointer
-	BufLen    int
-	ResultLen int64
-}
-
-// returns the length of the actual data
-func CliBindCol(stmt unsafe.Pointer, columnNo int, data *CliBindColData) error {
-	if rt := C.MachCLIBindCol(stmt, C.int(columnNo), C.int(data.Type), data.Buf, C.int(data.BufLen), (*C.long)(&data.ResultLen)); rt == 0 {
-		return nil
-	} else {
-		return ErrDatabaseReturnsAtIdx("MachCLIBindCol", columnNo, int(rt))
 	}
 }
 
