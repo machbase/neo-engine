@@ -1255,13 +1255,19 @@ func CliNumParam(stmt unsafe.Pointer) (int, error) {
 	}
 }
 
+type CliBindColData struct {
+	Type      CType
+	Buf       unsafe.Pointer
+	BufLen    int
+	ResultLen int64
+}
+
 // returns the length of the actual data
-func CliBindCol(stmt unsafe.Pointer, columnNo int, columnType CType, buf unsafe.Pointer, bufLen int) (int64, error) {
-	var resultLen C.long
-	if rt := C.MachCLIBindCol(stmt, C.int(columnNo), C.int(columnType), buf, C.int(bufLen), &resultLen); rt == 0 {
-		return int64(resultLen), nil
+func CliBindCol(stmt unsafe.Pointer, columnNo int, data *CliBindColData) error {
+	if rt := C.MachCLIBindCol(stmt, C.int(columnNo), C.int(data.Type), data.Buf, C.int(data.BufLen), (*C.long)(&data.ResultLen)); rt == 0 {
+		return nil
 	} else {
-		return 0, ErrDatabaseReturnsAtIdx("MachCLIBindCol", columnNo, int(rt))
+		return ErrDatabaseReturnsAtIdx("MachCLIBindCol", columnNo, int(rt))
 	}
 }
 
