@@ -1222,7 +1222,7 @@ type CliBindColData struct {
 	Type      CType
 	Buf       unsafe.Pointer
 	BufLen    int
-	resultLen C.long // can not use int64 because arm32 can not convert int64 to C.long
+	resultLen C.sqllen_t // can not use int64 because arm32 can not convert int64 to C.long
 }
 
 // returns the length of the actual data

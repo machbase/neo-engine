@@ -11,6 +11,12 @@
 extern "C" {
 #endif
 
+#if defined(_WIN64)
+typedef long long sqllen_t;
+#else
+typedef long sqllen_t;
+#endif
+
 #define MACHCLI_HANDLE_ENV  (1)
 #define MACHCLI_HANDLE_DBC  (2)
 #define MACHCLI_HANDLE_STMT (3)
@@ -136,12 +142,12 @@ int MachCLIDescribeParam(void* aStmt,
 int MachCLINumParam(void* aStmt,
                     int * aParamCount);
 
-int MachCLIBindCol(void* aStmt,
-                   int   aColumnNo,
-                   int   aCType,
-                   void* aValuePtr,
-                   int   aBufferSize,
-                   long* aResultLen);
+int MachCLIBindCol(void    * aStmt,
+                   int       aColumnNo,
+                   int       aCType,
+                   void    * aValuePtr,
+                   int       aBufferSize,
+                   sqllen_t* aResultLen);
 int MachCLIDescribeCol(void* aStmt,
                        int   aColumnNo,
                        char* aColumnName,
@@ -177,6 +183,19 @@ int MachCLIAppendSetErrorCallback(void                      * aStmt,
                                   MachCLIAppendErrorCallback  aFunc);
 int MachCLISetConnectAppendFlush(void* aCon, int aOpt);
 int MachCLISetStmtAppendInterval(void* aStmt, int aMSec);
+
+/*
+ * unknown: -1
+ * DDL: 1-255
+ * ALTER SYSTEM: 256-511
+ * SELECT: 512
+ * INSERT: 513
+ * DELETE: 514-518
+ * INSERT_SELECT: 519
+ * UPDATE: 520
+ * EXEC_ROLLUP: 1000-1002
+ */
+int MachCLIGetStmtType(void* aStmt, int* aStmtType);
 
 #ifdef __cplusplus
 }  /* extern "C" */

@@ -224,7 +224,7 @@ int MachDirectExecute(void* aMachStmt, char* aSQL);
  * DELETE: 514-517
  * INSERT_SELECT: 518
  * UPDATE: 519
- * EXEC_ROLLUP: 521-523
+ * EXEC_ROLLUP: 1000-1002
  */
 int MachStmtType(void* aMachStmt, int* aStmtType);
 
