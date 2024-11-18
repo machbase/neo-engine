@@ -7,7 +7,7 @@ import (
 	"time"
 	"unsafe"
 
-	_ "github.com/machbase/neo-engine/native"
+	_ "github.com/machbase/neo-engine/v8/native"
 )
 
 /*

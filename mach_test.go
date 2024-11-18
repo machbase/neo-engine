@@ -10,7 +10,7 @@ import (
 	"time"
 	"unsafe"
 
-	mach "github.com/machbase/neo-engine"
+	mach "github.com/machbase/neo-engine/v8"
 	"github.com/stretchr/testify/require"
 )
 

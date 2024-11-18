@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/machbase/neo-engine/nativecli"
+	"github.com/machbase/neo-engine/v8/nativecli"
 )
 
 func main() {
