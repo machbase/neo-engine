@@ -1323,6 +1323,8 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 				switch value := args[i].(type) {
 				case int16:
 					*(*C.short)(unsafe.Pointer(&data[i])) = C.short(value)
+				case uint16:
+					*(*C.short)(unsafe.Pointer(&data[i])) = C.short(value)
 				default:
 					return ErrDatabaseAppendWrongType(value, name, "MACHCLI_SQL_TYPE_INT16")
 				}
@@ -1335,7 +1337,11 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 				switch value := args[i].(type) {
 				case int32:
 					*(*C.int)(unsafe.Pointer(&data[i])) = C.int(value)
+				case uint32:
+					*(*C.int)(unsafe.Pointer(&data[i])) = C.int(value)
 				case int:
+					*(*C.int)(unsafe.Pointer(&data[i])) = C.int(value)
+				case uint:
 					*(*C.int)(unsafe.Pointer(&data[i])) = C.int(value)
 				default:
 					return ErrDatabaseAppendWrongType(value, name, "MACHCLI_SQL_TYPE_INT32")
@@ -1349,9 +1355,15 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 				switch value := args[i].(type) {
 				case int:
 					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
+				case uint:
+					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
 				case int32:
 					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
+				case uint32:
+					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
 				case int64:
+					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
+				case uint64:
 					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
 				default:
 					return ErrDatabaseAppendWrongType(value, name, "MACHCLI_SQL_TYPE_INT64")
@@ -1414,7 +1426,27 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 				}
 			}
 		case MACHCLI_SQL_TYPE_IPV4:
+			switch value := args[i].(type) {
+			case net.IP:
+				cstr := []byte(value.To4().String())
+				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(len(cstr))
+				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(&cstr[0])
+			case string:
+				cstr := []byte(value)
+				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(len(cstr))
+				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(&cstr[0])
+			}
 		case MACHCLI_SQL_TYPE_IPV6:
+			switch value := args[i].(type) {
+			case net.IP:
+				cstr := []byte(value.To16().String())
+				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(len(cstr))
+				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(&cstr[0])
+			case string:
+				cstr := []byte(value)
+				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(len(cstr))
+				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(&cstr[0])
+			}
 		case MACHCLI_SQL_TYPE_STRING:
 			switch value := args[i].(type) {
 			case string:
