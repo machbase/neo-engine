@@ -1156,6 +1156,29 @@ func CliExecDirect(stmt unsafe.Pointer, query string) error {
 	return nil
 }
 
+func CliExecDirectConn(conn unsafe.Pointer, query string) error {
+	var stmt unsafe.Pointer
+	if err := CliAllocStmt(conn, &stmt); err != nil {
+		return err
+	}
+	defer CliFreeStmt(stmt)
+
+	sqlCString := C.CString(query)
+	defer C.free(unsafe.Pointer(sqlCString))
+
+	if rt := C.MachCLIExecDirect(stmt, sqlCString); rt != 0 {
+		var errCode int
+		var errMsg string
+		CliError(stmt, MACHCLI_HANDLE_STMT, &errCode, &errMsg)
+		if errMsg != "" {
+			return fmt.Errorf("CliExecDirectConn error: %d, %s", errCode, errMsg)
+		} else {
+			return ErrDatabaseReturns("MachCLIExecDirectConn", int(rt))
+		}
+	}
+	return nil
+}
+
 func CliCancel(stmt unsafe.Pointer) error {
 	if rt := C.MachCLICancel(stmt); rt == 0 {
 		return nil
@@ -1426,26 +1449,36 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 				}
 			}
 		case MACHCLI_SQL_TYPE_IPV4:
-			switch value := args[i].(type) {
-			case net.IP:
-				cstr := []byte(value.To4().String())
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(len(cstr))
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(&cstr[0])
-			case string:
-				cstr := []byte(value)
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(len(cstr))
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(&cstr[0])
+			if args[i] == nil {
+				(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(0)
+			} else {
+				switch value := args[i].(type) {
+				case net.IP:
+					for n, b := range value.To4() {
+						(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddr[n] = C.uchar(b)
+					}
+					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(4)
+				case string:
+					cstr := C.CString(value)
+					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddrString = cstr
+					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(255)
+				}
 			}
 		case MACHCLI_SQL_TYPE_IPV6:
-			switch value := args[i].(type) {
-			case net.IP:
-				cstr := []byte(value.To16().String())
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(len(cstr))
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(&cstr[0])
-			case string:
-				cstr := []byte(value)
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(len(cstr))
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(&cstr[0])
+			if args[i] == nil {
+				(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(0)
+			} else {
+				switch value := args[i].(type) {
+				case net.IP:
+					for n, b := range value.To16() {
+						(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddr[n] = C.uchar(b)
+					}
+					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(6)
+				case string:
+					cstr := []byte(value)
+					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddrString = (*C.char)(unsafe.Pointer(&cstr[0]))
+					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(255)
+				}
 			}
 		case MACHCLI_SQL_TYPE_STRING:
 			switch value := args[i].(type) {
