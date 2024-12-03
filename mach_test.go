@@ -61,6 +61,31 @@ func TestMain(m *testing.M) {
 	os.RemoveAll(homePath)
 }
 
+func TestAll(t *testing.T) {
+	createTables()
+	tests := []struct {
+		name string
+		tc   func(t *testing.T)
+		cond func() bool
+	}{
+		{name: "SvrSimpleTagInsert", tc: SvrSimpleTagInsert},
+		{name: "SvrTagTableInsertAndSelect", tc: SvrTagTableInsertAndSelect},
+		{name: "CliTagTableInsertAndSelect", tc: CliTagTableInsertAndSelect, cond: func() bool { return runtime.GOOS == "linux" }},
+		{name: "CliSimpleTagInsert100K", tc: CliSimpleTagInsert100K, cond: func() bool { return runtime.GOOS == "linux" }},
+		{name: "CliLogAppend", tc: CliLogAppend, cond: func() bool { return runtime.GOOS == "linux" }},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.cond != nil && !tc.cond() {
+				t.Skip("skip test")
+			}
+			tc.tc(t)
+		})
+	}
+	dropTables()
+}
+
 func createTables() {
 	var conn unsafe.Pointer
 	var stmt unsafe.Pointer
@@ -256,31 +281,6 @@ func benchSimpleTagAppend(b *testing.B) {
 	require.Equal(b, int64(b.N), s)
 	require.Equal(b, int64(0), f)
 	mach.EngFreeStmt(stmt)
-}
-
-func TestAll(t *testing.T) {
-	createTables()
-	tests := []struct {
-		name string
-		tc   func(t *testing.T)
-		cond func() bool
-	}{
-		{name: "SvrSimpleTagInsert", tc: SvrSimpleTagInsert},
-		{name: "SvrTagTableInsertAndSelect", tc: SvrTagTableInsertAndSelect},
-		{name: "CliTagTableInsertAndSelect", tc: CliTagTableInsertAndSelect, cond: func() bool { return runtime.GOOS == "linux" }},
-		{name: "CliSimpleTagInsert", tc: CliSimpleTagInsert, cond: func() bool { return runtime.GOOS == "linux" }},
-		{name: "CliLogAppend", tc: CliLogAppend, cond: func() bool { return runtime.GOOS == "linux" }},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			if tc.cond != nil && !tc.cond() {
-				t.Skip("skip test")
-			}
-			tc.tc(t)
-		})
-	}
-	dropTables()
 }
 
 func SvrSimpleTagInsert(t *testing.T) {
@@ -544,7 +544,16 @@ func cliErrorStmt(stmt unsafe.Pointer) string {
 	}
 }
 
-func CliSimpleTagInsert(t *testing.T) {
+func CliSimpleTagInsert100K(t *testing.T) {
+	t.Run("ExecDirect", func(t *testing.T) {
+		CliSimpleTagInsert(t, 100_000, 100_000, true)
+	})
+	t.Run("Execute", func(t *testing.T) {
+		CliSimpleTagInsert(t, 100_000, 200_000, false)
+	})
+}
+
+func CliSimpleTagInsert(t *testing.T, runCount int, expectCount int, useDirect bool) {
 	env := new(unsafe.Pointer)
 	if err := mach.CliInitialize(env); err != nil {
 		t.Fatal(err)
@@ -561,13 +570,11 @@ func CliSimpleTagInsert(t *testing.T) {
 		mach.CliFinalize(*env)
 	})
 
-	expectCount := 100_000
 	now := time.Now()
 
-	useDirect := false
 	if useDirect {
 		// insert direct_execute
-		for i := 0; i < expectCount; i++ {
+		for i := 0; i < runCount; i++ {
 			sqlText := fmt.Sprintf(`insert into simple_tag values('insert-cli', %d, %.6f)`,
 				now.Add(time.Duration(i*10000000)).UnixNano(),
 				1.001*float64(i+1),
@@ -577,12 +584,13 @@ func CliSimpleTagInsert(t *testing.T) {
 		}
 	} else {
 		// insert query
-		for i := 0; i < expectCount; i++ {
+		for i := 0; i < runCount; i++ {
 			err = mach.CliAllocStmt(conn, &stmt)
 			require.NoError(t, err)
 			err = mach.CliPrepare(stmt, `insert into simple_tag values('insert-cli', ?, ?)`)
 			require.NoError(t, err)
-			err = mach.CliBindParam(stmt, 0, mach.MACHCLI_C_TYPE_INT64, mach.MACHCLI_SQL_TYPE_DATETIME, unsafe.Pointer(&now), 8)
+			longTime := int64(now.Add(time.Duration(i * 10000000)).UnixNano())
+			err = mach.CliBindParam(stmt, 0, mach.MACHCLI_C_TYPE_INT64, mach.MACHCLI_SQL_TYPE_DATETIME, unsafe.Pointer(&longTime), 8)
 			require.NoError(t, err)
 			err = mach.CliBindParam(stmt, 1, mach.MACHCLI_C_TYPE_DOUBLE, mach.MACHCLI_SQL_TYPE_DOUBLE, unsafe.Pointer(&[]float64{1.001 * float64(i+1)}[0]), 8)
 			require.NoError(t, err)
