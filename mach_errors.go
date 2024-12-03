@@ -8,7 +8,7 @@ var ErrDatabaseMach = func(code int, msg string) error {
 
 var ErrDatabaseCli = func(fn string, code int, msg string) error {
 	if code == 0 {
-		return fmt.Errorf("MACHCLI-ERR %s, %s()", msg, fn)
+		return fmt.Errorf("MACHCLI-ERR %s, %s", msg, fn)
 	} else {
 		return fmt.Errorf("MACHCLI-ERR %d %s, %s", code, msg, fn)
 	}
