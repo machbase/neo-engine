@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 	"unsafe"
@@ -38,7 +39,7 @@ func TestMain(m *testing.M) {
 	os.WriteFile(confPath, machbase_conf, 0644)
 
 	var envHandle unsafe.Pointer
-	err = mach.EngInitialize(homePath, machPort, 0x1, &envHandle)
+	err = mach.EngInitialize(homePath, machPort, 0x2, &envHandle)
 	if err != nil {
 		panic(err)
 	}
@@ -262,16 +263,20 @@ func TestAll(t *testing.T) {
 	tests := []struct {
 		name string
 		tc   func(t *testing.T)
+		cond func() bool
 	}{
-		{"SvrSimpleTagInsert", SvrSimpleTagInsert},
-		{"SvrTagTableInsertAndSelect", SvrTagTableInsertAndSelect},
-		{"CliTagTableInsertAndSelect", CliTagTableInsertAndSelect},
-		{"CliSimpleTagInsert", CliSimpleTagInsert},
-		// {"CliLogAppend", CliLogAppend},
+		{name: "SvrSimpleTagInsert", tc: SvrSimpleTagInsert},
+		{name: "SvrTagTableInsertAndSelect", tc: SvrTagTableInsertAndSelect},
+		{name: "CliTagTableInsertAndSelect", tc: CliTagTableInsertAndSelect, cond: func() bool { return runtime.GOOS == "linux" }},
+		{name: "CliSimpleTagInsert", tc: CliSimpleTagInsert, cond: func() bool { return runtime.GOOS == "linux" }},
+		{name: "CliLogAppend", tc: CliLogAppend, cond: func() bool { return runtime.GOOS == "linux" }},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.cond != nil && !tc.cond() {
+				t.Skip("skip test")
+			}
 			tc.tc(t)
 		})
 	}
@@ -558,14 +563,34 @@ func CliSimpleTagInsert(t *testing.T) {
 
 	expectCount := 100_000
 	now := time.Now()
-	// insert direct_execute
-	for i := 0; i < expectCount; i++ {
-		sqlText := fmt.Sprintf(`insert into simple_tag values('insert-cli', %d, %.6f)`,
-			now.Add(time.Duration(i*1000)).UnixNano(),
-			1.001*float64(i+1),
-		)
-		err = mach.CliExecDirectConn(conn, sqlText)
-		require.NoError(t, err)
+
+	useDirect := false
+	if useDirect {
+		// insert direct_execute
+		for i := 0; i < expectCount; i++ {
+			sqlText := fmt.Sprintf(`insert into simple_tag values('insert-cli', %d, %.6f)`,
+				now.Add(time.Duration(i*10000000)).UnixNano(),
+				1.001*float64(i+1),
+			)
+			err = mach.CliExecDirectConn(conn, sqlText)
+			require.NoError(t, err)
+		}
+	} else {
+		// insert query
+		for i := 0; i < expectCount; i++ {
+			err = mach.CliAllocStmt(conn, &stmt)
+			require.NoError(t, err)
+			err = mach.CliPrepare(stmt, `insert into simple_tag values('insert-cli', ?, ?)`)
+			require.NoError(t, err)
+			err = mach.CliBindParam(stmt, 0, mach.MACHCLI_C_TYPE_INT64, mach.MACHCLI_SQL_TYPE_DATETIME, unsafe.Pointer(&now), 8)
+			require.NoError(t, err)
+			err = mach.CliBindParam(stmt, 1, mach.MACHCLI_C_TYPE_DOUBLE, mach.MACHCLI_SQL_TYPE_DOUBLE, unsafe.Pointer(&[]float64{1.001 * float64(i+1)}[0]), 8)
+			require.NoError(t, err)
+			err = mach.CliExecute(stmt)
+			require.NoError(t, err)
+			err = mach.CliFreeStmt(stmt)
+			require.NoError(t, err)
+		}
 	}
 
 	// flush
