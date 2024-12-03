@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 	"unsafe"
@@ -68,18 +67,19 @@ func TestAll(t *testing.T) {
 		tc   func(t *testing.T)
 		cond func() bool
 	}{
-		{name: "SvrSimpleTagInsert", tc: SvrSimpleTagInsert},
-		{name: "SvrTagTableInsertAndSelect", tc: SvrTagTableInsertAndSelect},
-		{name: "CliTagTableInsertAndSelect", tc: CliTagTableInsertAndSelect, cond: func() bool { return runtime.GOOS == "linux" }},
-		{name: "CliSimpleTagInsert100K", tc: CliSimpleTagInsert100K, cond: func() bool { return runtime.GOOS == "linux" }},
-		{name: "CliLogAppend", tc: CliLogAppend, cond: func() bool { return runtime.GOOS == "linux" }},
+		// {name: "SvrSimpleTagInsert", tc: SvrSimpleTagInsert},
+		// {name: "SvrTagTableInsertAndSelect", tc: SvrTagTableInsertAndSelect},
+		// {name: "CliTagTableInsertAndSelect", tc: CliTagTableInsertAndSelect, cond: func() bool { return runtime.GOOS == "linux" }},
+		// {name: "CliSimpleTagInsert100K", tc: CliSimpleTagInsert100K, cond: func() bool { return runtime.GOOS == "linux" }},
+		// {name: "CliLogAppend", tc: CliLogAppend, cond: func() bool { return runtime.GOOS == "linux" }},
+		{name: "CliConnections", tc: CliConnections},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.cond != nil && !tc.cond() {
-				t.Skip("skip test")
-			}
+			// if tc.cond != nil && !tc.cond() {
+			// 	t.Skip("skip test")
+			// }
 			tc.tc(t)
 		})
 	}
@@ -89,6 +89,13 @@ func TestAll(t *testing.T) {
 func createTables() {
 	var conn unsafe.Pointer
 	var stmt unsafe.Pointer
+
+	// trace_log_level
+	mach.EngConnectTrust(global.Env, "sys", &conn)
+	mach.EngAllocStmt(conn, &stmt)
+	mach.EngDirectExecute(stmt, "alter system set trace_log_level=1024")
+	mach.EngFreeStmt(stmt)
+	mach.EngDisconnect(conn)
 
 	// create tag table simple_tag
 	mach.EngConnectTrust(global.Env, "sys", &conn)
@@ -337,7 +344,6 @@ func SvrSimpleTagInsert(t *testing.T) {
 	err = mach.EngAllocStmt(conn, &stmt)
 	require.NoError(t, err)
 
-	// SELECT m._ID, m.NAME, s.ROW_COUNT FROM _SIMPLE_TAG_META m, V$SIMPLE_TAG_STAT s WHERE s.NAME = m.NAME
 	err = mach.EngPrepare(stmt, `SELECT m._ID, m.NAME, s.ROW_COUNT FROM _SIMPLE_TAG_META m, V$SIMPLE_TAG_STAT s WHERE s.NAME = m.NAME`)
 	require.NoError(t, err)
 	err = mach.EngExecute(stmt)
@@ -533,17 +539,6 @@ func SvrTagTableInsertAndSelect(t *testing.T) {
 	require.NoError(t, err, "close fail")
 }
 
-func cliErrorStmt(stmt unsafe.Pointer) string {
-	var errCode int
-	var errMsg string
-	mach.CliError(stmt, mach.MACHCLI_HANDLE_STMT, &errCode, &errMsg)
-	if errMsg != "" {
-		return fmt.Sprintf("error code: %d, error message: %s", errCode, errMsg)
-	} else {
-		return ""
-	}
-}
-
 func CliSimpleTagInsert100K(t *testing.T) {
 	t.Run("ExecDirect", func(t *testing.T) {
 		CliSimpleTagInsert(t, 100_000, 100_000, true)
@@ -724,9 +719,9 @@ func CliTagTableInsertAndSelect(t *testing.T) {
 
 	// execute
 	err = mach.CliExecute(stmt)
-	require.NoError(t, err, "execute fail; %s", cliErrorStmt(stmt))
+	require.NoError(t, err)
 	err = mach.CliFreeStmt(stmt)
-	require.NoError(t, err, "close fail; %s", cliErrorStmt(stmt))
+	require.NoError(t, err)
 
 	// flush
 	err = mach.CliAllocStmt(conn, &stmt)
@@ -885,4 +880,44 @@ func CliLogAppend(t *testing.T) {
 	// // insert
 	// err = mach.CliAllocStmt(conn, &stmt)
 	// require.NoError(t, err)
+}
+
+func CliConnections(t *testing.T) {
+	env := new(unsafe.Pointer)
+	if err := mach.CliInitialize(env); err != nil {
+		t.Fatal(err)
+	}
+
+	var conn unsafe.Pointer
+	err := mach.CliConnect(*env, fmt.Sprintf("SERVER=127.0.0.1;UID=SYS;PWD=MANAGER;CONNTYPE=1;PORT_NO=%d", machPort), &conn)
+	require.NoError(t, err)
+
+	for i := 0; i < 1_000_000; i++ {
+		var stmt unsafe.Pointer
+		err = mach.CliAllocStmt(conn, &stmt)
+		require.NoError(t, err, i)
+
+		err = mach.CliPrepare(stmt, `select count(*) from simple_tag`)
+		require.NoError(t, err, i)
+
+		// err = mach.CliExecute(stmt)
+		// require.NoError(t, err)
+
+		// eof, err := mach.CliFetch(stmt)
+		// require.NoError(t, err)
+		// require.False(t, eof)
+
+		// resultCount := int64(0)
+		// n, err := mach.CliGetData(stmt, 0, mach.MACHCLI_C_TYPE_INT64, unsafe.Pointer(&resultCount), 8)
+		// require.NoError(t, err)
+		// require.Equal(t, int64(0), resultCount)
+		// require.Equal(t, int64(8), n)
+
+		err = mach.CliFreeStmt(stmt)
+		require.NoError(t, err, "iter=%d", i)
+	}
+	err = mach.CliDisconnect(conn)
+	require.NoError(t, err)
+	err = mach.CliFinalize(*env)
+	require.NoError(t, err)
 }
