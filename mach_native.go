@@ -3,6 +3,7 @@ package mach
 import (
 	"fmt"
 	"net"
+	"runtime"
 	"strings"
 	"time"
 	"unsafe"
@@ -15,6 +16,7 @@ import (
 #include <machEngine.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <signal.h>
 #include <string.h>
 #include <time.h>
 #include <machcli.h>
@@ -29,8 +31,20 @@ static inline void cliAppendErrorCallback(void* aStmtHandle,
 										 long  aRowBufLen) {
 	cliDefaultAppendErrorCallback(aStmtHandle, aErrorCode, aErrorMessage, aErrorBufLen, aRowBuf, aRowBufLen);
 }
+
+static void  inline cliDarwinSignalHandler(int sig) {
+	// ignore
+}
+
+static inline void cliDarwinDisableSignalHandler() {
+     signal(SIGURG, cliDarwinSignalHandler);
+}
 */
 import "C"
+
+func DarwinSignalHandler() {
+	C.cliDarwinDisableSignalHandler()
+}
 
 func LinkInfo() string {
 	return LibMachLinkInfo
@@ -1062,11 +1076,13 @@ func (ab *AppendBuffer) Append(vals ...any) error {
 }
 
 func CliInitialize(env *unsafe.Pointer) error {
-	if rt := C.MachCLIInitialize(env); rt == 0 {
-		return nil
-	} else {
+	if rt := C.MachCLIInitialize(env); rt != 0 {
 		return ErrDatabaseReturns("MachCLIInitialize", int(rt))
 	}
+	if runtime.GOOS == "darwin" {
+		DarwinSignalHandler()
+	}
+	return nil
 }
 
 func CliFinalize(env unsafe.Pointer) error {

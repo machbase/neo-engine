@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 	"unsafe"
@@ -74,21 +73,16 @@ func TestAll(t *testing.T) {
 	tests := []struct {
 		name string
 		tc   func(t *testing.T)
-		cond func() bool
 	}{
 		{name: "SvrSimpleTagInsert", tc: SvrSimpleTagInsert},
 		{name: "SvrTagTableInsertAndSelect", tc: SvrTagTableInsertAndSelect},
-		{name: "CliTagTableInsertAndSelect", tc: CliTagTableInsertAndSelect, cond: func() bool { return runtime.GOOS != "darwin" }},
-		{name: "CliSimpleTagInsert100K", tc: CliSimpleTagInsert100K, cond: func() bool { return runtime.GOOS != "darwin" }},
-		// {name: "CliLogAppend", tc: CliLogAppend, cond: func() bool { return runtime.GOOS != "darwin" }},
-		{name: "CliConnections", tc: CliConnections, cond: func() bool { return runtime.GOOS == "darwin" }},
+		{name: "CliTagTableInsertAndSelect", tc: CliTagTableInsertAndSelect},
+		{name: "CliSimpleTagInsert100K", tc: CliSimpleTagInsert100K},
+		{name: "CliLogAppend", tc: CliLogAppend},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.cond != nil && !tc.cond() {
-				t.Skip("skip test")
-			}
 			tc.tc(t)
 		})
 	}
@@ -871,37 +865,4 @@ func CliLogAppend(t *testing.T) {
 	// // insert
 	// err = mach.CliAllocStmt(conn, &stmt)
 	// require.NoError(t, err)
-}
-
-func CliConnections(t *testing.T) {
-	var conn unsafe.Pointer
-	err := mach.CliConnect(global.CliEnv, fmt.Sprintf("SERVER=127.0.0.1;UID=SYS;PWD=MANAGER;CONNTYPE=1;PORT_NO=%d", machPort), &conn)
-	require.NoError(t, err)
-
-	for i := 0; i < 1_000_000; i++ {
-		var stmt unsafe.Pointer
-		err = mach.CliAllocStmt(conn, &stmt)
-		require.NoError(t, err, i)
-
-		err = mach.CliPrepare(stmt, `select count(*) from simple_tag`)
-		require.NoError(t, err, i)
-
-		err = mach.CliExecute(stmt)
-		require.NoError(t, err)
-
-		eof, err := mach.CliFetch(stmt)
-		require.NoError(t, err)
-		require.False(t, eof)
-
-		resultCount := int64(-1)
-		n, err := mach.CliGetData(stmt, 0, mach.MACHCLI_C_TYPE_INT64, unsafe.Pointer(&resultCount), 8)
-		require.NoError(t, err)
-		require.LessOrEqual(t, int64(0), resultCount)
-		require.Equal(t, int64(8), n)
-
-		err = mach.CliFreeStmt(stmt)
-		require.NoError(t, err, "iter=%d", i)
-	}
-	err = mach.CliDisconnect(conn)
-	require.NoError(t, err)
 }
