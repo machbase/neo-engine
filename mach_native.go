@@ -3,11 +3,11 @@ package mach
 import (
 	"fmt"
 	"net"
-	"runtime"
 	"strings"
 	"time"
 	"unsafe"
 
+	"github.com/machbase/neo-engine/v8/native"
 	_ "github.com/machbase/neo-engine/v8/native"
 )
 
@@ -41,10 +41,6 @@ static inline void cliDarwinDisableSignalHandler() {
 }
 */
 import "C"
-
-func DarwinSignalHandler() {
-	C.cliDarwinDisableSignalHandler()
-}
 
 func LinkInfo() string {
 	return LibMachLinkInfo
@@ -1079,9 +1075,7 @@ func CliInitialize(env *unsafe.Pointer) error {
 	if rt := C.MachCLIInitialize(env); rt != 0 {
 		return ErrDatabaseReturns("MachCLIInitialize", int(rt))
 	}
-	if runtime.GOOS == "darwin" {
-		DarwinSignalHandler()
-	}
+	native.InitSignalHandler()
 	return nil
 }
 

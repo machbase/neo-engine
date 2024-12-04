@@ -51,8 +51,6 @@ func main() {
 		http.HandleFunc("/debug/pprof/trace", pprof.Trace)
 	}()
 
-	mach.DarwinSignalHandler()
-
 	var cliEnvHandler unsafe.Pointer
 	if err := mach.CliInitialize(&cliEnvHandler); err != nil {
 		panic(err)
