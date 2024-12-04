@@ -7,6 +7,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/machbase/neo-engine/v8/native"
 	_ "github.com/machbase/neo-engine/v8/native"
 )
 
@@ -15,6 +16,7 @@ import (
 #include <machEngine.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <signal.h>
 #include <string.h>
 #include <time.h>
 #include <machcli.h>
@@ -1062,11 +1064,11 @@ func (ab *AppendBuffer) Append(vals ...any) error {
 }
 
 func CliInitialize(env *unsafe.Pointer) error {
-	if rt := C.MachCLIInitialize(env); rt == 0 {
-		return nil
-	} else {
+	if rt := C.MachCLIInitialize(env); rt != 0 {
 		return ErrDatabaseReturns("MachCLIInitialize", int(rt))
 	}
+	native.InitSignalHandler()
+	return nil
 }
 
 func CliFinalize(env unsafe.Pointer) error {
@@ -1080,19 +1082,17 @@ func CliFinalize(env unsafe.Pointer) error {
 func CliConnect(env unsafe.Pointer, connStr string, conn *unsafe.Pointer) error {
 	cstr := C.CString(connStr)
 	defer C.free(unsafe.Pointer(cstr))
-	if rt := C.MachCLIConnect(env, cstr, conn); rt == 0 {
-		return nil
-	} else {
-		return ErrDatabaseReturns("MachCLIConnect", int(rt))
+	if rt := C.MachCLIConnect(env, cstr, conn); rt != 0 {
+		return CliErrorCaller(env, MACHCLI_HANDLE_ENV, "MachCLIConnect")
 	}
+	return nil
 }
 
 func CliDisconnect(conn unsafe.Pointer) error {
-	if rt := C.MachCLIDisconnect(conn); rt == 0 {
-		return nil
-	} else {
-		return ErrDatabaseReturns("MachCLIDisconnect", int(rt))
+	if rt := C.MachCLIDisconnect(conn); rt != 0 {
+		return CliErrorCaller(conn, MACHCLI_HANDLE_DBC, "MachCLIDisconnect")
 	}
+	return nil
 }
 
 type HandleType int
@@ -1114,73 +1114,93 @@ func CliError(handle unsafe.Pointer, handleType HandleType, code *int, msg *stri
 	return nil
 }
 
-func CliAllocStmt(conn unsafe.Pointer, stmt *unsafe.Pointer) error {
-	if rt := C.MachCLIAllocStmt(conn, stmt); rt == 0 {
-		return nil
+func CliErrorCaller(handle unsafe.Pointer, handleType HandleType, fn string) error {
+	var ccode C.int
+	var cmsg = [500]C.char{}
+	if rt := C.MachCLIError(handle, C.int(handleType), &ccode, &cmsg[0], C.int(len(cmsg))); rt != 0 {
+		return ErrDatabaseReturns("MachCLIError", int(rt))
 	} else {
-		return ErrDatabaseReturns("MachCLIAllocStmt", int(rt))
+		return ErrDatabaseCli(fn, int(ccode), C.GoString(&cmsg[0]))
 	}
 }
 
-func CliFreeStmt(stmt unsafe.Pointer) error {
-	if rt := C.MachCLIFreeStmt(stmt); rt == 0 {
-		return nil
-	} else {
-		return ErrDatabaseReturns("MachCLIFreeStmt", int(rt))
+func CliAllocStmt(conn unsafe.Pointer, stmt *unsafe.Pointer) error {
+	if rt := C.MachCLIAllocStmt(conn, stmt); rt != 0 {
+		return CliErrorCaller(conn, MACHCLI_HANDLE_DBC, "MachCLIAllocStmt()")
 	}
+	return nil
+}
+
+func CliFreeStmt(stmt unsafe.Pointer) error {
+	if rt := C.MachCLIFreeStmt(stmt); rt != 0 {
+		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIFreeStmt()")
+	}
+	return nil
 }
 
 func CliPrepare(stmt unsafe.Pointer, query string) error {
 	sqlCString := C.CString(query)
 	defer C.free(unsafe.Pointer(sqlCString))
 	if rt := C.MachCLIPrepare(stmt, sqlCString); rt != 0 {
-		return ErrDatabaseReturns("MachCLIPrepare", int(rt))
+		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIPrepare()")
 	}
 	return nil
 }
 
 func CliExecute(stmt unsafe.Pointer) error {
-	if rt := C.MachCLIExecute(stmt); rt == 0 {
-		return nil
-	} else {
-		return ErrDatabaseReturns("MachCLIExecute", int(rt))
+	if rt := C.MachCLIExecute(stmt); rt != 0 {
+		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIExecute()")
 	}
+	return nil
 }
 
 func CliExecDirect(stmt unsafe.Pointer, query string) error {
 	sqlCString := C.CString(query)
 	defer C.free(unsafe.Pointer(sqlCString))
 	if rt := C.MachCLIExecDirect(stmt, sqlCString); rt != 0 {
-		return ErrDatabaseReturns("MachCLIExecDirect", int(rt))
+		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIExecDirect()")
+	}
+	return nil
+}
+
+func CliExecDirectConn(conn unsafe.Pointer, query string) error {
+	var stmt unsafe.Pointer
+	if err := CliAllocStmt(conn, &stmt); err != nil {
+		return err
+	}
+	defer CliFreeStmt(stmt)
+
+	sqlCString := C.CString(query)
+	defer C.free(unsafe.Pointer(sqlCString))
+
+	if rt := C.MachCLIExecDirect(stmt, sqlCString); rt != 0 {
+		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCliExecDirectConn()")
 	}
 	return nil
 }
 
 func CliCancel(stmt unsafe.Pointer) error {
-	if rt := C.MachCLICancel(stmt); rt == 0 {
-		return nil
-	} else {
-		return ErrDatabaseReturns("MachCLICancel", int(rt))
+	if rt := C.MachCLICancel(stmt); rt != 0 {
+		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLICancel()")
 	}
+	return nil
 }
 
 func CliRowCount(stmt unsafe.Pointer) (int64, error) {
 	var count C.longlong
-	if rt := C.MachCLIRowCount(stmt, &count); rt == 0 {
-		return int64(count), nil
-	} else {
-		return 0, ErrDatabaseReturns("MachCLIRowCount", int(rt))
+	if rt := C.MachCLIRowCount(stmt, &count); rt != 0 {
+		return 0, CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIRowCount()")
 	}
+	return int64(count), nil
 }
 
 // returns true if it reaches the end of fetch
 func CliFetch(stmt unsafe.Pointer) (bool, error) {
 	var end C.int
-	if rt := C.MachCLIFetch(stmt, &end); rt == 0 {
-		return end == 1, nil
-	} else {
-		return true, ErrDatabaseReturns("MachCLIFetch", int(rt))
+	if rt := C.MachCLIFetch(stmt, &end); rt != 0 {
+		return true, CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIFetch()")
 	}
+	return end == 1, nil
 }
 
 type SqlType int
@@ -1213,7 +1233,7 @@ const (
 func CliGetData(stmt unsafe.Pointer, columnNo int, cType CType, buf unsafe.Pointer, bufLen int) (int64, error) {
 	var resultLen C.long
 	if rt := C.MachCLIGetData(stmt, C.int(columnNo), C.int(cType), buf, C.int(bufLen), &resultLen); rt != 0 {
-		return 0, ErrDatabaseReturnsAtIdx("MachCLIGetData", columnNo, int(rt))
+		return 0, CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, fmt.Sprintf("MachCLIGetData(%d)", columnNo))
 	}
 	return int64(resultLen), nil
 }
@@ -1227,16 +1247,15 @@ type CliBindColData struct {
 
 // returns the length of the actual data
 func CliBindCol(stmt unsafe.Pointer, columnNo int, data *CliBindColData) error {
-	if rt := C.MachCLIBindCol(stmt, C.int(columnNo), C.int(data.Type), data.Buf, C.int(data.BufLen), &data.resultLen); rt == 0 {
-		return nil
-	} else {
-		return ErrDatabaseReturnsAtIdx("MachCLIBindCol", columnNo, int(rt))
+	if rt := C.MachCLIBindCol(stmt, C.int(columnNo), C.int(data.Type), data.Buf, C.int(data.BufLen), &data.resultLen); rt != 0 {
+		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, fmt.Sprintf("MachCLIBindCol(%d)", columnNo))
 	}
+	return nil
 }
 
 func CliBindParam(stmt unsafe.Pointer, paramNo int, cType CType, sqlType SqlType, value unsafe.Pointer, valueLen int) error {
 	if rt := C.MachCLIBindParam(stmt, C.int(paramNo), C.int(cType), C.int(sqlType), value, C.int(valueLen)); rt != 0 {
-		return ErrDatabaseReturnsAtIdx("MachCLIBindParam", paramNo, int(rt))
+		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, fmt.Sprintf("MachCLIBindParam(%d)", paramNo))
 	}
 	return nil
 }
@@ -1258,17 +1277,16 @@ func CliDescribeParam(stmt unsafe.Pointer, paramNo int) (CliParamDesc, error) {
 		ret.Nullable = nullable == 1
 		return ret, nil
 	} else {
-		return ret, ErrDatabaseReturnsAtIdx("MachCLIDescribeParam", paramNo, int(rt))
+		return ret, CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, fmt.Sprintf("MachCLIDescribeParam(%d)", paramNo))
 	}
 }
 
 func CliNumParam(stmt unsafe.Pointer) (int, error) {
 	var num C.int
-	if rt := C.MachCLINumParam(stmt, &num); rt == 0 {
-		return int(num), nil
-	} else {
-		return 0, ErrDatabaseReturns("MachCLINumParam", int(rt))
+	if rt := C.MachCLINumParam(stmt, &num); rt != 0 {
+		return 0, CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLINumParam()")
 	}
+	return int(num), nil
 }
 
 func CliDescribeCol(stmt unsafe.Pointer, columnNo int, pName *string, pType *SqlType, pSize *int, pScale *int, pNullable *bool) error {
@@ -1283,27 +1301,25 @@ func CliDescribeCol(stmt unsafe.Pointer, columnNo int, pName *string, pType *Sql
 		*pNullable = nullable == 1
 		return nil
 	} else {
-		return ErrDatabaseReturnsAtIdx("MachCLIDescribeCol", columnNo, int(rt))
+		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, fmt.Sprintf("MachCLIDescribeCol(%d)", columnNo))
 	}
 }
 
 func CliNumResultCol(stmt unsafe.Pointer) (int, error) {
 	var num C.int
-	if rt := C.MachCLINumResultCol(stmt, &num); rt == 0 {
-		return int(num), nil
-	} else {
-		return 0, ErrDatabaseReturns("MachCLINumResultCol", int(rt))
+	if rt := C.MachCLINumResultCol(stmt, &num); rt != 0 {
+		return 0, CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLINumResultCol()")
 	}
+	return int(num), nil
 }
 
 func CliAppendOpen(stmt unsafe.Pointer, tableName string, errCheckCount int) error {
 	cstr := C.CString(tableName)
 	defer C.free(unsafe.Pointer(cstr))
-	if rt := C.MachCLIAppendOpen(stmt, cstr, C.int(errCheckCount)); rt == 0 {
-		return nil
-	} else {
-		return ErrDatabaseReturns("MachCLIAppendOpen", int(rt))
+	if rt := C.MachCLIAppendOpen(stmt, cstr, C.int(errCheckCount)); rt != 0 {
+		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIAppendOpen")
 	}
+	return nil
 }
 
 func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []any) error {
@@ -1426,26 +1442,36 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 				}
 			}
 		case MACHCLI_SQL_TYPE_IPV4:
-			switch value := args[i].(type) {
-			case net.IP:
-				cstr := []byte(value.To4().String())
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(len(cstr))
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(&cstr[0])
-			case string:
-				cstr := []byte(value)
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(len(cstr))
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(&cstr[0])
+			if args[i] == nil {
+				(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(0)
+			} else {
+				switch value := args[i].(type) {
+				case net.IP:
+					for n, b := range value.To4() {
+						(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddr[n] = C.uchar(b)
+					}
+					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(4)
+				case string:
+					cstr := C.CString(value)
+					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddrString = cstr
+					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(255)
+				}
 			}
 		case MACHCLI_SQL_TYPE_IPV6:
-			switch value := args[i].(type) {
-			case net.IP:
-				cstr := []byte(value.To16().String())
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(len(cstr))
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(&cstr[0])
-			case string:
-				cstr := []byte(value)
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(len(cstr))
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(&cstr[0])
+			if args[i] == nil {
+				(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(0)
+			} else {
+				switch value := args[i].(type) {
+				case net.IP:
+					for n, b := range value.To16() {
+						(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddr[n] = C.uchar(b)
+					}
+					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(6)
+				case string:
+					cstr := []byte(value)
+					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddrString = (*C.char)(unsafe.Pointer(&cstr[0]))
+					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(255)
+				}
 			}
 		case MACHCLI_SQL_TYPE_STRING:
 			switch value := args[i].(type) {
@@ -1463,7 +1489,7 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 	if rt := C.MachCLIAppendData(stmt, (*C.MachCLIAppendParam)(&data[0])); rt == 0 {
 		return nil
 	} else {
-		return ErrDatabaseReturns("MachCLIAppendData", int(rt))
+		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIAppendData()")
 	}
 }
 
@@ -1473,19 +1499,17 @@ func CliAppendClose(stmt unsafe.Pointer) (int64, int64, error) {
 	defer func() {
 		delete(cliAppendErrorCallbacks, fmt.Sprintf("%X", stmt))
 	}()
-	if rt := C.MachCLIAppendClose(stmt, &successCount, &failureCount); rt == 0 {
-		return int64(successCount), int64(failureCount), nil
-	} else {
-		return 0, 0, ErrDatabaseReturns("MachCLIAppendClose", int(rt))
+	if rt := C.MachCLIAppendClose(stmt, &successCount, &failureCount); rt != 0 {
+		return 0, 0, CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIAppendClose()")
 	}
+	return int64(successCount), int64(failureCount), nil
 }
 
 func CliAppendFlush(stmt unsafe.Pointer) error {
-	if rt := C.MachCLIAppendFlush(stmt); rt == 0 {
-		return nil
-	} else {
-		return ErrDatabaseReturns("MachCLIAppendFlush", int(rt))
+	if rt := C.MachCLIAppendFlush(stmt); rt != 0 {
+		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIAppendFlush()")
 	}
+	return nil
 }
 
 type CLIAppendErrorCallback func(stmt unsafe.Pointer, errCode int, errMsg string, buf []byte)
@@ -1509,22 +1533,20 @@ func CliAppendSetErrorCallback(stmt unsafe.Pointer, cb CLIAppendErrorCallback) e
 		}
 		return nil
 	} else {
-		return ErrDatabaseReturns("MachCLIAppendSetErrorCallback", int(rt))
+		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIAppendSetErrorCallback()")
 	}
 }
 
 func CliSetConnectAppendFlush(conn unsafe.Pointer, opt int) error {
-	if rt := C.MachCLISetConnectAppendFlush(conn, C.int(opt)); rt == 0 {
-		return nil
-	} else {
-		return ErrDatabaseReturns("MachCLISetConnectAppendFlush", int(rt))
+	if rt := C.MachCLISetConnectAppendFlush(conn, C.int(opt)); rt != 0 {
+		return CliErrorCaller(conn, MACHCLI_HANDLE_DBC, "MachCLISetConnectAppendFlush()")
 	}
+	return nil
 }
 
 func CliSetStmtAppendInterval(stmt unsafe.Pointer, intervalMilliseconds int) error {
-	if rt := C.MachCLISetStmtAppendInterval(stmt, C.int(intervalMilliseconds)); rt == 0 {
-		return nil
-	} else {
-		return ErrDatabaseReturns("MachCLISetStmtAppendInterval", int(rt))
+	if rt := C.MachCLISetStmtAppendInterval(stmt, C.int(intervalMilliseconds)); rt != 0 {
+		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLISetStmtAppendInterval()")
 	}
+	return nil
 }

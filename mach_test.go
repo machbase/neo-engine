@@ -14,13 +14,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var machPort = 5656
+var machPort = 15656
 
 //go:embed mach_test.conf
 var machbase_conf []byte
 
 var global = struct {
-	Env unsafe.Pointer
+	SvrEnv unsafe.Pointer
+	CliEnv unsafe.Pointer
 }{}
 
 func TestMain(m *testing.M) {
@@ -37,35 +38,77 @@ func TestMain(m *testing.M) {
 	os.MkdirAll(filepath.Join(homePath, "dbs"), 0755)
 	os.WriteFile(confPath, machbase_conf, 0644)
 
-	var envHandle unsafe.Pointer
-	err = mach.EngInitialize(homePath, machPort, 0x2, &envHandle)
+	var svrEnvHandle unsafe.Pointer
+	err = mach.EngInitialize(homePath, machPort, 0x2, &svrEnvHandle)
 	if err != nil {
 		panic(err)
 	}
-	global.Env = envHandle
+	global.SvrEnv = svrEnvHandle
 
-	if !mach.EngExistsDatabase(global.Env) {
-		mach.EngCreateDatabase(global.Env)
+	var cliEnvHandler unsafe.Pointer
+	if err := mach.CliInitialize(&cliEnvHandler); err != nil {
+		panic(err)
 	}
-	cwd, _ := os.Getwd()
-	defer os.Chdir(cwd)
+	global.CliEnv = cliEnvHandler
 
-	err = mach.EngStartup(global.Env)
+	if !mach.EngExistsDatabase(global.SvrEnv) {
+		mach.EngCreateDatabase(global.SvrEnv)
+	}
+
+	err = mach.EngStartup(global.SvrEnv)
 	if err != nil {
 		panic(err)
 	}
 
+	m.Run()
+
+	mach.CliFinalize(global.CliEnv)
+	mach.EngShutdown(global.SvrEnv)
+	mach.EngFinalize(global.SvrEnv)
+	os.RemoveAll(homePath)
+}
+
+func TestAll(t *testing.T) {
+	createTables()
+	tests := []struct {
+		name string
+		tc   func(t *testing.T)
+	}{
+		{name: "SvrSimpleTagInsert", tc: SvrSimpleTagInsert},
+		{name: "SvrTagTableInsertAndSelect", tc: SvrTagTableInsertAndSelect},
+		{name: "CliTagTableInsertAndSelect", tc: CliTagTableInsertAndSelect},
+		{name: "CliSimpleTagInsert100K", tc: CliSimpleTagInsert100K},
+		{name: "CliLogAppend", tc: CliLogAppend},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.tc(t)
+		})
+	}
+	dropTables()
+}
+
+func createTables() {
 	var conn unsafe.Pointer
 	var stmt unsafe.Pointer
 
+	// trace_log_level
+	mach.EngConnectTrust(global.SvrEnv, "sys", &conn)
+	mach.EngAllocStmt(conn, &stmt)
+	mach.EngDirectExecute(stmt, "alter system set trace_log_level=1024")
+	mach.EngFreeStmt(stmt)
+	mach.EngDisconnect(conn)
+
 	// create tag table simple_tag
-	mach.EngConnectTrust(global.Env, "sys", &conn)
+	mach.EngConnectTrust(global.SvrEnv, "sys", &conn)
 	mach.EngAllocStmt(conn, &stmt)
 	mach.EngDirectExecute(stmt, `create tag table if not exists simple_tag (name varchar(100) primary key, time datetime basetime, value double)`)
 	mach.EngFreeStmt(stmt)
 	mach.EngDisconnect(conn)
 
-	mach.EngConnectTrust(global.Env, "sys", &conn)
+	// create tag table tag_data
+	mach.EngConnectTrust(global.SvrEnv, "sys", &conn)
 	mach.EngAllocStmt(conn, &stmt)
 	mach.EngDirectExecute(stmt, `
 		create tag table tag_data(
@@ -87,32 +130,82 @@ func TestMain(m *testing.M) {
 	mach.EngFreeStmt(stmt)
 	mach.EngDisconnect(conn)
 
-	m.Run()
+	// create log table log_data
+	mach.EngConnectTrust(global.SvrEnv, "sys", &conn)
+	mach.EngAllocStmt(conn, &stmt)
+	mach.EngDirectExecute(stmt, `
+		create table log_data(
+		    time datetime,
+			short_value short,
+			ushort_value ushort,
+			int_value integer,
+			uint_value uinteger,
+			long_value long,
+			ulong_value ulong,
+			double_value double,
+			float_value float,
+			str_value varchar(400),
+			json_value json,
+			ipv4_value ipv4,
+			ipv6_value ipv6,
+			text_value text,
+			bin_value binary)
+	`)
+	mach.EngFreeStmt(stmt)
+	mach.EngDisconnect(conn)
+}
+
+func dropTables() {
+	var conn unsafe.Pointer
+	var stmt unsafe.Pointer
 
 	// drop table simple_tag
-	mach.EngConnectTrust(global.Env, "sys", &conn)
+	mach.EngConnectTrust(global.SvrEnv, "sys", &conn)
 	mach.EngAllocStmt(conn, &stmt)
 	mach.EngDirectExecute(stmt, `drop table simple_tag`)
 	mach.EngFreeStmt(stmt)
 	mach.EngDisconnect(conn)
 
 	// drop table tag_data
-	mach.EngConnectTrust(global.Env, "sys", &conn)
+	mach.EngConnectTrust(global.SvrEnv, "sys", &conn)
 	mach.EngAllocStmt(conn, &stmt)
 	mach.EngDirectExecute(stmt, `drop table tag_data`)
 	mach.EngFreeStmt(stmt)
 	mach.EngDisconnect(conn)
 
-	mach.EngShutdown(global.Env)
-	mach.EngFinalize(global.Env)
-	os.RemoveAll(homePath)
+	// drop table log_data
+	mach.EngConnectTrust(global.SvrEnv, "sys", &conn)
+	mach.EngAllocStmt(conn, &stmt)
+	mach.EngDirectExecute(stmt, `drop table log_data`)
+	mach.EngFreeStmt(stmt)
+	mach.EngDisconnect(conn)
 }
 
-func BenchmarkSimpleTagInsertDirectExecute(b *testing.B) {
+func BenchmarkAll(b *testing.B) {
+	benches := []struct {
+		name  string
+		bench func(*testing.B)
+	}{
+		{name: "benchSimpleTagInsertDirectExecute", bench: benchSimpleTagInsertDirectExecute},
+		{name: "benchSimpleTagInsertExecute", bench: benchSimpleTagInsertExecute},
+		{name: "benchSimpleTagInsertExecute", bench: benchSimpleTagInsertExecute},
+		{name: "benchSimpleTagAppend", bench: benchSimpleTagAppend},
+	}
+
+	createTables()
+	for _, bench := range benches {
+		b.Run(bench.name, func(b *testing.B) {
+			bench.bench(b)
+		})
+	}
+	dropTables()
+}
+
+func benchSimpleTagInsertDirectExecute(b *testing.B) {
 	var conn unsafe.Pointer
 	var stmt unsafe.Pointer
 
-	err := mach.EngConnectTrust(global.Env, "sys", &conn)
+	err := mach.EngConnectTrust(global.SvrEnv, "sys", &conn)
 	require.NoError(b, err)
 	defer mach.EngDisconnect(conn)
 
@@ -126,11 +219,11 @@ func BenchmarkSimpleTagInsertDirectExecute(b *testing.B) {
 	}
 }
 
-func BenchmarkSimpleTagInsertExecute(b *testing.B) {
+func benchSimpleTagInsertExecute(b *testing.B) {
 	var conn unsafe.Pointer
 	var stmt unsafe.Pointer
 
-	err := mach.EngConnectTrust(global.Env, "sys", &conn)
+	err := mach.EngConnectTrust(global.SvrEnv, "sys", &conn)
 	require.NoError(b, err)
 	defer mach.EngDisconnect(conn)
 
@@ -155,11 +248,11 @@ func BenchmarkSimpleTagInsertExecute(b *testing.B) {
 	}
 }
 
-func BenchmarkSimpleTagAppend(b *testing.B) {
+func benchSimpleTagAppend(b *testing.B) {
 	var conn unsafe.Pointer
 	var stmt unsafe.Pointer
 
-	err := mach.EngConnectTrust(global.Env, "sys", &conn)
+	err := mach.EngConnectTrust(global.SvrEnv, "sys", &conn)
 	require.NoError(b, err)
 	defer mach.EngDisconnect(conn)
 
@@ -200,12 +293,12 @@ func BenchmarkSimpleTagAppend(b *testing.B) {
 	mach.EngFreeStmt(stmt)
 }
 
-func TestSimpleTagSvrInsert(t *testing.T) {
+func SvrSimpleTagInsert(t *testing.T) {
 	var conn unsafe.Pointer
 	var stmt unsafe.Pointer
 
 	// connect
-	err := mach.EngConnectTrust(global.Env, "sys", &conn)
+	err := mach.EngConnectTrust(global.SvrEnv, "sys", &conn)
 	require.NoError(t, err)
 	defer mach.EngDisconnect(conn)
 
@@ -221,7 +314,12 @@ func TestSimpleTagSvrInsert(t *testing.T) {
 		mach.EngFreeStmt(stmt)
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	// flush
+	err = mach.EngAllocStmt(conn, &stmt)
+	require.NoError(t, err)
+	err = mach.EngDirectExecute(stmt, `EXEC table_flush(simple_tag)`)
+	require.NoError(t, err)
+	mach.EngFreeStmt(stmt)
 
 	// select count(*) form simple_tag
 	err = mach.EngAllocStmt(conn, &stmt)
@@ -242,32 +340,31 @@ func TestSimpleTagSvrInsert(t *testing.T) {
 
 	mach.EngFreeStmt(stmt)
 
+	// JOIN tag stat and meta
 	//
 	// Issue: https://github.com/machbase/neo/issues/889
 	//
-	// // JOIN tag stat and meta
-	// err = mach.EngAllocStmt(conn, &stmt)
-	// require.NoError(t, err)
+	err = mach.EngAllocStmt(conn, &stmt)
+	require.NoError(t, err)
 
-	// // SELECT m._ID, m.NAME, s.ROW_COUNT FROM _SIMPLE_TAG_META m, V$SIMPLE_TAG_STAT s WHERE s.NAME = m.NAME
-	// err = mach.EngPrepare(stmt, `SELECT m._ID, m.NAME, s.ROW_COUNT FROM _SIMPLE_TAG_META m, V$SIMPLE_TAG_STAT s WHERE s.NAME = m.NAME`)
-	// require.NoError(t, err)
-	// err = mach.EngExecute(stmt)
-	// require.NoError(t, err)
+	err = mach.EngPrepare(stmt, `SELECT m._ID, m.NAME, s.ROW_COUNT FROM _SIMPLE_TAG_META m, V$SIMPLE_TAG_STAT s WHERE s.NAME = m.NAME`)
+	require.NoError(t, err)
+	err = mach.EngExecute(stmt)
+	require.NoError(t, err)
 
-	// // fetch
-	// next, err = mach.EngFetch(stmt)
-	// require.NoError(t, err)
-	// require.True(t, next)
-	// mach.EngFreeStmt(stmt)
+	// fetch
+	next, err = mach.EngFetch(stmt)
+	require.NoError(t, err)
+	require.True(t, next)
+	mach.EngFreeStmt(stmt)
 }
 
-func TestTagTableSVRInsertAndSelect(t *testing.T) {
+func SvrTagTableInsertAndSelect(t *testing.T) {
 	var conn unsafe.Pointer
 	var stmt unsafe.Pointer
 
 	// connect
-	err := mach.EngConnectTrust(global.Env, "sys", &conn)
+	err := mach.EngConnectTrust(global.SvrEnv, "sys", &conn)
 	require.NoError(t, err)
 	defer mach.EngDisconnect(conn)
 
@@ -445,51 +542,64 @@ func TestTagTableSVRInsertAndSelect(t *testing.T) {
 	require.NoError(t, err, "close fail")
 }
 
-func cliErrorStmt(stmt unsafe.Pointer) string {
-	var errCode int
-	var errMsg string
-	mach.CliError(stmt, mach.MACHCLI_HANDLE_STMT, &errCode, &errMsg)
-	if errMsg != "" {
-		return fmt.Sprintf("error code: %d, error message: %s", errCode, errMsg)
-	} else {
-		return ""
-	}
+func CliSimpleTagInsert100K(t *testing.T) {
+	t.Run("ExecDirect", func(t *testing.T) {
+		CliSimpleTagInsert(t, 100_000, 100_000, true)
+	})
+	t.Run("Execute", func(t *testing.T) {
+		CliSimpleTagInsert(t, 100_000, 200_000, false)
+	})
 }
 
-func TestSimpleTagCliInsert(t *testing.T) {
-	// TODO: fix this test
-	t.Skip("Skip CLI test")
-	env := new(unsafe.Pointer)
-	if err := mach.CliInitialize(env); err != nil {
-		t.Fatal(err)
-	}
-	defer mach.CliFinalize(*env)
-
+func CliSimpleTagInsert(t *testing.T, runCount int, expectCount int, useDirect bool) {
+	// connect
 	var conn unsafe.Pointer
 	var stmt unsafe.Pointer
-
-	// connect
-	err := mach.CliConnect(*env, fmt.Sprintf("SERVER=127.0.0.1;UID=SYS;PWD=MANAGER;CONNTYPE=1;PORT_NO=%d", machPort), &conn)
+	err := mach.CliConnect(global.CliEnv, fmt.Sprintf("SERVER=127.0.0.1;UID=SYS;PWD=MANAGER;CONNTYPE=1;PORT_NO=%d", machPort), &conn)
 	require.NoError(t, err)
-	defer mach.CliDisconnect(conn)
 
-	expectCount := 100_000
+	t.Cleanup(func() {
+		mach.CliDisconnect(conn)
+	})
 
-	// insert direct_execute
-	for i := 0; i < expectCount; i++ {
-		sqlText := fmt.Sprintf(`insert into simple_tag values('insert-cli', now, %.6f)`, 1.001*float64(i+1))
-		err = mach.CliAllocStmt(conn, &stmt)
-		require.NoError(t, err)
-		err = mach.CliExecDirect(stmt, sqlText)
-		if err != nil {
-			t.Logf("i=%d error %s, %s", i, err.Error(), cliErrorStmt(stmt))
-			t.Fail()
+	now := time.Now()
+
+	if useDirect {
+		// insert direct_execute
+		for i := 0; i < runCount; i++ {
+			sqlText := fmt.Sprintf(`insert into simple_tag values('insert-cli', %d, %.6f)`,
+				now.Add(time.Duration(i*10000000)).UnixNano(),
+				1.001*float64(i+1),
+			)
+			err = mach.CliExecDirectConn(conn, sqlText)
+			require.NoError(t, err)
 		}
-		require.NoError(t, err)
-		mach.CliFreeStmt(stmt)
+	} else {
+		// insert query
+		for i := 0; i < runCount; i++ {
+			err = mach.CliAllocStmt(conn, &stmt)
+			require.NoError(t, err)
+			err = mach.CliPrepare(stmt, `insert into simple_tag values('insert-cli', ?, ?)`)
+			require.NoError(t, err)
+			longTime := int64(now.Add(time.Duration(i * 10000000)).UnixNano())
+			err = mach.CliBindParam(stmt, 0, mach.MACHCLI_C_TYPE_INT64, mach.MACHCLI_SQL_TYPE_DATETIME, unsafe.Pointer(&longTime), 8)
+			require.NoError(t, err)
+			err = mach.CliBindParam(stmt, 1, mach.MACHCLI_C_TYPE_DOUBLE, mach.MACHCLI_SQL_TYPE_DOUBLE, unsafe.Pointer(&[]float64{1.001 * float64(i+1)}[0]), 8)
+			require.NoError(t, err)
+			err = mach.CliExecute(stmt)
+			require.NoError(t, err)
+			err = mach.CliFreeStmt(stmt)
+			require.NoError(t, err)
+		}
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	// flush
+	err = mach.CliAllocStmt(conn, &stmt)
+	require.NoError(t, err)
+	err = mach.CliExecDirect(stmt, `EXEC table_flush(simple_tag)`)
+	require.NoError(t, err)
+	err = mach.CliFreeStmt(stmt)
+	require.NoError(t, err)
 
 	// select count(*) form simple_tag
 	err = mach.CliAllocStmt(conn, &stmt)
@@ -510,41 +620,33 @@ func TestSimpleTagCliInsert(t *testing.T) {
 
 	mach.CliFreeStmt(stmt)
 
-	// JOIN tag stat and meta
-	err = mach.CliAllocStmt(conn, &stmt)
-	require.NoError(t, err)
+	// // JOIN tag stat and meta
+	// err = mach.CliAllocStmt(conn, &stmt)
+	// require.NoError(t, err)
 
-	// SELECT m._ID, m.NAME, s.ROW_COUNT FROM _SIMPLE_TAG_META m, V$SIMPLE_TAG_STAT s WHERE s.NAME = m.NAME
-	err = mach.CliPrepare(stmt, `SELECT m._ID, m.NAME, s.ROW_COUNT FROM _SIMPLE_TAG_META m, V$SIMPLE_TAG_STAT s WHERE s.NAME = m.NAME`)
-	require.NoError(t, err)
-	err = mach.CliExecute(stmt)
-	require.NoError(t, err)
+	// // SELECT m._ID, m.NAME, s.ROW_COUNT FROM _SIMPLE_TAG_META m, V$SIMPLE_TAG_STAT s WHERE s.NAME = m.NAME
+	// err = mach.CliPrepare(stmt, `SELECT m._ID, m.NAME, s.ROW_COUNT FROM _SIMPLE_TAG_META m, V$SIMPLE_TAG_STAT s WHERE s.NAME = m.NAME`)
+	// require.NoError(t, err)
+	// err = mach.CliExecute(stmt)
+	// require.NoError(t, err)
 
-	// fetch
-	endOfResult, err = mach.EngFetch(stmt)
-	require.NoError(t, err)
-	require.False(t, endOfResult)
-
-	mach.CliFreeStmt(stmt)
+	// // fetch
+	// endOfResult, err = mach.EngFetch(stmt)
+	// require.NoError(t, err)
+	// require.False(t, endOfResult)
 }
 
-func TestTagTableCLIInsertAndSelect(t *testing.T) {
-	// TODO: fix this test
-	t.Skip("Skip CLI test")
-
-	env := new(unsafe.Pointer)
-	if err := mach.CliInitialize(env); err != nil {
-		t.Fatal(err)
-	}
-	defer mach.CliFinalize(*env)
-
+func CliTagTableInsertAndSelect(t *testing.T) {
 	var conn unsafe.Pointer
 	var stmt unsafe.Pointer
 
 	// connect
-	err := mach.CliConnect(*env, fmt.Sprintf("SERVER=127.0.0.1;UID=SYS;PWD=MANAGER;CONNTYPE=1;PORT_NO=%d", machPort), &conn)
+	err := mach.CliConnect(global.CliEnv, fmt.Sprintf("SERVER=127.0.0.1;UID=SYS;PWD=MANAGER;CONNTYPE=1;PORT_NO=%d", machPort), &conn)
 	require.NoError(t, err)
-	defer mach.CliDisconnect(conn)
+
+	t.Cleanup(func() {
+		mach.CliDisconnect(conn)
+	})
 
 	now, _ := time.ParseInLocation("2006-01-02 15:04:05", "2021-01-01 00:00:00", time.UTC)
 
@@ -608,9 +710,9 @@ func TestTagTableCLIInsertAndSelect(t *testing.T) {
 
 	// execute
 	err = mach.CliExecute(stmt)
-	require.NoError(t, err, "execute fail; %s", cliErrorStmt(stmt))
+	require.NoError(t, err)
 	err = mach.CliFreeStmt(stmt)
-	require.NoError(t, err, "close fail; %s", cliErrorStmt(stmt))
+	require.NoError(t, err)
 
 	// flush
 	err = mach.CliAllocStmt(conn, &stmt)
@@ -740,4 +842,27 @@ func TestTagTableCLIInsertAndSelect(t *testing.T) {
 	}
 	err = mach.CliFreeStmt(stmt)
 	require.NoError(t, err, "close fail")
+}
+
+func CliLogAppend(t *testing.T) {
+	var conn unsafe.Pointer
+	//	var stmt unsafe.Pointer
+
+	// connect
+	err := mach.CliConnect(global.CliEnv, fmt.Sprintf("SERVER=127.0.0.1;UID=SYS;PWD=MANAGER;CONNTYPE=1;PORT_NO=%d", machPort), &conn)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		mach.CliDisconnect(conn)
+	})
+
+	// now, _ := time.ParseInLocation("2006-01-02 15:04:05", "2021-01-01 00:00:00", time.UTC)
+
+	// // Because INSERT statement uses '2021-01-01 00:00:00' as time value which was parsed in Local timezone,
+	// // the time value should be converted to UTC timezone to compare
+	// // TODO: improve this behavior
+	// nowStrInLocal := now.In(time.Local).Format("2006-01-02 15:04:05")
+
+	// // insert
+	// err = mach.CliAllocStmt(conn, &stmt)
+	// require.NoError(t, err)
 }

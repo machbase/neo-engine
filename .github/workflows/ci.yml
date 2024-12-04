@@ -11,6 +11,7 @@ on:
 jobs:
   build-test:
     strategy:
+      fail-fast: false
       matrix:
         platform:
           - macos-14
