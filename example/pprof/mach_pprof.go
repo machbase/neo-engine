@@ -5,9 +5,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
-	"os/signal"
 	_ "runtime/pprof"
-	"syscall"
 	"unsafe"
 
 	mach "github.com/machbase/neo-engine/v8"
@@ -30,18 +28,6 @@ func checkErr(err error, msgAndArgs ...any) {
 }
 
 func main() {
-	c := make(chan os.Signal, 10)
-	signal.Notify(c, syscall.SIGURG)
-	go func() {
-		for sig := range c {
-			if s, ok := sig.(syscall.Signal); ok {
-				fmt.Println("signal:", sig.String(), fmt.Sprintf("sig(0x%X)", int(s)))
-			} else {
-				fmt.Println("signal:", sig.String(), sig)
-			}
-		}
-	}()
-
 	go func() {
 		http.ListenAndServe("0.0.0.0:6060", nil)
 		http.HandleFunc("/debug/pprof/", pprof.Index)

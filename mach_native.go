@@ -31,14 +31,6 @@ static inline void cliAppendErrorCallback(void* aStmtHandle,
 										 long  aRowBufLen) {
 	cliDefaultAppendErrorCallback(aStmtHandle, aErrorCode, aErrorMessage, aErrorBufLen, aRowBuf, aRowBufLen);
 }
-
-static void  inline cliDarwinSignalHandler(int sig) {
-	// ignore
-}
-
-static inline void cliDarwinDisableSignalHandler() {
-     signal(SIGURG, cliDarwinSignalHandler);
-}
 */
 import "C"
 
