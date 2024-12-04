@@ -37,6 +37,6 @@ jobs:
         with:
           go-version-file: 'go.mod'
           check-latest: true
-          cache: false
+          cache: true
       - name: Test
         run: go run mage.go test
