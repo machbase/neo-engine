@@ -38,18 +38,18 @@ func TestMain(m *testing.M) {
 	os.MkdirAll(filepath.Join(homePath, "dbs"), 0755)
 	os.WriteFile(confPath, machbase_conf, 0644)
 
+	var cliEnvHandler unsafe.Pointer
+	if err := mach.CliInitialize(&cliEnvHandler); err != nil {
+		panic(err)
+	}
+	global.CliEnv = cliEnvHandler
+
 	var svrEnvHandle unsafe.Pointer
 	err = mach.EngInitialize(homePath, machPort, 0x2, &svrEnvHandle)
 	if err != nil {
 		panic(err)
 	}
 	global.SvrEnv = svrEnvHandle
-
-	var cliEnvHandler unsafe.Pointer
-	if err := mach.CliInitialize(&cliEnvHandler); err != nil {
-		panic(err)
-	}
-	global.CliEnv = cliEnvHandler
 
 	if !mach.EngExistsDatabase(global.SvrEnv) {
 		mach.EngCreateDatabase(global.SvrEnv)
