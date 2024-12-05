@@ -8,7 +8,6 @@ import (
 	"unsafe"
 
 	"github.com/machbase/neo-engine/v8/native"
-	_ "github.com/machbase/neo-engine/v8/native"
 )
 
 /*
