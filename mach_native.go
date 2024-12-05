@@ -1488,7 +1488,7 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 	if rt := C.MachCLIAppendData(stmt, (*C.MachCLIAppendParam)(&data[0])); rt == 0 {
 		return nil
 	} else {
-		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIAppendData()")
+		return ErrDatabaseReturns("MachCLIAppendData", int(rt))
 	}
 }
 

@@ -846,23 +846,84 @@ func CliTagTableInsertAndSelect(t *testing.T) {
 
 func CliLogAppend(t *testing.T) {
 	var conn unsafe.Pointer
-	//	var stmt unsafe.Pointer
+	var stmt unsafe.Pointer
+	var tableName = "log_data"
+	var runCount = 100
 
 	// connect
 	err := mach.CliConnect(global.CliEnv, fmt.Sprintf("SERVER=127.0.0.1;UID=SYS;PWD=MANAGER;CONNTYPE=1;PORT_NO=%d", machPort), &conn)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		mach.CliDisconnect(conn)
-	})
 
-	// now, _ := time.ParseInLocation("2006-01-02 15:04:05", "2021-01-01 00:00:00", time.UTC)
+	err = mach.CliAllocStmt(conn, &stmt)
+	require.NoError(t, err)
 
-	// // Because INSERT statement uses '2021-01-01 00:00:00' as time value which was parsed in Local timezone,
-	// // the time value should be converted to UTC timezone to compare
-	// // TODO: improve this behavior
-	// nowStrInLocal := now.In(time.Local).Format("2006-01-02 15:04:05")
+	err = mach.CliAppendOpen(stmt, tableName, 0)
+	require.NoError(t, err)
 
-	// // insert
-	// err = mach.CliAllocStmt(conn, &stmt)
-	// require.NoError(t, err)
+	now, _ := time.ParseInLocation("2006-01-02 15:04:05", "2021-01-01 00:00:00", time.UTC)
+
+	colTypes := []mach.SqlType{
+		mach.MACHCLI_SQL_TYPE_STRING,   // name
+		mach.MACHCLI_SQL_TYPE_DATETIME, // time
+		mach.MACHCLI_SQL_TYPE_DOUBLE,   // value
+		mach.MACHCLI_SQL_TYPE_INT16,    // short_value
+		mach.MACHCLI_SQL_TYPE_INT16,    // ushort_value
+		mach.MACHCLI_SQL_TYPE_INT32,    // int_value
+		mach.MACHCLI_SQL_TYPE_INT32,    // uint_value
+		mach.MACHCLI_SQL_TYPE_INT64,    // long_value
+		mach.MACHCLI_SQL_TYPE_INT64,    // ulong_value
+		mach.MACHCLI_SQL_TYPE_STRING,   // str_value
+		mach.MACHCLI_SQL_TYPE_STRING,   // json_value
+		mach.MACHCLI_SQL_TYPE_IPV4,     // ipv4_value
+		mach.MACHCLI_SQL_TYPE_IPV6,     // ipv6_value
+	}
+	colNames := []string{
+		"name", "time", "value",
+		"short_value", "ushort_value", "int_value", "uint_value",
+		"long_value", "ulong_value", "str_value", "json_value",
+		"ipv4_value", "ipv6_value",
+	}
+	for i := 0; i < runCount; i++ {
+		ip4 := net.ParseIP(fmt.Sprintf("192.168.0.%d", i%255))
+		ip6 := net.ParseIP(fmt.Sprintf("12:FF:FF:FF:CC:EE:FF:%02X", i%255))
+		varchar := fmt.Sprintf("varchar_append-%d", i)
+
+		err := mach.CliAppendData(stmt, colTypes, colNames, []any{
+			fmt.Sprintf("name-%d", i%100),   // name
+			now.Add(time.Millisecond),       // time
+			float64(i) * 1.1,                // value
+			int16(i),                        // short_value
+			uint16(i * 10),                  // ushort_value
+			int(i * 100),                    // int_value
+			uint(i * 1000),                  // uint_value
+			int64(i * 10000),                // long_value
+			uint64(i * 100000),              // ulong_value
+			varchar,                         // str_value
+			fmt.Sprintf("{\"json\":%d}", i), // json_value
+			ip4,                             // IPv4_value
+			ip6,                             // IPv6_value
+		})
+		require.NoError(t, err)
+	}
+
+	succ, fail, err := mach.CliAppendClose(stmt)
+	require.NoError(t, err)
+	require.Equal(t, int64(runCount), succ)
+	require.Equal(t, int64(0), fail)
+
+	err = mach.CliFreeStmt(stmt)
+	require.NoError(t, err)
+
+	err = mach.CliDisconnect(conn)
+	require.NoError(t, err)
+
+	// flush
+	err = mach.CliConnect(global.CliEnv, fmt.Sprintf("SERVER=127.0.0.1;UID=SYS;PWD=MANAGER;CONNTYPE=1;PORT_NO=%d", machPort), &conn)
+	require.NoError(t, err)
+	err = mach.CliAllocStmt(conn, &stmt)
+	require.NoError(t, err)
+	err = mach.CliExecDirect(stmt, `EXEC table_flush(simple_tag)`)
+	require.NoError(t, err)
+	err = mach.CliFreeStmt(stmt)
+	require.NoError(t, err)
 }
