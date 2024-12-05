@@ -1322,8 +1322,23 @@ func CliAppendOpen(stmt unsafe.Pointer, tableName string, errCheckCount int) err
 }
 
 func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []any) error {
-	if len(types) != len(args) || len(types) != len(names) {
+	if len(types) == 0 || len(types) != len(args) || len(types) != len(names) {
 		return ErrDatabaseAppendWrongValueCount(len(types), len(args))
+	}
+	withArrivalTime := (strings.EqualFold(names[0], "_arrival_time") && types[0] == MACHCLI_SQL_TYPE_DATETIME)
+	var arrivalTime int64
+	if withArrivalTime {
+		switch arvTime := (args[0]).(type) {
+		case time.Time:
+			arrivalTime = arvTime.UnixNano()
+		case int64:
+			arrivalTime = arvTime
+		default:
+			return ErrDatabaseAppendWrongType(args[0], names[0], "MACHCLI_SQL_TYPE_DATETIME")
+		}
+		types = types[1:]
+		names = names[1:]
+		args = args[1:]
 	}
 
 	data := make([]C.MachCLIAppendParam, len(args))
@@ -1485,10 +1500,18 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 		}
 	}
 
-	if rt := C.MachCLIAppendData(stmt, (*C.MachCLIAppendParam)(&data[0])); rt == 0 {
-		return nil
+	if withArrivalTime {
+		if rt := C.MachCLIAppendDataByTime(stmt, C.longlong(arrivalTime), (*C.MachCLIAppendParam)(&data[0])); rt == 0 {
+			return nil
+		} else {
+			return ErrDatabaseReturns("MachCLIAppendData", int(rt))
+		}
 	} else {
-		return ErrDatabaseReturns("MachCLIAppendData", int(rt))
+		if rt := C.MachCLIAppendData(stmt, (*C.MachCLIAppendParam)(&data[0])); rt == 0 {
+			return nil
+		} else {
+			return ErrDatabaseReturns("MachCLIAppendData", int(rt))
+		}
 	}
 }
 

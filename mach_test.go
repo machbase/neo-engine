@@ -730,8 +730,6 @@ func CliTagTableInsertAndSelect(t *testing.T) {
 	err = mach.CliExecute(stmt)
 	require.NoError(t, err, "execute fail")
 
-	// stmt type (e.g. INSERT, SELECT) is not supported in CLI
-
 	// fetch
 	endOfResult, err := mach.CliFetch(stmt)
 	require.NoError(t, err, "fetch fail")
@@ -863,6 +861,7 @@ func CliLogAppend(t *testing.T) {
 	now, _ := time.ParseInLocation("2006-01-02 15:04:05", "2021-01-01 00:00:00", time.UTC)
 
 	colTypes := []mach.SqlType{
+		mach.MACHCLI_SQL_TYPE_DATETIME, // _ARRIVAL_TIME
 		mach.MACHCLI_SQL_TYPE_STRING,   // name
 		mach.MACHCLI_SQL_TYPE_DATETIME, // time
 		mach.MACHCLI_SQL_TYPE_DOUBLE,   // value
@@ -878,7 +877,7 @@ func CliLogAppend(t *testing.T) {
 		mach.MACHCLI_SQL_TYPE_IPV6,     // ipv6_value
 	}
 	colNames := []string{
-		"name", "time", "value",
+		"_ARRIVAL_TIME", "name", "time", "value",
 		"short_value", "ushort_value", "int_value", "uint_value",
 		"long_value", "ulong_value", "str_value", "json_value",
 		"ipv4_value", "ipv6_value",
@@ -889,6 +888,7 @@ func CliLogAppend(t *testing.T) {
 		varchar := fmt.Sprintf("varchar_append-%d", i)
 
 		err := mach.CliAppendData(stmt, colTypes, colNames, []any{
+			time.Now(),                      // _ARRIVAL_TIME
 			fmt.Sprintf("name-%d", i%100),   // name
 			now.Add(time.Millisecond),       // time
 			float64(i) * 1.1,                // value
