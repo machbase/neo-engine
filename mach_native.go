@@ -1071,11 +1071,11 @@ func CliInitialize(env *unsafe.Pointer) error {
 }
 
 func CliFinalize(env unsafe.Pointer) error {
-	if rt := C.MachCLIFinalize(env); rt == 0 {
-		return nil
-	} else {
+	native.DeinitSignalHandler()
+	if rt := C.MachCLIFinalize(env); rt != 0 {
 		return ErrDatabaseReturns("MachCLIFinalize", int(rt))
 	}
+	return nil
 }
 
 func CliConnect(env unsafe.Pointer, connStr string, conn *unsafe.Pointer) error {

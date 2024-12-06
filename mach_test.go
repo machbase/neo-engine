@@ -25,6 +25,12 @@ var global = struct {
 }{}
 
 func TestMain(m *testing.M) {
+	var cliEnvHandler unsafe.Pointer
+	if err := mach.CliInitialize(&cliEnvHandler); err != nil {
+		panic(err)
+	}
+	global.CliEnv = cliEnvHandler
+
 	homePath, err := filepath.Abs(filepath.Join(".", "tmp", "machbase"))
 	if err != nil {
 		panic(err)
@@ -38,14 +44,8 @@ func TestMain(m *testing.M) {
 	os.MkdirAll(filepath.Join(homePath, "dbs"), 0755)
 	os.WriteFile(confPath, machbase_conf, 0644)
 
-	var cliEnvHandler unsafe.Pointer
-	if err := mach.CliInitialize(&cliEnvHandler); err != nil {
-		panic(err)
-	}
-	global.CliEnv = cliEnvHandler
-
 	var svrEnvHandle unsafe.Pointer
-	err = mach.EngInitialize(homePath, machPort, 0x2, &svrEnvHandle)
+	err = mach.EngInitialize(homePath, machPort, 0x0, &svrEnvHandle)
 	if err != nil {
 		panic(err)
 	}
@@ -62,9 +62,9 @@ func TestMain(m *testing.M) {
 
 	m.Run()
 
-	mach.CliFinalize(global.CliEnv)
 	mach.EngShutdown(global.SvrEnv)
 	mach.EngFinalize(global.SvrEnv)
+	mach.CliFinalize(global.CliEnv)
 	os.RemoveAll(homePath)
 }
 

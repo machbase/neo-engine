@@ -5,3 +5,6 @@ package native
 
 func InitSignalHandler() {
 }
+
+func DeinitSignalHandler() {
+}
