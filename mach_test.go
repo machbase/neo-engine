@@ -25,12 +25,6 @@ var global = struct {
 }{}
 
 func TestMain(m *testing.M) {
-	var cliEnvHandler unsafe.Pointer
-	if err := mach.CliInitialize(&cliEnvHandler); err != nil {
-		panic(err)
-	}
-	global.CliEnv = cliEnvHandler
-
 	homePath, err := filepath.Abs(filepath.Join(".", "tmp", "machbase"))
 	if err != nil {
 		panic(err)
@@ -59,6 +53,12 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
+
+	var cliEnvHandler unsafe.Pointer
+	if err := mach.CliInitialize(&cliEnvHandler); err != nil {
+		panic(err)
+	}
+	global.CliEnv = cliEnvHandler
 
 	m.Run()
 

@@ -10,13 +10,20 @@ package native
 
 sigset_t machengine_mask;
 
-static inline void cliDarwinDisableSignalHandler() {
-	sigemptyset(&machengine_mask);;
-	sigaddset(&machengine_mask, SIGURG);
-	sigprocmask(SIG_BLOCK, &machengine_mask, NULL);
+static void inline cliDarwinIgonreSignalHandler() {
 }
 
-static inline void cliDarwinEnableSignalHandler() {
+static void inline cliDarwinDisableSignalHandler() {
+	signal(SIGURG, cliDarwinIgonreSignalHandler);
+
+	// TODO: 'sigprocmask' is not working to prevent SIGURG signal
+	//
+	// sigemptyset(&machengine_mask);;
+	// sigaddset(&machengine_mask, SIGURG);
+	// sigprocmask(SIG_BLOCK, &machengine_mask, NULL);
+}
+
+static void inline cliDarwinEnableSignalHandler() {
 	sigprocmask(SIG_UNBLOCK, &machengine_mask, NULL);
 }
 */
