@@ -1488,13 +1488,17 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 				}
 			}
 		case MACHCLI_SQL_TYPE_STRING:
-			switch value := args[i].(type) {
-			case string:
-				cstr := []byte(value)
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(len(cstr))
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(&cstr[0])
-			default:
-				return ErrDatabaseAppendWrongType(value, name, "MACHCLI_SQL_TYPE_STRING")
+			if args[i] == nil {
+				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(0)
+			} else {
+				switch value := args[i].(type) {
+				case string:
+					cstr := []byte(value)
+					(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(len(cstr))
+					(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(&cstr[0])
+				default:
+					return ErrDatabaseAppendWrongType(value, name, "MACHCLI_SQL_TYPE_STRING")
+				}
 			}
 		case MACHCLI_SQL_TYPE_BINARY:
 		}
