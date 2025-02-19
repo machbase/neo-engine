@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -112,7 +113,28 @@ func EngConnectionCount(envHandle unsafe.Pointer) int {
 	return int(ret)
 }
 
+var (
+	metricEngConn   atomic.Int64
+	metricEngStmt   atomic.Int64
+	metricEngAppend atomic.Int64
+)
+
+type AllocStat struct {
+	EngConn   int64
+	EngStmt   int64
+	EngAppend int64
+}
+
+func Stat() AllocStat {
+	return AllocStat{
+		EngConn:   metricEngConn.Load(),
+		EngStmt:   metricEngStmt.Load(),
+		EngAppend: metricEngAppend.Load(),
+	}
+}
+
 func EngConnect(envHandle unsafe.Pointer, username string, password string, conn *unsafe.Pointer) error {
+	metricEngConn.Add(1)
 	cusername := C.CString(username)
 	cpassword := C.CString(password)
 	defer func() {
@@ -132,6 +154,7 @@ func EngConnect(envHandle unsafe.Pointer, username string, password string, conn
 }
 
 func EngConnectTrust(envHandle unsafe.Pointer, username string, conn *unsafe.Pointer) error {
+	metricEngConn.Add(1)
 	cusername := C.CString(username)
 	defer func() {
 		C.free(unsafe.Pointer(cusername))
@@ -149,6 +172,7 @@ func EngConnectTrust(envHandle unsafe.Pointer, username string, conn *unsafe.Poi
 }
 
 func EngDisconnect(conn unsafe.Pointer) error {
+	metricEngConn.Add(-1)
 	if rt := C.MachDisconnect(conn); rt == 0 {
 		return nil
 	} else {
@@ -231,6 +255,7 @@ func EngExplain(stmt unsafe.Pointer, full bool) (string, error) {
 }
 
 func EngAllocStmt(conn unsafe.Pointer, stmt *unsafe.Pointer) error {
+	metricEngStmt.Add(1)
 	var ptr unsafe.Pointer
 	if rt := C.MachAllocStmt(conn, &ptr); rt != 0 {
 		dbErr := EngError(conn)
@@ -245,6 +270,7 @@ func EngAllocStmt(conn unsafe.Pointer, stmt *unsafe.Pointer) error {
 }
 
 func EngFreeStmt(stmt unsafe.Pointer) error {
+	metricEngStmt.Add(-1)
 	if rt := C.MachFreeStmt(stmt); rt != 0 {
 		stmtErr := EngError(stmt)
 		if stmtErr != nil {
@@ -677,6 +703,7 @@ func EngColumnDataBinary(stmt unsafe.Pointer, idx int) ([]byte, bool, error) {
 }
 
 func EngAppendOpen(stmt unsafe.Pointer, tableName string) error {
+	metricEngAppend.Add(1)
 	cstr := C.CString(strings.ToUpper(tableName))
 	defer C.free(unsafe.Pointer(cstr))
 	if rt := C.MachAppendOpen(stmt, cstr); rt != 0 {
@@ -691,6 +718,7 @@ func EngAppendOpen(stmt unsafe.Pointer, tableName string) error {
 }
 
 func EngAppendClose(stmt unsafe.Pointer) (int64, int64, error) {
+	metricEngAppend.Add(-1)
 	var successCount C.ulonglong
 	var failureCount C.ulonglong
 	if rt := C.MachAppendClose(stmt, &successCount, &failureCount); rt != 0 {
