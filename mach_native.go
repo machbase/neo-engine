@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 	"unsafe"
@@ -733,6 +734,7 @@ func EngAppendClose(stmt unsafe.Pointer) (int64, int64, error) {
 }
 
 type AppendBuffer struct {
+	sync.Mutex
 	stmt        unsafe.Pointer
 	columnTypes []string
 	columnNames []string
@@ -749,6 +751,8 @@ func EngMakeAppendBuffer(stmt unsafe.Pointer, columnNames []string, columnTypes 
 }
 
 func (ab *AppendBuffer) Append(vals ...any) error {
+	ab.Lock()
+	defer ab.Unlock()
 	if len(vals) != len(ab.columnNames) {
 		return ErrDatabaseAppendWrongValueCount(len(ab.columnNames), len(vals))
 	}
@@ -1495,6 +1499,7 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(4)
 				case string:
 					cstr := C.CString(value)
+					defer C.free(unsafe.Pointer(cstr))
 					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddrString = cstr
 					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(255)
 				}
@@ -1510,8 +1515,9 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 					}
 					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(6)
 				case string:
-					cstr := []byte(value)
-					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddrString = (*C.char)(unsafe.Pointer(&cstr[0]))
+					cstr := C.CString(value)
+					defer C.free(unsafe.Pointer(cstr))
+					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddrString = cstr
 					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(255)
 				}
 			}
@@ -1521,9 +1527,10 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 			} else {
 				switch value := args[i].(type) {
 				case string:
-					cstr := []byte(value)
-					(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(len(cstr))
-					(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(&cstr[0])
+					cstr := C.CString(value)
+					defer C.free(unsafe.Pointer(cstr))
+					(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(C.strlen(cstr))
+					(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(cstr)
 				default:
 					return ErrDatabaseAppendWrongType(value, name, "MACHCLI_SQL_TYPE_STRING")
 				}
@@ -1578,6 +1585,10 @@ func CliDefaultAppendErrorCallback(stmt unsafe.Pointer, errCode C.int, errMsg *C
 	if cb, ok := cliAppendErrorCallbacks[fmt.Sprintf("%X", stmt)]; ok {
 		cb(stmt, int(errCode), msg, buf)
 	}
+}
+
+func CliDefaultAppendErrorCallbackClose(stmt unsafe.Pointer) {
+	delete(cliAppendErrorCallbacks, fmt.Sprintf("%X", stmt))
 }
 
 func CliAppendSetErrorCallback(stmt unsafe.Pointer, cb CLIAppendErrorCallback) error {
