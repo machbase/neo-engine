@@ -3,7 +3,7 @@
 
 package mach
 
-// #cgo LDFLAGS: ${SRCDIR}/native/libmachengine_standard_linux_amd64.a -lm -ldl
+// #cgo LDFLAGS: ${SRCDIR}/native/libmachengine_standard_linux_amd64.a -lm -ldl -lrt
 import "C"
 
 const LibMachLinkInfo = "static_standard_linux_amd64"
