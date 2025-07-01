@@ -78,8 +78,7 @@ func TestAll(t *testing.T) {
 		{name: "SvrTagTableInsertAndSelect", tc: SvrTagTableInsertAndSelect},
 		{name: "CliTagTableInsertAndSelect", tc: CliTagTableInsertAndSelect},
 		{name: "CliSimpleTagInsert100K", tc: CliSimpleTagInsert100K},
-		// TODO: CliLogAppend occurs panic on windows
-		//{name: "CliLogAppend", tc: CliLogAppend},
+		{name: "CliLogAppend", tc: CliLogAppend},
 	}
 
 	for _, tc := range tests {
@@ -877,18 +876,22 @@ func CliLogAppend(t *testing.T) {
 		mach.MACHCLI_SQL_TYPE_STRING,   // json_value
 		mach.MACHCLI_SQL_TYPE_IPV4,     // ipv4_value
 		mach.MACHCLI_SQL_TYPE_IPV6,     // ipv6_value
+		mach.MACHCLI_SQL_TYPE_BINARY,   // binary_value
 	}
 	colNames := []string{
 		"_ARRIVAL_TIME", "name", "time", "value",
 		"short_value", "ushort_value", "int_value", "uint_value",
 		"long_value", "ulong_value", "str_value", "json_value",
-		"ipv4_value", "ipv6_value",
+		"ipv4_value", "ipv6_value", "bin_value",
 	}
 	for i := 0; i < runCount; i++ {
 		ip4 := net.ParseIP(fmt.Sprintf("192.168.0.%d", i%255))
 		ip6 := net.ParseIP(fmt.Sprintf("12:FF:FF:FF:CC:EE:FF:%02X", i%255))
 		varchar := fmt.Sprintf("varchar_append-%d", i)
-
+		binary := make([]byte, 100)
+		for j := 0; j < len(binary); j++ {
+			binary[j] = byte(i % 256)
+		}
 		err := mach.CliAppendData(stmt, colTypes, colNames, []any{
 			time.Now(),                      // _ARRIVAL_TIME
 			fmt.Sprintf("name-%d", i%100),   // name
@@ -904,6 +907,7 @@ func CliLogAppend(t *testing.T) {
 			fmt.Sprintf("{\"json\":%d}", i), // json_value
 			ip4,                             // IPv4_value
 			ip6,                             // IPv6_value
+			binary,                          // binary_value
 		})
 		require.NoError(t, err)
 	}
