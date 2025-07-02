@@ -21,17 +21,16 @@ jobs:
           - ubuntu-22.04-arm
           - ubuntu-24.04
           - ubuntu-24.04-arm
-          - windows-2019
-#          - windows-2022
+          - windows-2022
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install MingW64
+      - name: Install MINGW64
         if: startsWith(matrix.platform, 'windows')
         uses: msys2/setup-msys2@v2
         with:
-          msystem: mingw64
+          msystem: MINGW64
           install: >-
             mingw-w64-x86_64-gcc
       - name: Setup go compiler
@@ -42,3 +41,5 @@ jobs:
           cache: true
       - name: Test
         run: go run mage.go test
+        env:
+          MSYSTEM: MINGW64
