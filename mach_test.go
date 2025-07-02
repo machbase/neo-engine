@@ -39,8 +39,7 @@ func TestMain(m *testing.M) {
 	os.WriteFile(confPath, machbase_conf, 0644)
 
 	var svrEnvHandle unsafe.Pointer
-	err = mach.EngInitialize(homePath, machPort, 0x0, &svrEnvHandle)
-	if err != nil {
+	if err := mach.EngInitialize(homePath, machPort, 0x0, &svrEnvHandle); err != nil {
 		panic(err)
 	}
 	global.SvrEnv = svrEnvHandle
@@ -49,10 +48,10 @@ func TestMain(m *testing.M) {
 		mach.EngCreateDatabase(global.SvrEnv)
 	}
 
-	err = mach.EngStartup(global.SvrEnv)
-	if err != nil {
+	if err := mach.EngStartup(global.SvrEnv); err != nil {
 		panic(err)
 	}
+	time.Sleep(time.Millisecond * 4000)
 
 	var cliEnvHandler unsafe.Pointer
 	if err := mach.CliInitialize(&cliEnvHandler); err != nil {
@@ -62,9 +61,13 @@ func TestMain(m *testing.M) {
 
 	m.Run()
 
-	mach.EngShutdown(global.SvrEnv)
+	if err := mach.CliFinalize(global.CliEnv); err != nil {
+		panic(err)
+	}
+	if err := mach.EngShutdown(global.SvrEnv); err != nil {
+		panic(err)
+	}
 	mach.EngFinalize(global.SvrEnv)
-	mach.CliFinalize(global.CliEnv)
 	os.RemoveAll(homePath)
 }
 
@@ -567,22 +570,24 @@ func CliSimpleTagInsert(t *testing.T, runCount int, expectCount int, useDirect b
 
 	if useDirect {
 		// insert direct_execute
-		for i := 0; i < runCount; i++ {
+		ts := now.UnixNano()
+		for i := range runCount {
 			sqlText := fmt.Sprintf(`insert into simple_tag values('insert-cli', %d, %.6f)`,
-				now.Add(time.Duration(i*10000000)).UnixNano(),
+				ts+int64(i),
 				1.001*float64(i+1),
 			)
 			err = mach.CliExecDirectConn(conn, sqlText)
-			require.NoError(t, err)
+			require.NoError(t, err, "insert fail at index %d", i)
 		}
 	} else {
 		// insert query
-		for i := 0; i < runCount; i++ {
+		ts := now.UnixNano()
+		for i := range runCount {
 			err = mach.CliAllocStmt(conn, &stmt)
 			require.NoError(t, err)
 			err = mach.CliPrepare(stmt, `insert into simple_tag values('insert-cli', ?, ?)`)
 			require.NoError(t, err)
-			longTime := int64(now.Add(time.Duration(i * 10000000)).UnixNano())
+			longTime := ts + int64(i)
 			err = mach.CliBindParam(stmt, 0, mach.MACHCLI_C_TYPE_INT64, mach.MACHCLI_SQL_TYPE_DATETIME, unsafe.Pointer(&longTime), 8)
 			require.NoError(t, err)
 			err = mach.CliBindParam(stmt, 1, mach.MACHCLI_C_TYPE_DOUBLE, mach.MACHCLI_SQL_TYPE_DOUBLE, unsafe.Pointer(&[]float64{1.001 * float64(i+1)}[0]), 8)
@@ -619,7 +624,8 @@ func CliSimpleTagInsert(t *testing.T, runCount int, expectCount int, useDirect b
 	require.NoError(t, err)
 	require.Equal(t, int64(expectCount), resultCount)
 
-	mach.CliFreeStmt(stmt)
+	err = mach.CliFreeStmt(stmt)
+	require.NoError(t, err)
 
 	// // JOIN tag stat and meta
 	// err = mach.CliAllocStmt(conn, &stmt)
@@ -863,28 +869,31 @@ func CliLogAppend(t *testing.T) {
 
 	colTypes := []mach.SqlType{
 		mach.MACHCLI_SQL_TYPE_DATETIME, // _ARRIVAL_TIME
-		mach.MACHCLI_SQL_TYPE_STRING,   // name
 		mach.MACHCLI_SQL_TYPE_DATETIME, // time
-		mach.MACHCLI_SQL_TYPE_DOUBLE,   // value
 		mach.MACHCLI_SQL_TYPE_INT16,    // short_value
 		mach.MACHCLI_SQL_TYPE_INT16,    // ushort_value
 		mach.MACHCLI_SQL_TYPE_INT32,    // int_value
 		mach.MACHCLI_SQL_TYPE_INT32,    // uint_value
 		mach.MACHCLI_SQL_TYPE_INT64,    // long_value
 		mach.MACHCLI_SQL_TYPE_INT64,    // ulong_value
+		mach.MACHCLI_SQL_TYPE_DOUBLE,   // double_value
+		mach.MACHCLI_SQL_TYPE_FLOAT,    // float_value
 		mach.MACHCLI_SQL_TYPE_STRING,   // str_value
 		mach.MACHCLI_SQL_TYPE_STRING,   // json_value
 		mach.MACHCLI_SQL_TYPE_IPV4,     // ipv4_value
 		mach.MACHCLI_SQL_TYPE_IPV6,     // ipv6_value
-		mach.MACHCLI_SQL_TYPE_BINARY,   // binary_value
+		mach.MACHCLI_SQL_TYPE_STRING,   // text_value
+		mach.MACHCLI_SQL_TYPE_BINARY,   // bin_value
 	}
 	colNames := []string{
-		"_ARRIVAL_TIME", "name", "time", "value",
+		"_ARRIVAL_TIME", "time",
 		"short_value", "ushort_value", "int_value", "uint_value",
-		"long_value", "ulong_value", "str_value", "json_value",
-		"ipv4_value", "ipv6_value", "bin_value",
+		"long_value", "ulong_value", "double_value", "float_value",
+		"str_value", "json_value",
+		"ipv4_value", "ipv6_value", "text_value", "bin_value",
 	}
-	for i := 0; i < runCount; i++ {
+
+	for i := range runCount {
 		ip4 := net.ParseIP(fmt.Sprintf("192.168.0.%d", i%255))
 		ip6 := net.ParseIP(fmt.Sprintf("12:FF:FF:FF:CC:EE:FF:%02X", i%255))
 		varchar := fmt.Sprintf("varchar_append-%d", i)
@@ -893,21 +902,22 @@ func CliLogAppend(t *testing.T) {
 			binary[j] = byte(i % 256)
 		}
 		err := mach.CliAppendData(stmt, colTypes, colNames, []any{
-			time.Now(),                      // _ARRIVAL_TIME
-			fmt.Sprintf("name-%d", i%100),   // name
-			now.Add(time.Millisecond),       // time
-			float64(i) * 1.1,                // value
-			int16(i),                        // short_value
-			uint16(i * 10),                  // ushort_value
-			int(i * 100),                    // int_value
-			uint(i * 1000),                  // uint_value
-			int64(i * 10000),                // long_value
-			uint64(i * 100000),              // ulong_value
-			varchar,                         // str_value
-			fmt.Sprintf("{\"json\":%d}", i), // json_value
-			ip4,                             // IPv4_value
-			ip6,                             // IPv6_value
-			binary,                          // binary_value
+			time.Now(),                       // _ARRIVAL_TIME
+			now.Add(time.Millisecond),        // time
+			int16(i),                         // short_value
+			uint16(i * 10),                   // ushort_value
+			int(i * 100),                     // int_value
+			uint(i * 1000),                   // uint_value
+			int64(i * 10000),                 // long_value
+			uint64(i * 100000),               // ulong_value
+			float64(i) * 1.1,                 // double_value
+			float32(i) * 1.2,                 // float_value
+			varchar,                          // str_value
+			fmt.Sprintf("{\"json\":%d}", i),  // json_value
+			ip4,                              // IPv4_value
+			ip6,                              // IPv6_value
+			fmt.Sprintf("text_append-%d", i), // text_value
+			binary,                           // binary_value
 		})
 		require.NoError(t, err)
 	}
@@ -928,7 +938,7 @@ func CliLogAppend(t *testing.T) {
 	require.NoError(t, err)
 	err = mach.CliAllocStmt(conn, &stmt)
 	require.NoError(t, err)
-	err = mach.CliExecDirect(stmt, `EXEC table_flush(simple_tag)`)
+	err = mach.CliExecDirect(stmt, fmt.Sprintf(`EXEC table_flush(%s)`, tableName))
 	require.NoError(t, err)
 	err = mach.CliFreeStmt(stmt)
 	require.NoError(t, err)
