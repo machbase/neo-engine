@@ -1463,6 +1463,8 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 					*(*C.double)(unsafe.Pointer(&data[i])) = C.double(value)
 				case int:
 					*(*C.double)(unsafe.Pointer(&data[i])) = C.double(value)
+				case int16:
+					*(*C.double)(unsafe.Pointer(&data[i])) = C.double(value)
 				case int32:
 					*(*C.double)(unsafe.Pointer(&data[i])) = C.double(value)
 				case int64:
@@ -1478,11 +1480,15 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 			} else {
 				switch value := args[i].(type) {
 				case time.Time:
-					tv := value.UnixNano()
-					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(tv)
+					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value.UnixNano())
+				case int:
+					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
 				case int16:
-					tv := int64(value)
-					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(tv)
+					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
+				case int32:
+					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
+				case int64:
+					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
 				default:
 					return ErrDatabaseAppendWrongType(value, name, "MACHCLI_SQL_TYPE_DATETIME")
 				}
