@@ -17,6 +17,7 @@ import (
 var machbase_conf []byte
 var machPort = 5656
 var machHome = "./tmp/machbase_home"
+var machInit = uint32(0x0)
 
 func main() {
 	homePath, err := filepath.Abs(machHome)
@@ -33,7 +34,7 @@ func main() {
 	os.WriteFile(confPath, machbase_conf, 0644)
 
 	var svrEnvHandle unsafe.Pointer
-	if err := mach.EngInitialize(homePath, machPort, 0x0, &svrEnvHandle); err != nil {
+	if err := mach.EngInitialize(homePath, machPort, machInit, &svrEnvHandle); err != nil {
 		panic(err)
 	}
 
