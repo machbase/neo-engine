@@ -42,7 +42,9 @@ func LinkInfo() string {
 func EngInitialize(homeDir string, machPort int, flag int, envHandle *unsafe.Pointer) error {
 	cstr := C.CString(homeDir)
 	defer C.free(unsafe.Pointer(cstr))
-	if rt := C.MachInitialize(cstr, C.int(machPort), C.int(flag), envHandle); rt == 0 {
+	var tmpHandle unsafe.Pointer
+	if rt := C.MachInitialize(cstr, C.int(machPort), C.int(flag), &tmpHandle); rt == 0 {
+		*envHandle = tmpHandle
 		return nil
 	} else {
 		return ErrDatabaseReturns("MachInitialize", int(rt))
@@ -142,7 +144,9 @@ func EngConnect(envHandle unsafe.Pointer, username string, password string, conn
 		C.free(unsafe.Pointer(cusername))
 		C.free(unsafe.Pointer(cpassword))
 	}()
-	if rt := C.MachConnect(envHandle, cusername, cpassword, conn); rt == 0 {
+	var tmpConn unsafe.Pointer
+	if rt := C.MachConnect(envHandle, cusername, cpassword, &tmpConn); rt == 0 {
+		*conn = tmpConn
 		return nil
 	} else {
 		dbErr := EngError(envHandle)
@@ -160,7 +164,9 @@ func EngConnectTrust(envHandle unsafe.Pointer, username string, conn *unsafe.Poi
 	defer func() {
 		C.free(unsafe.Pointer(cusername))
 	}()
-	if rt := C.MachConnectNoAuth(envHandle, cusername, conn); rt == 0 {
+	var tmpConn unsafe.Pointer
+	if rt := C.MachConnectNoAuth(envHandle, cusername, &tmpConn); rt == 0 {
+		*conn = tmpConn
 		return nil
 	} else {
 		dbErr := EngError(envHandle)
@@ -426,6 +432,10 @@ func EngBindString(stmt unsafe.Pointer, idx int, val string) error {
 }
 
 func EngBindBinary(stmt unsafe.Pointer, idx int, data []byte) error {
+	if len(data) == 0 {
+		// For empty slice, bind as empty binary
+		data = []byte{0}
+	}
 	ptr := unsafe.Pointer(&data[0])
 	if rt := C.MachBindBinary(stmt, C.int(idx), ptr, C.int(len(data))); rt != 0 {
 		stmtErr := EngError(stmt)
@@ -1095,9 +1105,11 @@ func (ab *AppendBuffer) Append(vals ...any) error {
 }
 
 func CliInitialize(env *unsafe.Pointer) error {
-	if rt := C.MachCLIInitialize(env); rt != 0 {
+	var tmpEnv unsafe.Pointer
+	if rt := C.MachCLIInitialize(&tmpEnv); rt != 0 {
 		return ErrDatabaseReturns("MachCLIInitialize", int(rt))
 	}
+	*env = tmpEnv
 	native.InitSignalHandler()
 	return nil
 }
@@ -1113,9 +1125,11 @@ func CliFinalize(env unsafe.Pointer) error {
 func CliConnect(env unsafe.Pointer, connStr string, conn *unsafe.Pointer) error {
 	cstr := C.CString(connStr)
 	defer C.free(unsafe.Pointer(cstr))
-	if rt := C.MachCLIConnect(env, cstr, conn); rt != 0 {
+	var tmpConn unsafe.Pointer
+	if rt := C.MachCLIConnect(env, cstr, &tmpConn); rt != 0 {
 		return CliErrorCaller(env, MACHCLI_HANDLE_ENV, "MachCLIConnect")
 	}
+	*conn = tmpConn
 	return nil
 }
 
@@ -1156,9 +1170,11 @@ func CliErrorCaller(handle unsafe.Pointer, handleType HandleType, fn string) err
 }
 
 func CliAllocStmt(conn unsafe.Pointer, stmt *unsafe.Pointer) error {
-	if rt := C.MachCLIAllocStmt(conn, stmt); rt != 0 {
+	var tmpStmt unsafe.Pointer
+	if rt := C.MachCLIAllocStmt(conn, &tmpStmt); rt != 0 {
 		return CliErrorCaller(conn, MACHCLI_HANDLE_DBC, "MachCLIAllocStmt()")
 	}
+	*stmt = tmpStmt
 	return nil
 }
 
@@ -1357,6 +1373,15 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 	if len(types) == 0 || len(types) != len(args) || len(types) != len(names) {
 		return ErrDatabaseAppendWrongValueCount(len(types), len(args))
 	}
+
+	// Track allocated C strings to free them after MachCLIAppendData call
+	var allocatedCStrings []unsafe.Pointer
+	defer func() {
+		for _, ptr := range allocatedCStrings {
+			C.free(ptr)
+		}
+	}()
+
 	withArrivalTime := (strings.EqualFold(names[0], "_arrival_time") && types[0] == MACHCLI_SQL_TYPE_DATETIME)
 	var arrivalTime int64
 	if withArrivalTime {
@@ -1505,7 +1530,7 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(4)
 				case string:
 					cstr := C.CString(value)
-					defer C.free(unsafe.Pointer(cstr))
+					allocatedCStrings = append(allocatedCStrings, unsafe.Pointer(cstr))
 					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddrString = cstr
 					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(255)
 				}
@@ -1522,7 +1547,7 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(6)
 				case string:
 					cstr := C.CString(value)
-					defer C.free(unsafe.Pointer(cstr))
+					allocatedCStrings = append(allocatedCStrings, unsafe.Pointer(cstr))
 					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddrString = cstr
 					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(255)
 				}
@@ -1534,7 +1559,7 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 				switch value := args[i].(type) {
 				case string:
 					cstr := C.CString(value)
-					defer C.free(unsafe.Pointer(cstr))
+					allocatedCStrings = append(allocatedCStrings, unsafe.Pointer(cstr))
 					(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(C.strlen(cstr))
 					(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(cstr)
 				default:
@@ -1548,7 +1573,7 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 				switch value := args[i].(type) {
 				case string:
 					cstr := C.CString(value)
-					defer C.free(unsafe.Pointer(cstr))
+					allocatedCStrings = append(allocatedCStrings, unsafe.Pointer(cstr))
 					(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(C.strlen(cstr))
 					(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(cstr)
 				case []byte:
@@ -1599,7 +1624,7 @@ func CliAppendFlush(stmt unsafe.Pointer) error {
 
 type CLIAppendErrorCallback func(stmt unsafe.Pointer, errCode int, errMsg string, buf []byte)
 
-var cliAppendErrorCallbacks map[string]CLIAppendErrorCallback
+var cliAppendErrorCallbacks = make(map[string]CLIAppendErrorCallback)
 
 //export CliDefaultAppendErrorCallback
 func CliDefaultAppendErrorCallback(stmt unsafe.Pointer, errCode C.int, errMsg *C.char, errMsgLen C.long, rowBuf *C.char, rowBufLen C.long) {
