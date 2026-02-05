@@ -1276,6 +1276,57 @@ const (
 	MACHCLI_C_TYPE_CHAR   CType = 106
 )
 
+// * DDL: 1-255
+// * ALTER SYSTEM: 256-511
+// * SELECT: 512
+// * INSERT: 513
+// * DELETE: 514-518
+// * INSERT_SELECT: 519
+// * UPDATE: 520
+// * EXEC_ROLLUP: 522-524
+
+type StmtType int
+
+func (typ StmtType) IsSelect() bool {
+	return typ == 512
+}
+
+func (typ StmtType) IsDDL() bool {
+	return typ >= 1 && typ <= 255
+}
+
+func (typ StmtType) IsAlterSystem() bool {
+	return typ >= 256 && typ <= 511
+}
+
+func (typ StmtType) IsInsert() bool {
+	return typ == 513
+}
+
+func (typ StmtType) IsDelete() bool {
+	return typ >= 514 && typ <= 518
+}
+
+func (typ StmtType) IsInsertSelect() bool {
+	return typ == 519
+}
+
+func (typ StmtType) IsUpdate() bool {
+	return typ == 520
+}
+
+func (typ StmtType) IsExecRollup() bool {
+	return typ >= 522 && typ <= 524
+}
+
+func CliGetStmtType(stmt unsafe.Pointer) (int, error) {
+	var stmtType C.int
+	if rt := C.MachCLIGetStmtType(stmt, &stmtType); rt != 0 {
+		return 0, CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIGetStmtType()")
+	}
+	return int(stmtType), nil
+}
+
 // returns the length of the actual data
 func CliGetData(stmt unsafe.Pointer, columnNo int, cType CType, buf unsafe.Pointer, bufLen int) (int64, error) {
 	var resultLen C.long
