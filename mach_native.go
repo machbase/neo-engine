@@ -1210,6 +1210,13 @@ func CliExecDirect(stmt unsafe.Pointer, query string) error {
 	return nil
 }
 
+func CliExecuteClean(stmt unsafe.Pointer) error {
+	if rt := C.MachCLIExecuteClean(stmt); rt != 0 {
+		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIExecuteClean()")
+	}
+	return nil
+}
+
 func CliExecDirectConn(conn unsafe.Pointer, query string) error {
 	var stmt unsafe.Pointer
 	if err := CliAllocStmt(conn, &stmt); err != nil {
