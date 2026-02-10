@@ -113,6 +113,7 @@ int MachCLIFreeStmt(void* aStmt);
 int MachCLIPrepare(void* aStmt, char* aSQL);
 int MachCLIExecute(void* aStmt);
 int MachCLIExecDirect(void* aStmt, char* aSQL);
+int MachCLIExecuteClean(void* aStmt);
 int MachCLICancel(void* aStmt);
 
 int MachCLIFetch(void* aStmt, int* aFetchEnd);
