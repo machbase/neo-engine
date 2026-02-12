@@ -1427,7 +1427,7 @@ func CliAppendOpen(stmt unsafe.Pointer, tableName string, errCheckCount int) err
 	return nil
 }
 
-func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []any) error {
+func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []any, formats []string) error {
 	if len(types) == 0 || len(types) != len(args) || len(types) != len(names) {
 		return ErrDatabaseAppendWrongValueCount(len(types), len(args))
 	}
@@ -1558,8 +1558,7 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 			}
 		case MACHCLI_SQL_TYPE_DATETIME:
 			if args[i] == nil {
-				x := int64(0) // MACHCLI_APPEND_DATETIME_NULL
-				*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(x)
+				(*C.MachCLIAppendDateTimeStruct)(unsafe.Pointer(&data[i])).mTime = C.longlong(-1) // -1: null, -2: string, -3: TM, -4: now
 			} else {
 				switch value := args[i].(type) {
 				case time.Time:
@@ -1572,6 +1571,22 @@ func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []
 					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
 				case int64:
 					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
+				case string:
+					if strings.ToLower(value) == "now" {
+						(*C.MachCLIAppendDateTimeStruct)(unsafe.Pointer(&data[i])).mTime = C.longlong(-4) // -1: null, -2: string, -3: TM, -4: now
+					} else {
+						cstr := C.CString(value)
+						allocatedCStrings = append(allocatedCStrings, unsafe.Pointer(cstr))
+						formatStr := "YYYY-MM-DD HH24:MI:SS mmm:uuu:nnn"
+						if i < len(formats) && len(formats[i]) > 0 {
+							formatStr = formats[i]
+						}
+						cFormstStr := C.CString(formatStr)
+						allocatedCStrings = append(allocatedCStrings, unsafe.Pointer(cFormstStr))
+						(*C.MachCLIAppendDateTimeStruct)(unsafe.Pointer(&data[i])).mDateStr = cstr
+						(*C.MachCLIAppendDateTimeStruct)(unsafe.Pointer(&data[i])).mFormatStr = cFormstStr
+						(*C.MachCLIAppendDateTimeStruct)(unsafe.Pointer(&data[i])).mTime = C.longlong(-2) // -1: null, -2: string, -3: TM, -4: now
+					}
 				default:
 					return ErrDatabaseAppendWrongType(value, name, "MACHCLI_SQL_TYPE_DATETIME")
 				}

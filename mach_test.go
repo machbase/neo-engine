@@ -918,7 +918,7 @@ func CliLogAppend(t *testing.T) {
 			ip6,                              // IPv6_value
 			fmt.Sprintf("text_append-%d", i), // text_value
 			binary,                           // binary_value
-		})
+		}, nil)
 		require.NoError(t, err)
 	}
 
