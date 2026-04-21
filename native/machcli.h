@@ -27,6 +27,7 @@ typedef long sqllen_t;
 #define MACHCLI_C_TYPE_FLOAT     (104)
 #define MACHCLI_C_TYPE_DOUBLE    (105)
 #define MACHCLI_C_TYPE_CHAR      (106)
+#define MACHCLI_C_TYPE_BINARY    (107)
 
 #define MACHCLI_SQL_TYPE_INT16    (0)     
 #define MACHCLI_SQL_TYPE_INT32    (1)
@@ -112,8 +113,8 @@ int MachCLIFreeStmt(void* aStmt);
 
 int MachCLIPrepare(void* aStmt, char* aSQL);
 int MachCLIExecute(void* aStmt);
-int MachCLIExecDirect(void* aStmt, char* aSQL);
 int MachCLIExecuteClean(void* aStmt);
+int MachCLIExecDirect(void* aStmt, char* aSQL);
 int MachCLICancel(void* aStmt);
 
 int MachCLIFetch(void* aStmt, int* aFetchEnd);
@@ -175,6 +176,13 @@ int MachCLIAppendData(void              * aStmt,
 int MachCLIAppendDataByTime(void              * aStmt,
                             long long           aTime,
                             MachCLIAppendParam* aData);
+int MachCLIAppendDataV3(void              * aStmt,
+                        MachCLIAppendParam* aData,
+                        int                 aColCount);
+int MachCLIAppendDataByTimeV3(void              * aStmt,
+                              long long           aTime,
+                              MachCLIAppendParam* aData,
+                              int                 aColCount);
 int MachCLIAppendClose(void     * aStmt,
                        long long* aSuccessCount,
                        long long* aFailureCount);
@@ -197,6 +205,7 @@ int MachCLISetStmtAppendInterval(void* aStmt, int aMSec);
  * EXEC_ROLLUP: 1000-1002
  */
 int MachCLIGetStmtType(void* aStmt, int* aStmtType);
+int MachCLIExplain(void* aStmt, char *aQuery, char* aBuffer, int aBufSize);
 
 #ifdef __cplusplus
 }  /* extern "C" */
