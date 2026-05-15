@@ -4,7 +4,7 @@
 package mach
 
 /*
-#cgo LDFLAGS: ${SRCDIR}/native/libmachengine_standard_windows_amd64.a -lm -lws2_32 -lnetapi32 -ladvapi32 -liphlpapi -ldbghelp -lshell32 -luser32
+#cgo LDFLAGS: ${SRCDIR}/native/libmachengine_standard_windows_amd64.a -lm -lws2_32 -lnetapi32 -ladvapi32 -liphlpapi -ldbghelp -lshell32 -luser32 -lbcrypt
 */
 import "C"
 
