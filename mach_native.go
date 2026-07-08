@@ -780,7 +780,7 @@ func (ab *AppendBuffer) Append(vals ...any) error {
 		switch cType {
 		default:
 			return ErrDatabaseAppendUnknownType(cType)
-		case "short", "int16":
+		case "short", "int16", "uint16":
 			switch v := val.(type) {
 			default:
 				return ErrDatabaseAppendWrongType(v, cName, cType)
@@ -809,7 +809,7 @@ func (ab *AppendBuffer) Append(vals ...any) error {
 			case float32:
 				*(*C.short)(unsafe.Pointer(&buffer[i].mData[0])) = C.short(v)
 			}
-		case "integer", "int32":
+		case "integer", "int32", "uint32":
 			switch v := val.(type) {
 			default:
 				return ErrDatabaseAppendWrongType(v, cName, cType)
@@ -846,7 +846,7 @@ func (ab *AppendBuffer) Append(vals ...any) error {
 			case float32:
 				*(*C.int)(unsafe.Pointer(&buffer[i].mData[0])) = C.int(v)
 			}
-		case "long", "int64":
+		case "long", "int64", "uint64":
 			switch v := val.(type) {
 			default:
 				return ErrDatabaseAppendWrongType(v, cName, cType)
@@ -972,30 +972,6 @@ func (ab *AppendBuffer) Append(vals ...any) error {
 			case float64:
 				tv := int64(v)
 				(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = C.longlong(tv)
-				// case string:
-				// 	if len(timeformat) > 0 {
-				// 		cstr := C.CString(v)
-				// 		defer C.free(unsafe.Pointer(cstr))
-				// 		cfmt := C.CString(timeformat)
-				// 		defer C.free(unsafe.Pointer(cfmt))
-				// 		(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = -2 // MACH_ENGINE_APPEND_DATETIME_STRING
-				// 		(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mDateStr = cstr
-				// 		(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mFormatStr = cfmt
-				// 	} else {
-				// 		return ErrDatabaseAppendWrongTimeStringType(cName, cType)
-				// 	}
-				// case *string:
-				// 	if len(timeformat) > 0 {
-				// 		cstr := C.CString(*v)
-				// 		defer C.free(unsafe.Pointer(cstr))
-				// 		cfmt := C.CString(timeformat)
-				// 		defer C.free(unsafe.Pointer(cfmt))
-				// 		(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mTime = -2 // MACH_ENGINE_APPEND_DATETIME_STRING
-				// 		(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mDateStr = cstr
-				// 		(*C.MachEngineAppendDateTimeStruct)(unsafe.Pointer(&buffer[i].mData[0])).mFormatStr = cfmt
-				// 	} else {
-				// 		return ErrDatabaseAppendWrongTimeStringType(cName, cType)
-				// 	}
 			}
 		case "ipv4":
 			var ipv4 net.IP
