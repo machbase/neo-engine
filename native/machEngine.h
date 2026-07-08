@@ -17,7 +17,12 @@
 #define MACH_DATA_TYPE_IPV6     7
 #define MACH_DATA_TYPE_STRING   8
 #define MACH_DATA_TYPE_BINARY   9
-#define MACH_DATA_TYPE_MAX      10
+#define MACH_DATA_TYPE_UINT16   10
+#define MACH_DATA_TYPE_UINT32   11
+#define MACH_DATA_TYPE_UINT64   12
+#define MACH_DATA_TYPE_TEXT     13
+#define MACH_DATA_TYPE_JSON     14
+#define MACH_DATA_TYPE_MAX      15
 
 typedef struct MachEngineAppendVarStruct
 {
@@ -337,4 +342,3 @@ int MachAppendData(void* aMachStmt, MachEngineAppendParam* aAppendParamArr);
 unsigned long long MachSessionID(void* aConHandle);
 
 #endif
-
