@@ -285,6 +285,9 @@ int MachColumnData(void* aMachStmt, int aColumnIndex, void* aDest, int aBufSize,
 int MachColumnDataInt16(void* aMachStmt, int aColumnIndex, short* aDest, char* aIsNull);
 int MachColumnDataInt32(void* aMachStmt, int aColumnIndex, int* aDest, char* aIsNull);
 int MachColumnDataInt64(void* aMachStmt, int aColumnIndex, long long* aDest, char* aIsNull);
+int MachColumnDataUInt16(void* aMachStmt, int aColumnIndex, unsigned short* aDest, char* aIsNull);
+int MachColumnDataUInt32(void* aMachStmt, int aColumnIndex, unsigned int* aDest, char* aIsNull);
+int MachColumnDataUInt64(void* aMachStmt, int aColumnIndex, unsigned long long* aDest, char* aIsNull);
 int MachColumnDataDateTime(void* aMachStmt, int aColumnIndex, long long* aDest, char* aIsNull);
 int MachColumnDataFloat(void* aMachStmt, int aColumnIndex, float* aDest, char* aIsNull);
 int MachColumnDataDouble(void* aMachStmt, int aColumnIndex, double* aDest, char* aIsNull);
