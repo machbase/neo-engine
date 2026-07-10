@@ -560,6 +560,21 @@ func EngColumnDataInt16(stmt unsafe.Pointer, idx int) (int16, bool, error) {
 	return int16(val), isNull == 0, nil
 }
 
+// returns uint16 and true if NOT NULL, false if NULL
+func EngColumnDataUInt16(stmt unsafe.Pointer, idx int) (uint16, bool, error) {
+	var val C.ushort
+	var isNull C.char
+	if rt := C.MachColumnDataUInt16(stmt, C.int(idx), &val, &isNull); rt != 0 {
+		stmtErr := EngError(stmt)
+		if stmtErr != nil {
+			return 0, false, stmtErr
+		} else {
+			return 0, false, ErrDatabaseReturnsAtIdx("MachColumnDataUInt16", idx, int(rt))
+		}
+	}
+	return uint16(val), isNull == 0, nil
+}
+
 // returns int32 and true if NOT NULL, false if NULL
 func EngColumnDataInt32(stmt unsafe.Pointer, idx int) (int32, bool, error) {
 	var val C.int
@@ -575,6 +590,21 @@ func EngColumnDataInt32(stmt unsafe.Pointer, idx int) (int32, bool, error) {
 	return int32(val), isNull == 0, nil
 }
 
+// returns uint32 and true if NOT NULL, false if NULL
+func EngColumnDataUInt32(stmt unsafe.Pointer, idx int) (uint32, bool, error) {
+	var val C.uint
+	var isNull C.char
+	if rt := C.MachColumnDataUInt32(stmt, C.int(idx), &val, &isNull); rt != 0 {
+		stmtErr := EngError(stmt)
+		if stmtErr != nil {
+			return 0, false, stmtErr
+		} else {
+			return 0, false, ErrDatabaseReturnsAtIdx("MachColumnDataUInt32", idx, int(rt))
+		}
+	}
+	return uint32(val), isNull == 0, nil
+}
+
 // returns int64 and true if NOT NULL, false if NULL
 func EngColumnDataInt64(stmt unsafe.Pointer, idx int) (int64, bool, error) {
 	var val C.longlong
@@ -588,6 +618,21 @@ func EngColumnDataInt64(stmt unsafe.Pointer, idx int) (int64, bool, error) {
 		}
 	}
 	return int64(val), isNull == 0, nil
+}
+
+// returns uint64 and true if NOT NULL, false if NULL
+func EngColumnDataUInt64(stmt unsafe.Pointer, idx int) (uint64, bool, error) {
+	var val C.ulonglong
+	var isNull C.char
+	if rt := C.MachColumnDataUInt64(stmt, C.int(idx), &val, &isNull); rt != 0 {
+		stmtErr := EngError(stmt)
+		if stmtErr != nil {
+			return 0, false, stmtErr
+		} else {
+			return 0, false, ErrDatabaseReturnsAtIdx("MachColumnDataUInt64", idx, int(rt))
+		}
+	}
+	return uint64(val), isNull == 0, nil
 }
 
 // returns Time and true if NOT NULL, false if NULL

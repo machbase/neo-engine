@@ -471,11 +471,11 @@ func SvrTagTableInsertAndSelect(t *testing.T) {
 	}
 
 	// ushort_value
-	if v, isValid, err := mach.EngColumnDataInt16(stmt, 4); err != nil || !isValid {
+	if v, isValid, err := mach.EngColumnDataUInt16(stmt, 4); err != nil || !isValid {
 		require.NoError(t, err, "column data fail")
 	} else {
 		require.True(t, isValid, "column data fail")
-		require.Equal(t, uint16(2), uint16(v))
+		require.Equal(t, uint16(2), v)
 	}
 
 	// int_value
@@ -487,11 +487,11 @@ func SvrTagTableInsertAndSelect(t *testing.T) {
 	}
 
 	// uint_value
-	if v, isValid, err := mach.EngColumnDataInt32(stmt, 6); err != nil || !isValid {
+	if v, isValid, err := mach.EngColumnDataUInt32(stmt, 6); err != nil || !isValid {
 		require.NoError(t, err, "column data fail")
 	} else {
 		require.True(t, isValid, "column data fail")
-		require.Equal(t, uint32(4), uint32(v))
+		require.Equal(t, uint32(4), v)
 	}
 
 	// long_value
@@ -503,11 +503,11 @@ func SvrTagTableInsertAndSelect(t *testing.T) {
 	}
 
 	// ulong_value
-	if v, isValid, err := mach.EngColumnDataInt64(stmt, 8); err != nil || !isValid {
+	if v, isValid, err := mach.EngColumnDataUInt64(stmt, 8); err != nil || !isValid {
 		require.NoError(t, err, "column data fail")
 	} else {
 		require.True(t, isValid, "column data fail")
-		require.Equal(t, uint64(6), uint64(v))
+		require.Equal(t, uint64(6), v)
 	}
 
 	// str_value
