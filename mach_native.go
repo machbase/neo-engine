@@ -5,11 +5,8 @@ import (
 	"net"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 	"unsafe"
-
-	"github.com/machbase/neo-engine/v8/native"
 )
 
 /*
@@ -20,7 +17,6 @@ import (
 #include <signal.h>
 #include <string.h>
 #include <time.h>
-#include <machcli.h>
 
 extern void cliDefaultAppendErrorCallback(void* aStmtHandle, int aErrorCode, char* aErrorMessage, long aErrorBufLen, char* aRowBuf, long aRowBufLen);
 
@@ -116,28 +112,7 @@ func EngConnectionCount(envHandle unsafe.Pointer) int {
 	return int(ret)
 }
 
-var (
-	metricEngConn   atomic.Int64
-	metricEngStmt   atomic.Int64
-	metricEngAppend atomic.Int64
-)
-
-type AllocStat struct {
-	EngConn   int64
-	EngStmt   int64
-	EngAppend int64
-}
-
-func Stat() AllocStat {
-	return AllocStat{
-		EngConn:   metricEngConn.Load(),
-		EngStmt:   metricEngStmt.Load(),
-		EngAppend: metricEngAppend.Load(),
-	}
-}
-
 func EngConnect(envHandle unsafe.Pointer, username string, password string, conn *unsafe.Pointer) error {
-	metricEngConn.Add(1)
 	cusername := C.CString(username)
 	cpassword := C.CString(password)
 	defer func() {
@@ -159,7 +134,6 @@ func EngConnect(envHandle unsafe.Pointer, username string, password string, conn
 }
 
 func EngConnectTrust(envHandle unsafe.Pointer, username string, conn *unsafe.Pointer) error {
-	metricEngConn.Add(1)
 	cusername := C.CString(username)
 	defer func() {
 		C.free(unsafe.Pointer(cusername))
@@ -179,7 +153,6 @@ func EngConnectTrust(envHandle unsafe.Pointer, username string, conn *unsafe.Poi
 }
 
 func EngDisconnect(conn unsafe.Pointer) error {
-	metricEngConn.Add(-1)
 	if rt := C.MachDisconnect(conn); rt == 0 {
 		return nil
 	} else {
@@ -262,7 +235,6 @@ func EngExplain(stmt unsafe.Pointer, full bool) (string, error) {
 }
 
 func EngAllocStmt(conn unsafe.Pointer, stmt *unsafe.Pointer) error {
-	metricEngStmt.Add(1)
 	var ptr unsafe.Pointer
 	if rt := C.MachAllocStmt(conn, &ptr); rt != 0 {
 		dbErr := EngError(conn)
@@ -277,7 +249,6 @@ func EngAllocStmt(conn unsafe.Pointer, stmt *unsafe.Pointer) error {
 }
 
 func EngFreeStmt(stmt unsafe.Pointer) error {
-	metricEngStmt.Add(-1)
 	if rt := C.MachFreeStmt(stmt); rt != 0 {
 		stmtErr := EngError(stmt)
 		if stmtErr != nil {
@@ -759,7 +730,6 @@ func EngColumnDataBinary(stmt unsafe.Pointer, idx int) ([]byte, bool, error) {
 }
 
 func EngAppendOpen(stmt unsafe.Pointer, tableName string) error {
-	metricEngAppend.Add(1)
 	cstr := C.CString(strings.ToUpper(tableName))
 	defer C.free(unsafe.Pointer(cstr))
 	if rt := C.MachAppendOpen(stmt, cstr); rt != 0 {
@@ -774,7 +744,6 @@ func EngAppendOpen(stmt unsafe.Pointer, tableName string) error {
 }
 
 func EngAppendClose(stmt unsafe.Pointer) (int64, int64, error) {
-	metricEngAppend.Add(-1)
 	var successCount C.ulonglong
 	var failureCount C.ulonglong
 	if rt := C.MachAppendClose(stmt, &successCount, &failureCount); rt != 0 {
@@ -1125,159 +1094,6 @@ func (ab *AppendBuffer) Append(vals ...any) error {
 	return nil
 }
 
-func CliInitialize(env *unsafe.Pointer) error {
-	var tmpEnv unsafe.Pointer
-	if rt := C.MachCLIInitialize(&tmpEnv); rt != 0 {
-		return ErrDatabaseReturns("MachCLIInitialize", int(rt))
-	}
-	*env = tmpEnv
-	native.InitSignalHandler()
-	return nil
-}
-
-func CliFinalize(env unsafe.Pointer) error {
-	native.DeinitSignalHandler()
-	if rt := C.MachCLIFinalize(env); rt != 0 {
-		return ErrDatabaseReturns("MachCLIFinalize", int(rt))
-	}
-	return nil
-}
-
-func CliConnect(env unsafe.Pointer, connStr string, conn *unsafe.Pointer) error {
-	cstr := C.CString(connStr)
-	defer C.free(unsafe.Pointer(cstr))
-	var tmpConn unsafe.Pointer
-	if rt := C.MachCLIConnect(env, cstr, &tmpConn); rt != 0 {
-		return CliErrorCaller(env, MACHCLI_HANDLE_ENV, "MachCLIConnect")
-	}
-	*conn = tmpConn
-	return nil
-}
-
-func CliDisconnect(conn unsafe.Pointer) error {
-	if rt := C.MachCLIDisconnect(conn); rt != 0 {
-		return CliErrorCaller(conn, MACHCLI_HANDLE_DBC, "MachCLIDisconnect")
-	}
-	return nil
-}
-
-type HandleType int
-
-const (
-	MACHCLI_HANDLE_ENV  HandleType = 1
-	MACHCLI_HANDLE_DBC  HandleType = 2
-	MACHCLI_HANDLE_STMT HandleType = 3
-)
-
-func CliError(handle unsafe.Pointer, handleType HandleType, code *int, msg *string) error {
-	var ccode C.int
-	var cmsg = [500]C.char{}
-	if rt := C.MachCLIError(handle, C.int(handleType), &ccode, &cmsg[0], C.int(len(cmsg))); rt != 0 {
-		return ErrDatabaseReturns("MachCLIError", int(rt))
-	}
-	*code = int(ccode)
-	*msg = C.GoString(&cmsg[0])
-	return nil
-}
-
-func CliErrorCaller(handle unsafe.Pointer, handleType HandleType, fn string) error {
-	var ccode C.int
-	var cmsg = [500]C.char{}
-	if rt := C.MachCLIError(handle, C.int(handleType), &ccode, &cmsg[0], C.int(len(cmsg))); rt != 0 {
-		return ErrDatabaseReturns("MachCLIError", int(rt))
-	} else {
-		return ErrDatabaseCli(fn, int(ccode), C.GoString(&cmsg[0]))
-	}
-}
-
-func CliAllocStmt(conn unsafe.Pointer, stmt *unsafe.Pointer) error {
-	var tmpStmt unsafe.Pointer
-	if rt := C.MachCLIAllocStmt(conn, &tmpStmt); rt != 0 {
-		return CliErrorCaller(conn, MACHCLI_HANDLE_DBC, "MachCLIAllocStmt()")
-	}
-	*stmt = tmpStmt
-	return nil
-}
-
-func CliFreeStmt(stmt unsafe.Pointer) error {
-	if rt := C.MachCLIFreeStmt(stmt); rt != 0 {
-		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIFreeStmt()")
-	}
-	return nil
-}
-
-func CliPrepare(stmt unsafe.Pointer, query string) error {
-	sqlCString := C.CString(query)
-	defer C.free(unsafe.Pointer(sqlCString))
-	if rt := C.MachCLIPrepare(stmt, sqlCString); rt != 0 {
-		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIPrepare()")
-	}
-	return nil
-}
-
-func CliExecute(stmt unsafe.Pointer) error {
-	if rt := C.MachCLIExecute(stmt); rt != 0 {
-		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIExecute()")
-	}
-	return nil
-}
-
-func CliExecDirect(stmt unsafe.Pointer, query string) error {
-	sqlCString := C.CString(query)
-	defer C.free(unsafe.Pointer(sqlCString))
-	if rt := C.MachCLIExecDirect(stmt, sqlCString); rt != 0 {
-		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIExecDirect()")
-	}
-	return nil
-}
-
-func CliExecuteClean(stmt unsafe.Pointer) error {
-	if rt := C.MachCLIExecuteClean(stmt); rt != 0 {
-		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIExecuteClean()")
-	}
-	return nil
-}
-
-func CliExecDirectConn(conn unsafe.Pointer, query string) error {
-	var stmt unsafe.Pointer
-	if err := CliAllocStmt(conn, &stmt); err != nil {
-		return err
-	}
-	defer CliFreeStmt(stmt)
-
-	sqlCString := C.CString(query)
-	defer C.free(unsafe.Pointer(sqlCString))
-
-	if rt := C.MachCLIExecDirect(stmt, sqlCString); rt != 0 {
-		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCliExecDirectConn()")
-	}
-	return nil
-}
-
-func CliCancel(stmt unsafe.Pointer) error {
-	if rt := C.MachCLICancel(stmt); rt != 0 {
-		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLICancel()")
-	}
-	return nil
-}
-
-func CliRowCount(stmt unsafe.Pointer) (int64, error) {
-	var count C.longlong
-	if rt := C.MachCLIRowCount(stmt, &count); rt != 0 {
-		return 0, CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIRowCount()")
-	}
-	return int64(count), nil
-}
-
-// returns true if it reaches the end of fetch
-func CliFetch(stmt unsafe.Pointer) (bool, error) {
-	var end C.int
-	if rt := C.MachCLIFetch(stmt, &end); rt != 0 {
-		return true, CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIFetch()")
-	}
-	return end == 1, nil
-}
-
 type SqlType int
 
 const (
@@ -1291,18 +1107,6 @@ const (
 	MACHCLI_SQL_TYPE_IPV6     SqlType = 7
 	MACHCLI_SQL_TYPE_STRING   SqlType = 8
 	MACHCLI_SQL_TYPE_BINARY   SqlType = 9
-)
-
-type CType int
-
-const (
-	MACHCLI_C_TYPE_INT16  CType = 101
-	MACHCLI_C_TYPE_INT32  CType = 102
-	MACHCLI_C_TYPE_INT64  CType = 103
-	MACHCLI_C_TYPE_FLOAT  CType = 104
-	MACHCLI_C_TYPE_DOUBLE CType = 105
-	MACHCLI_C_TYPE_CHAR   CType = 106
-	MACHCLI_C_TYPE_BINARY CType = 107
 )
 
 // * DDL: 1-255
@@ -1346,416 +1150,4 @@ func (typ StmtType) IsUpdate() bool {
 
 func (typ StmtType) IsExecRollup() bool {
 	return typ >= 522 && typ <= 524
-}
-
-func CliGetStmtType(stmt unsafe.Pointer) (int, error) {
-	var stmtType C.int
-	if rt := C.MachCLIGetStmtType(stmt, &stmtType); rt != 0 {
-		return 0, CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIGetStmtType()")
-	}
-	return int(stmtType), nil
-}
-
-// returns the length of the actual data
-func CliGetData(stmt unsafe.Pointer, columnNo int, cType CType, buf unsafe.Pointer, bufLen int) (int64, error) {
-	var resultLen C.long
-	if rt := C.MachCLIGetData(stmt, C.int(columnNo), C.int(cType), buf, C.int(bufLen), &resultLen); rt != 0 {
-		return 0, CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, fmt.Sprintf("MachCLIGetData(%d)", columnNo))
-	}
-	return int64(resultLen), nil
-}
-
-type CliBindColData struct {
-	Type      CType
-	Buf       unsafe.Pointer
-	BufLen    int
-	resultLen C.sqllen_t // can not use int64 because arm32 can not convert int64 to C.long
-}
-
-// returns the length of the actual data
-func CliBindCol(stmt unsafe.Pointer, columnNo int, data *CliBindColData) error {
-	if rt := C.MachCLIBindCol(stmt, C.int(columnNo), C.int(data.Type), data.Buf, C.int(data.BufLen), &data.resultLen); rt != 0 {
-		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, fmt.Sprintf("MachCLIBindCol(%d)", columnNo))
-	}
-	return nil
-}
-
-func CliBindParam(stmt unsafe.Pointer, paramNo int, cType CType, sqlType SqlType, value unsafe.Pointer, valueLen int) error {
-	if rt := C.MachCLIBindParam(stmt, C.int(paramNo), C.int(cType), C.int(sqlType), value, C.int(valueLen)); rt != 0 {
-		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, fmt.Sprintf("MachCLIBindParam(%d)", paramNo))
-	}
-	return nil
-}
-
-type CliParamDesc struct {
-	Type      SqlType
-	Precision int
-	Scale     int
-	Nullable  bool
-}
-
-func CliDescribeParam(stmt unsafe.Pointer, paramNo int) (CliParamDesc, error) {
-	ret := CliParamDesc{}
-	var typ, prec, scale, nullable C.int
-	if rt := C.MachCLIDescribeParam(stmt, C.int(paramNo), &typ, &prec, &scale, &nullable); rt == 0 {
-		ret.Type = SqlType(typ)
-		ret.Precision = int(prec)
-		ret.Scale = int(scale)
-		ret.Nullable = nullable == 1
-		return ret, nil
-	} else {
-		return ret, CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, fmt.Sprintf("MachCLIDescribeParam(%d)", paramNo))
-	}
-}
-
-func CliNumParam(stmt unsafe.Pointer) (int, error) {
-	var num C.int
-	if rt := C.MachCLINumParam(stmt, &num); rt != 0 {
-		return 0, CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLINumParam()")
-	}
-	return int(num), nil
-}
-
-func CliDescribeCol(stmt unsafe.Pointer, columnNo int, pName *string, pType *SqlType, pSize *int, pScale *int, pNullable *bool) error {
-	var name = [200]C.char{}
-	var nameSize = C.int(len(name))
-	var nameLen, dataType, colSize, scale, nullable C.int
-	if rt := C.MachCLIDescribeCol(stmt, C.int(columnNo), &name[0], nameSize, &nameLen, &dataType, &colSize, &scale, &nullable); rt == 0 {
-		*pName = C.GoStringN(&name[0], nameLen)
-		*pType = SqlType(dataType)
-		*pSize = int(colSize)
-		*pScale = int(scale)
-		*pNullable = nullable == 1
-		return nil
-	} else {
-		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, fmt.Sprintf("MachCLIDescribeCol(%d)", columnNo))
-	}
-}
-
-func CliNumResultCol(stmt unsafe.Pointer) (int, error) {
-	var num C.int
-	if rt := C.MachCLINumResultCol(stmt, &num); rt != 0 {
-		return 0, CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLINumResultCol()")
-	}
-	return int(num), nil
-}
-
-func CliAppendOpen(stmt unsafe.Pointer, tableName string, errCheckCount int) error {
-	cstr := C.CString(tableName)
-	defer C.free(unsafe.Pointer(cstr))
-	if rt := C.MachCLIAppendOpen(stmt, cstr, C.int(errCheckCount)); rt != 0 {
-		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIAppendOpen")
-	}
-	return nil
-}
-
-func CliAppendData(stmt unsafe.Pointer, types []SqlType, names []string, args []any, formats []string) error {
-	if len(types) == 0 || len(types) != len(args) || len(types) != len(names) {
-		return ErrDatabaseAppendWrongValueCount(len(types), len(args))
-	}
-
-	// Track allocated C strings to free them after MachCLIAppendData call
-	var allocatedCStrings []unsafe.Pointer
-	defer func() {
-		for _, ptr := range allocatedCStrings {
-			C.free(ptr)
-		}
-	}()
-
-	withArrivalTime := (strings.EqualFold(names[0], "_arrival_time") && types[0] == MACHCLI_SQL_TYPE_DATETIME)
-	var arrivalTime int64
-	if withArrivalTime {
-		switch arvTime := (args[0]).(type) {
-		case time.Time:
-			arrivalTime = arvTime.UnixNano()
-		case int64:
-			arrivalTime = arvTime
-		default:
-			return ErrDatabaseAppendWrongType(args[0], names[0], "MACHCLI_SQL_TYPE_DATETIME")
-		}
-		types = types[1:]
-		names = names[1:]
-		args = args[1:]
-	}
-
-	data := make([]C.MachCLIAppendParam, len(args))
-	for i, typ := range types {
-		name := names[i]
-		switch typ {
-		case MACHCLI_SQL_TYPE_INT16:
-			if args[i] == nil {
-				x := 0x8000 // MACHCLI_APPEND_SHORT_NULL
-				*(*C.short)(unsafe.Pointer(&data[i])) = C.short(x)
-			} else {
-				switch value := args[i].(type) {
-				case int16:
-					*(*C.short)(unsafe.Pointer(&data[i])) = C.short(value)
-				case uint16:
-					*(*C.short)(unsafe.Pointer(&data[i])) = C.short(value)
-				default:
-					return ErrDatabaseAppendWrongType(value, name, "MACHCLI_SQL_TYPE_INT16")
-				}
-			}
-		case MACHCLI_SQL_TYPE_INT32:
-			if args[i] == nil {
-				x := uint32(0x80000000) // MACHCLI_APPEND_INTEGER_NULL
-				*(*C.int)(unsafe.Pointer(&data[i])) = C.int(x)
-			} else {
-				switch value := args[i].(type) {
-				case int32:
-					*(*C.int)(unsafe.Pointer(&data[i])) = C.int(value)
-				case uint32:
-					*(*C.int)(unsafe.Pointer(&data[i])) = C.int(value)
-				case int:
-					*(*C.int)(unsafe.Pointer(&data[i])) = C.int(value)
-				case uint:
-					*(*C.int)(unsafe.Pointer(&data[i])) = C.int(value)
-				default:
-					return ErrDatabaseAppendWrongType(value, name, "MACHCLI_SQL_TYPE_INT32")
-				}
-			}
-		case MACHCLI_SQL_TYPE_INT64:
-			if args[i] == nil {
-				x := int64(-9223372036854775808) // MACHCLI_APPEND_LONG_NULL 0x8000000000000000
-				*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(x)
-			} else {
-				switch value := args[i].(type) {
-				case int:
-					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
-				case uint:
-					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
-				case int32:
-					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
-				case uint32:
-					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
-				case int64:
-					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
-				case uint64:
-					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
-				default:
-					return ErrDatabaseAppendWrongType(value, name, "MACHCLI_SQL_TYPE_INT64")
-				}
-			}
-		case MACHCLI_SQL_TYPE_FLOAT:
-			if args[i] == nil {
-				x := float32(3.402823466e+38) // MACHCLI_APPEND_FLOAT_NULL
-				*(*C.float)(unsafe.Pointer(&data[i])) = C.float(x)
-			} else {
-				switch value := args[i].(type) {
-				case float32:
-					*(*C.float)(unsafe.Pointer(&data[i])) = C.float(value)
-				case float64:
-					*(*C.float)(unsafe.Pointer(&data[i])) = C.float(value)
-				case int:
-					*(*C.float)(unsafe.Pointer(&data[i])) = C.float(value)
-				case int32:
-					*(*C.float)(unsafe.Pointer(&data[i])) = C.float(value)
-				case int64:
-					*(*C.float)(unsafe.Pointer(&data[i])) = C.float(value)
-				default:
-					return ErrDatabaseAppendWrongType(value, name, "MACHCLI_SQL_TYPE_FLOAT")
-				}
-			}
-		case MACHCLI_SQL_TYPE_DOUBLE:
-			if args[i] == nil {
-				x := float64(1.7976931348623158e+308) // MACHCLI_APPEND_DOUBLE_NULL
-				*(*C.double)(unsafe.Pointer(&data[i])) = C.double(x)
-			} else {
-				switch value := args[i].(type) {
-				case float64:
-					*(*C.double)(unsafe.Pointer(&data[i])) = C.double(value)
-				case float32:
-					*(*C.double)(unsafe.Pointer(&data[i])) = C.double(value)
-				case int:
-					*(*C.double)(unsafe.Pointer(&data[i])) = C.double(value)
-				case int16:
-					*(*C.double)(unsafe.Pointer(&data[i])) = C.double(value)
-				case int32:
-					*(*C.double)(unsafe.Pointer(&data[i])) = C.double(value)
-				case int64:
-					*(*C.double)(unsafe.Pointer(&data[i])) = C.double(value)
-				default:
-					return ErrDatabaseAppendWrongType(value, name, "MACHCLI_SQL_TYPE_DOUBLE")
-				}
-			}
-		case MACHCLI_SQL_TYPE_DATETIME:
-			if args[i] == nil {
-				(*C.MachCLIAppendDateTimeStruct)(unsafe.Pointer(&data[i])).mTime = C.longlong(-1) // -1: null, -2: string, -3: TM, -4: now
-			} else {
-				switch value := args[i].(type) {
-				case time.Time:
-					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value.UnixNano())
-				case int:
-					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
-				case int16:
-					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
-				case int32:
-					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
-				case int64:
-					*(*C.longlong)(unsafe.Pointer(&data[i])) = C.longlong(value)
-				case string:
-					if strings.ToLower(value) == "now" {
-						(*C.MachCLIAppendDateTimeStruct)(unsafe.Pointer(&data[i])).mTime = C.longlong(-4) // -1: null, -2: string, -3: TM, -4: now
-					} else {
-						cstr := C.CString(value)
-						allocatedCStrings = append(allocatedCStrings, unsafe.Pointer(cstr))
-						formatStr := "YYYY-MM-DD HH24:MI:SS mmm:uuu:nnn"
-						if i < len(formats) && len(formats[i]) > 0 {
-							formatStr = formats[i]
-						}
-						cFormstStr := C.CString(formatStr)
-						allocatedCStrings = append(allocatedCStrings, unsafe.Pointer(cFormstStr))
-						(*C.MachCLIAppendDateTimeStruct)(unsafe.Pointer(&data[i])).mDateStr = cstr
-						(*C.MachCLIAppendDateTimeStruct)(unsafe.Pointer(&data[i])).mFormatStr = cFormstStr
-						(*C.MachCLIAppendDateTimeStruct)(unsafe.Pointer(&data[i])).mTime = C.longlong(-2) // -1: null, -2: string, -3: TM, -4: now
-					}
-				default:
-					return ErrDatabaseAppendWrongType(value, name, "MACHCLI_SQL_TYPE_DATETIME")
-				}
-			}
-		case MACHCLI_SQL_TYPE_IPV4:
-			if args[i] == nil {
-				(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(0)
-			} else {
-				switch value := args[i].(type) {
-				case net.IP:
-					for n, b := range value.To4() {
-						(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddr[n] = C.uchar(b)
-					}
-					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(4)
-				case string:
-					cstr := C.CString(value)
-					allocatedCStrings = append(allocatedCStrings, unsafe.Pointer(cstr))
-					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddrString = cstr
-					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(255)
-				}
-			}
-		case MACHCLI_SQL_TYPE_IPV6:
-			if args[i] == nil {
-				(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(0)
-			} else {
-				switch value := args[i].(type) {
-				case net.IP:
-					for n, b := range value.To16() {
-						(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddr[n] = C.uchar(b)
-					}
-					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(6)
-				case string:
-					cstr := C.CString(value)
-					allocatedCStrings = append(allocatedCStrings, unsafe.Pointer(cstr))
-					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mAddrString = cstr
-					(*C.MachCLIAppendIPStruct)(unsafe.Pointer(&data[i])).mLength = C.uchar(255)
-				}
-			}
-		case MACHCLI_SQL_TYPE_STRING:
-			if args[i] == nil {
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(0)
-			} else {
-				switch value := args[i].(type) {
-				case string:
-					cstr := C.CString(value)
-					allocatedCStrings = append(allocatedCStrings, unsafe.Pointer(cstr))
-					(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(C.strlen(cstr))
-					(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(cstr)
-				default:
-					return ErrDatabaseAppendWrongType(value, name, "MACHCLI_SQL_TYPE_STRING")
-				}
-			}
-		case MACHCLI_SQL_TYPE_BINARY:
-			if args[i] == nil {
-				(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(0)
-			} else {
-				switch value := args[i].(type) {
-				case string:
-					cstr := C.CString(value)
-					allocatedCStrings = append(allocatedCStrings, unsafe.Pointer(cstr))
-					(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(C.strlen(cstr))
-					(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(cstr)
-				case []byte:
-					(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mLength = C.uint(len(value))
-					if len(value) > 0 {
-						(*C.MachCLIAppendVarStruct)(unsafe.Pointer(&data[i])).mData = unsafe.Pointer(&value[0])
-					}
-				default:
-					return ErrDatabaseAppendWrongType(value, name, "MACHCLI_SQL_TYPE_BINARY")
-				}
-			}
-		}
-	}
-
-	if withArrivalTime {
-		if rt := C.MachCLIAppendDataByTime(stmt, C.longlong(arrivalTime), (*C.MachCLIAppendParam)(&data[0])); rt == 0 {
-			return nil
-		} else {
-			return ErrDatabaseReturns("MachCLIAppendData", int(rt))
-		}
-	} else {
-		if rt := C.MachCLIAppendData(stmt, (*C.MachCLIAppendParam)(&data[0])); rt == 0 {
-			return nil
-		} else {
-			return ErrDatabaseReturns("MachCLIAppendData", int(rt))
-		}
-	}
-}
-
-func CliAppendClose(stmt unsafe.Pointer) (int64, int64, error) {
-	var successCount C.longlong
-	var failureCount C.longlong
-	defer func() {
-		delete(cliAppendErrorCallbacks, fmt.Sprintf("%X", stmt))
-	}()
-	if rt := C.MachCLIAppendClose(stmt, &successCount, &failureCount); rt != 0 {
-		return 0, 0, CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIAppendClose()")
-	}
-	return int64(successCount), int64(failureCount), nil
-}
-
-func CliAppendFlush(stmt unsafe.Pointer) error {
-	if rt := C.MachCLIAppendFlush(stmt); rt != 0 {
-		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIAppendFlush()")
-	}
-	return nil
-}
-
-type CLIAppendErrorCallback func(stmt unsafe.Pointer, errCode int, errMsg string, buf []byte)
-
-var cliAppendErrorCallbacks = make(map[string]CLIAppendErrorCallback)
-
-//export CliDefaultAppendErrorCallback
-func CliDefaultAppendErrorCallback(stmt unsafe.Pointer, errCode C.int, errMsg *C.char, errMsgLen C.long, rowBuf *C.char, rowBufLen C.long) {
-	msgLen := C.int(int64(errMsgLen))
-	msg := C.GoStringN(errMsg, msgLen)
-	buf := C.GoBytes(unsafe.Pointer(rowBuf), C.int(rowBufLen))
-	if cb, ok := cliAppendErrorCallbacks[fmt.Sprintf("%X", stmt)]; ok {
-		cb(stmt, int(errCode), msg, buf)
-	}
-}
-
-func CliDefaultAppendErrorCallbackClose(stmt unsafe.Pointer) {
-	delete(cliAppendErrorCallbacks, fmt.Sprintf("%X", stmt))
-}
-
-func CliAppendSetErrorCallback(stmt unsafe.Pointer, cb CLIAppendErrorCallback) error {
-	if rt := C.MachCLIAppendSetErrorCallback(stmt, (*[0]byte)(C.cliAppendErrorCallback)); rt == 0 {
-		if cb != nil {
-			cliAppendErrorCallbacks[fmt.Sprintf("%X", stmt)] = cb
-		}
-		return nil
-	} else {
-		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLIAppendSetErrorCallback()")
-	}
-}
-
-func CliSetConnectAppendFlush(conn unsafe.Pointer, opt int) error {
-	if rt := C.MachCLISetConnectAppendFlush(conn, C.int(opt)); rt != 0 {
-		return CliErrorCaller(conn, MACHCLI_HANDLE_DBC, "MachCLISetConnectAppendFlush()")
-	}
-	return nil
-}
-
-func CliSetStmtAppendInterval(stmt unsafe.Pointer, intervalMilliseconds int) error {
-	if rt := C.MachCLISetStmtAppendInterval(stmt, C.int(intervalMilliseconds)); rt != 0 {
-		return CliErrorCaller(stmt, MACHCLI_HANDLE_STMT, "MachCLISetStmtAppendInterval()")
-	}
-	return nil
 }
